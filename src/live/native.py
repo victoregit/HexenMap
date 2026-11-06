@@ -21,6 +21,7 @@ class Windows:
             "FindWindowW": ([wt.LPCWSTR,wt.LPCWSTR],wt.HWND),
             "IsWindow": ([wt.HWND],wt.BOOL), "IsIconic": ([wt.HWND],wt.BOOL),
             "GetForegroundWindow": ([],wt.HWND),
+            "SetForegroundWindow": ([wt.HWND],wt.BOOL),
             "GetWindowThreadProcessId": ([wt.HWND,ct.POINTER(wt.DWORD)],wt.DWORD),
             "GetAsyncKeyState": ([ct.c_int],ct.c_short),
             "GetCursorPos": ([ct.POINTER(wt.POINT)],wt.BOOL),
@@ -84,6 +85,29 @@ class Windows:
         pid=wt.DWORD()
         self.u.GetWindowThreadProcessId(hwnd,ct.byref(pid))
         return pid.value==os.getpid()
+
+    def restore_game_focus(self, rect: GameWindowRect) -> bool:
+        # Only return from our UI; never pull focus back from another application.
+        if not rect.hwnd or rect.is_minimized or not self.u.IsWindow(rect.hwnd):
+            return False
+        if not self.menu_foreground(rect):
+            return False
+        return bool(self.u.SetForegroundWindow(rect.hwnd))
+
+    def key_down(self, key: int) -> bool:
+        return bool(self.u.GetAsyncKeyState(key)&0x8000)
+
+    def popup(self, child_hwnd: int, game: GameWindowRect) -> int:
+        hwnd=self.overlay(child_hwnd)
+        # The popup belongs to the game window, not the configuration panel.
+        ct.set_last_error(0)
+        self.set_style(hwnd,-8,game.hwnd)
+        if ct.get_last_error():
+            raise ct.WinError(ct.get_last_error())
+        if not self.u.SetLayeredWindowAttributes(hwnd,0,255,2):
+            raise ct.WinError(ct.get_last_error())
+        self.interactive(hwnd,True)
+        return hwnd
 
     def overlay(self, child_hwnd: int) -> int:
         hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
