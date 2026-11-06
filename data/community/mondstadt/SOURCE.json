@@ -1,0 +1,36 @@
+{
+  "project": "Teyvat.moe",
+  "repository": "https://github.com/EliteMasterEric/Teyvat.moe",
+  "commit": "e4566515800070fbc70ded91829d423a6361518c",
+  "license": "GPL-3.0-only",
+  "upstream_archived": true,
+  "coordinate_system": "Leaflet CRS.Simple pixels at zoom 7 (x=longitude*128, y=-latitude*128)",
+  "files": [
+    {
+      "file": "common-chest.json",
+      "source": "https://raw.githubusercontent.com/EliteMasterEric/Teyvat.moe/e4566515800070fbc70ded91829d423a6361518c/src/data/features/mondstadt/chest/common-chest.json",
+      "sha256": "ba93999f546bc8ed613148c578cb1546e80a1adc06ddec38b571d670772d3650"
+    },
+    {
+      "file": "exquisite-chest.json",
+      "source": "https://raw.githubusercontent.com/EliteMasterEric/Teyvat.moe/e4566515800070fbc70ded91829d423a6361518c/src/data/features/mondstadt/chest/exquisite-chest.json",
+      "sha256": "3e831297951bbfb5b461910b605f5d1a1fa0812373611d192553d28ecfd61c38"
+    },
+    {
+      "file": "precious-chest.json",
+      "source": "https://raw.githubusercontent.com/EliteMasterEric/Teyvat.moe/e4566515800070fbc70ded91829d423a6361518c/src/data/features/mondstadt/chest/precious-chest.json",
+      "sha256": "331a303ab57601570c4d0b259c1ac7f1250597aecfd287d935f82a4756e236f7"
+    },
+    {
+      "file": "luxurious-chest.json",
+      "source": "https://raw.githubusercontent.com/EliteMasterEric/Teyvat.moe/e4566515800070fbc70ded91829d423a6361518c/src/data/features/mondstadt/chest/luxurious-chest.json",
+      "sha256": "aa326939b07c21c05de4085db311c816137d99d1893aab8eacbaacb21a552c9c"
+    },
+    {
+      "file": "anemoculus.json",
+      "source": "https://raw.githubusercontent.com/EliteMasterEric/Teyvat.moe/e4566515800070fbc70ded91829d423a6361518c/src/data/features/mondstadt/special/anemoculus.json",
+      "sha256": "567deab422358a6e7f4be00609c369f0be059363a008668b0c0f0fa5ad7d0950"
+    }
+  ],
+  "note": "Upstream community positions; not individually verified in the current game. Artwork is NOT included."
+}
