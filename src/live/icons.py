@@ -50,13 +50,32 @@ def draw_marker(canvas, category: str, x: float, y: float, scale: float = 1.0,
     def box(a,b,c,d,fill,edge=""):
         canvas.create_rectangle(x+a*scale,y+b*scale,x+c*scale,y+d*scale,
                                 fill=tone(fill),outline=tone(edge),width=scale)
-    if category=="anemoculus":
+    from src.live.catalog import CATEGORY_GROUPS
+    group=CATEGORY_GROUPS.get(category,"")
+    if category=="anemoculus" or group=="Oculi":
         polygon([(0,-9),(3,-3),(8,0),(3,3),(0,9),(-3,3),(-8,0),(-3,-3)],"#6ee7c5")
         polygon([(0,-4),(3,0),(0,4),(-3,0)],"#d3fff1",edge="#268c82")
         line([(-5,-1),(-7,-5),(-3,-3)],"#b4f7e6")
         line([(5,1),(7,5),(3,3)],"#b4f7e6")
         return
-    style=CHEST_STYLES[category]
+    if category not in CHEST_STYLES and group!="Baús":
+        if group=="Recursos":
+            polygon([(-7,5),(-7,-2),(-1,-8),(6,-5),(5,2)],"#83cbb1")
+            line([(-7,7),(3,-4)],"#c9efe1",1.5)
+        elif group=="Seelies":
+            polygon([(0,-9),(6,-2),(4,4),(0,7),(-5,3),(-5,-3)],"#8dd9ed")
+            line([(-3,7),(-6,9)],"#c9f4fa",2)
+        elif group=="Desafios":
+            polygon([(-6,-8),(6,-8),(1,0),(6,8),(-6,8),(-1,0)],"#e9cd82")
+        elif group=="Santuários":
+            polygon([(-9,-3),(0,-9),(9,-3)],"#c4a8e5")
+            box(-7,-2,7,7,"#64799d",outline)
+            box(-2,0,2,7,"#203341")
+        else:
+            polygon([(0,-8),(8,0),(0,8),(-8,0)],"#a8b6d5")
+            box(-2,-2,2,2,"#203341")
+        return
+    style=CHEST_STYLES.get(category,CHEST_STYLES["common-chest"])
     # Raised, rounded lid and visible side give a chest silhouette at small size.
     polygon([(-9,-2),(-8,-6),(-5,-8),(5,-8),(8,-5),(9,-2)],style.lid)
     polygon([(-9,-2),(6,-2),(6,6),(-9,6)],style.wood)
