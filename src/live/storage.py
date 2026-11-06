@@ -55,6 +55,18 @@ def read_settings(path: Path) -> dict:
         allowed = set(HOTKEY_OPTIONS)
         if not all(isinstance(value,str) and value in allowed for value in keys.values()) or len(set(keys.values())) != 3:
             keys = dict(DEFAULT_KEYS)
-        return {"categories": [v for v in data["categories"] if isinstance(v, str)], "hotkeys": keys}
+        result={"categories": [v for v in data["categories"] if isinstance(v, str)], "hotkeys": keys}
+        if isinstance(data.get("regional"),dict):
+            result["regional"]={}
+            for key,pref in data['regional'].items():
+                if not isinstance(key,str) or not isinstance(pref,dict): continue
+                categories=pref.get('categories',[])
+                result['regional'][key]={
+                    'categories':[c for c in categories if isinstance(c,str)] if isinstance(categories,list) else [],
+                    'area':pref.get('area') if isinstance(pref.get('area'),str) else None,
+                    'layer':pref.get('layer') if isinstance(pref.get('layer'),str) else 'teyvat / surface'}
+        if isinstance(data.get("package"),str): result["package"]=data["package"]
+        result["server"]="America"
+        return result
     except (ValueError, OSError):
         return defaults
