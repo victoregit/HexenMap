@@ -20,7 +20,7 @@ class ProgressStorageError(Exception):
 class ProgressManager:
     """Manages player marker collection progress with atomic writes, backups, and versioning."""
 
-    STORAGE_VERSION = 1
+    STORAGE_VERSION = 2
 
     def __init__(self, filepath: Optional[str] = None) -> None:
         if filepath is None:
@@ -61,6 +61,20 @@ class ProgressManager:
     def get_collection_record(self, marker_id: str) -> Optional[Dict[str, Any]]:
         """Get collection metadata (timestamp, notes) for a marker."""
         return self._collected_records.get(marker_id)
+
+    def replace_record(self, marker_id: str, record: Optional[Dict[str, Any]]) -> None:
+        """Restore or replace a complete record, including its original deadline."""
+        if record is None:
+            self._collected_records.pop(marker_id,None)
+        else:
+            self._collected_records[marker_id]=dict(record)
+
+    @staticmethod
+    def _clean_record(record: Dict[str, Any]) -> Dict[str, Any]:
+        result={"collected_at":str(record.get("collected_at","")),"notes":str(record.get("notes",""))}
+        for key in ("ready_at","rule_id"):
+            if isinstance(record.get(key),str): result[key]=record[key]
+        return result
 
     def mark_collected(self, marker_id: str, notes: str = "") -> bool:
         """Mark marker as collected.
@@ -116,6 +130,18 @@ class ProgressManager:
 
         # 1. Create backup if current file exists
         if os.path.exists(self._filepath):
+            # Keep the original pre-migration file forever, independently of .bak.
+            try:
+                try:
+                    with open(self._filepath,encoding="utf-8") as current:
+                        previous_version=json.load(current).get("version",1)
+                except (ValueError,AttributeError):
+                    previous_version=1
+                migration=f"{self._filepath}.pre-v{self.STORAGE_VERSION}.bak"
+                if previous_version<self.STORAGE_VERSION and not os.path.exists(migration):
+                    shutil.copy2(self._filepath,migration)
+            except (OSError,ValueError,TypeError) as exc:
+                raise ProgressStorageError(f"Cannot back up progress before migration: {exc}") from exc
             try:
                 shutil.copy2(self._filepath, self._backup_filepath)
             except Exception as e:
@@ -187,10 +213,7 @@ class ProgressManager:
             if isinstance(records, dict):
                 # Clean and validate records
                 self._collected_records = {
-                    str(k): {
-                        "collected_at": str(v.get("collected_at", "")),
-                        "notes": str(v.get("notes", "")),
-                    }
+                    str(k): self._clean_record(v)
                     if isinstance(v, dict)
                     else {"collected_at": "", "notes": ""}
                     for k, v in records.items()
@@ -247,10 +270,7 @@ class ProgressManager:
         count = 0
         for marker_id, info in records.items():
             if isinstance(info, dict):
-                self._collected_records[str(marker_id)] = {
-                    "collected_at": str(info.get("collected_at", "")),
-                    "notes": str(info.get("notes", "")),
-                }
+                self._collected_records[str(marker_id)] = self._clean_record(info)
             else:
                 self._collected_records[str(marker_id)] = {
                     "collected_at": datetime.now(timezone.utc).isoformat(),
