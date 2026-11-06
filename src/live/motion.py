@@ -68,7 +68,7 @@ def follow(previous: np.ndarray, current: np.ndarray, observation: Observation,
         p=cv2.invertAffineTransform(matrix)@np.array([x,y,1])
         player=(float(p[0]),float(p[1]))
     return Observation(observation.surface,stamp,matrix,min(observation.confidence,.95),
-                       residual,observation.circle,player,observation.reason)
+                       residual,observation.circle,player,observation.reason,observation.map_id,observation.layer_id)
 
 
 class MotionRecognizer:
@@ -135,5 +135,5 @@ class MotionRecognizer:
             self.last_submit=stamp
             self.future=self.pool.submit(self.recognizer.observe,frame.copy(),stamp)
         self.previous=image
-        self.current=updated or Observation("hidden",stamp,reason="Localizando em Mondstadt…")
+        self.current=updated or Observation("hidden",stamp,reason="Localizando no mapa selecionado…")
         return self.current

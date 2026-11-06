@@ -31,19 +31,24 @@ class ReferencePack:
     map_ui_roi: tuple[float, float, float, float]
     gameplay_ui_roi: tuple[float, float, float, float]
     extra_terrain: tuple[Terrain, ...] = ()
+    region_id: str = "mondstadt"
+    map_id: str = "teyvat"
+    layer_id: str = "surface"
+    coordinate_system: str = "leaflet-simple-z7"
 
 
-def load_pack(directory: Path) -> ReferencePack:
+def load_pack(directory: Path, region_id="mondstadt", map_id="teyvat", layer_id=None,
+              coordinate_system="leaflet-simple-z7") -> ReferencePack:
     manifest = directory / "manifest.json"
     if not manifest.is_file():
-        raise ReferenceUnavailable("Referência visual de Mondstadt ainda não instalada e validada.")
+        raise ReferenceUnavailable("Referência visual deste mapa ainda não instalada e validada.")
     try:
         data = json.loads(manifest.read_text(encoding="utf-8"))
         if not isinstance(data,dict):
             raise ValueError("Manifesto deve ser um objeto JSON")
-        if data["region"] != "mondstadt" or data["layer"] != "surface":
-            raise ValueError("O pacote deve corresponder à superfície de Mondstadt")
-        if data["coordinate_system"] != "leaflet-simple-z7":
+        if data["region"]!=region_id or data.get("map_id","teyvat")!=map_id or (layer_id and data["layer"]!=layer_id):
+            raise ValueError("O pacote não corresponde à região, mapa ou camada selecionada")
+        if data["coordinate_system"] != coordinate_system:
             raise ValueError("Sistema de coordenadas incompatível")
         if not data.get("permission", {}).get("evidence") or not data["permission"].get("usage"):
             raise ValueError("Falta a origem e a permissão de uso das referências")
@@ -82,6 +87,7 @@ def load_pack(directory: Path) -> ReferencePack:
             Terrain(read_image(data["terrain"]), matrix, data["source"]),
             read_image(data["map_ui"]), read_image(data["gameplay_ui"]),
             roi(data["map_ui"]), roi(data["gameplay_ui"]), tuple(extra),
+            region_id,map_id,data["layer"],coordinate_system,
         )
     except (KeyError, TypeError, OSError, ValueError, cv2.error) as exc:
         raise ReferenceUnavailable(f"Pacote de referência inválido: {exc}") from exc
