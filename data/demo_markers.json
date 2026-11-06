@@ -1,0 +1,651 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "title": "Genshin Gem Wish - Demo Exploration Markers",
+    "description": "Curated realistic dataset for Mondstadt and Liyue exploration with surface and underground layers",
+    "created_at": "2026-11-02T12:00:00Z",
+    "total_markers": 50
+  },
+  "layers": [
+    {
+      "id": "surface",
+      "name": "Teyvat Surface",
+      "description": "Standard overworld terrain across all Teyvat nations"
+    },
+    {
+      "id": "underground",
+      "name": "Underground / Caverns",
+      "description": "Subterranean caves, ruins, and underground mines (e.g. Dragonspine Caverns, Chasm Underground)"
+    }
+  ],
+  "categories": [
+    {
+      "id": "anemoculus",
+      "name": "Anemoculus",
+      "group": "Oculi",
+      "color": "#6fe7c8",
+      "icon": "anemoculus"
+    },
+    {
+      "id": "geoculus",
+      "name": "Geoculus",
+      "group": "Oculi",
+      "color": "#f3c75f",
+      "icon": "geoculus"
+    },
+    {
+      "id": "statue_of_the_seven",
+      "name": "Statue of The Seven",
+      "group": "Waypoints",
+      "color": "#4da6ff",
+      "icon": "statue"
+    },
+    {
+      "id": "teleport_waypoint",
+      "name": "Teleport Waypoint",
+      "group": "Waypoints",
+      "color": "#4da6ff",
+      "icon": "waypoint"
+    },
+    {
+      "id": "luxurious_chest",
+      "name": "Luxurious Chest",
+      "group": "Chests",
+      "color": "#f1c40f",
+      "icon": "chest_lux"
+    },
+    {
+      "id": "precious_chest",
+      "name": "Precious Chest",
+      "group": "Chests",
+      "color": "#e67e22",
+      "icon": "chest_prec"
+    },
+    {
+      "id": "exquisite_chest",
+      "name": "Exquisite Chest",
+      "group": "Chests",
+      "color": "#3498db",
+      "icon": "chest_exq"
+    },
+    {
+      "id": "common_chest",
+      "name": "Common Chest",
+      "group": "Chests",
+      "color": "#95a5a6",
+      "icon": "chest_com"
+    },
+    {
+      "id": "shrine_of_depths",
+      "name": "Shrine of Depths",
+      "group": "Exploration",
+      "color": "#9b59b6",
+      "icon": "shrine"
+    },
+    {
+      "id": "seelie",
+      "name": "Seelie",
+      "group": "Exploration",
+      "color": "#1abc9c",
+      "icon": "seelie"
+    },
+    {
+      "id": "dandelion_seed",
+      "name": "Dandelion Seed",
+      "group": "Specialties",
+      "color": "#5dade2",
+      "icon": "plant"
+    },
+    {
+      "id": "cor_lapis",
+      "name": "Cor Lapis",
+      "group": "Specialties",
+      "color": "#e59866",
+      "icon": "mineral"
+    }
+  ],
+  "regions": [
+    {
+      "id": "mondstadt",
+      "name": "Mondstadt",
+      "bounds": {
+        "min_x": -3000.0,
+        "min_y": -4000.0,
+        "max_x": 1000.0,
+        "max_y": 0.0
+      }
+    },
+    {
+      "id": "dragonspine",
+      "name": "Dragonspine",
+      "bounds": {
+        "min_x": -500.0,
+        "min_y": -500.0,
+        "max_x": 1500.0,
+        "max_y": 1500.0
+      }
+    },
+    {
+      "id": "liyue",
+      "name": "Liyue",
+      "bounds": {
+        "min_x": -2500.0,
+        "min_y": 0.0,
+        "max_x": 2000.0,
+        "max_y": 4500.0
+      }
+    },
+    {
+      "id": "chasm_underground",
+      "name": "The Chasm: Underground Mines",
+      "bounds": {
+        "min_x": -4500.0,
+        "min_y": 2000.0,
+        "max_x": -2000.0,
+        "max_y": 4500.0
+      }
+    }
+  ],
+  "markers": [
+    {
+      "id": "mond_statue_windrise",
+      "name": "Statue of The Seven - Windrise",
+      "category_id": "statue_of_the_seven",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -820.5, "y": -2210.0, "z": 15.0 },
+      "description": "Underneath the massive oak tree in Windrise.",
+      "tags": ["waypoint", "mondstadt", "windrise"]
+    },
+    {
+      "id": "mond_tp_starfell",
+      "name": "Waypoint - Starfell Lake",
+      "category_id": "teleport_waypoint",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -1150.0, "y": -2920.0, "z": 20.0 },
+      "description": "On the small bluff overlooking Starfell Lake.",
+      "tags": ["waypoint", "starfell"]
+    },
+    {
+      "id": "mond_tp_city",
+      "name": "Waypoint - Mondstadt Plaza",
+      "category_id": "teleport_waypoint",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -1560.0, "y": -2510.0, "z": 45.0 },
+      "description": "Near the central fountain plaza in Mondstadt City.",
+      "tags": ["waypoint", "city"]
+    },
+    {
+      "id": "mond_oculi_001",
+      "name": "Anemoculus - Windrise Tree Branch",
+      "category_id": "anemoculus",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -818.0, "y": -2212.0, "z": 38.0 },
+      "description": "High up on the southern branch of the great tree at Windrise.",
+      "tags": ["oculi", "windrise", "high"]
+    },
+    {
+      "id": "mond_oculi_002",
+      "name": "Anemoculus - Starfell Lake Pillar",
+      "category_id": "anemoculus",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -1145.0, "y": -2915.0, "z": 28.0 },
+      "description": "Above the floating anemo monument, glide from statue bluff.",
+      "tags": ["oculi", "starfell"]
+    },
+    {
+      "id": "mond_oculi_003",
+      "name": "Anemoculus - Whispering Woods Cliff",
+      "category_id": "anemoculus",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -940.0, "y": -2680.0, "z": 55.0 },
+      "description": "Floating off the cliff edge near the Whispering Woods beach.",
+      "tags": ["oculi", "woods"]
+    },
+    {
+      "id": "mond_oculi_004",
+      "name": "Anemoculus - Mondstadt Cathedral Spire",
+      "category_id": "anemoculus",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -1620.0, "y": -2600.0, "z": 110.0 },
+      "description": "At the very peak cross of the Favonius Cathedral spire.",
+      "tags": ["oculi", "cathedral", "climb"]
+    },
+    {
+      "id": "mond_oculi_005",
+      "name": "Anemoculus - Cider Lake Island",
+      "category_id": "anemoculus",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -1380.0, "y": -2850.0, "z": 12.0 },
+      "description": "Activate the anemo wind current on the northwest islet.",
+      "tags": ["oculi", "lake"]
+    },
+    {
+      "id": "mond_chest_lux_001",
+      "name": "Luxurious Chest - Cathedral Bell Tower",
+      "category_id": "luxurious_chest",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -1618.0, "y": -2595.0, "z": 105.0 },
+      "description": "Inside the open belfry directly beneath the cathedral roof.",
+      "tags": ["chest", "luxurious", "cathedral"]
+    },
+    {
+      "id": "mond_chest_lux_002",
+      "name": "Luxurious Chest - Knights of Favonius Tower",
+      "category_id": "luxurious_chest",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -1510.0, "y": -2450.0, "z": 80.0 },
+      "description": "Guarded on the parapet walkway above HQ library.",
+      "tags": ["chest", "luxurious", "hq"]
+    },
+    {
+      "id": "mond_chest_prec_001",
+      "name": "Precious Chest - Stormbearer Point Eye of the Storm",
+      "category_id": "precious_chest",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -450.0, "y": -3400.0, "z": 92.0 },
+      "description": "Defeat the Eye of the Storm near the northern sun dial cliff.",
+      "tags": ["chest", "precious", "combat"]
+    },
+    {
+      "id": "mond_chest_exq_001",
+      "name": "Exquisite Chest - Windrise Hilichurl Camp",
+      "category_id": "exquisite_chest",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -720.0, "y": -2100.0, "z": 18.0 },
+      "description": "Clear the Mitachurl outpost northeast of Windrise tree.",
+      "tags": ["chest", "exquisite", "camp"]
+    },
+    {
+      "id": "mond_chest_com_001",
+      "name": "Common Chest - Whispering Woods Barrel",
+      "category_id": "common_chest",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -1020.0, "y": -2610.0, "z": 30.0 },
+      "description": "Tucked behind three wooden barrels along the dirt path.",
+      "tags": ["chest", "common"]
+    },
+    {
+      "id": "mond_shrine_001",
+      "name": "Shrine of Depths - Windwail Highland",
+      "category_id": "shrine_of_depths",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -1200.0, "y": -1850.0, "z": 65.0 },
+      "description": "High on the ridge overlooking Dawn Winery.",
+      "tags": ["shrine", "depths", "key"]
+    },
+    {
+      "id": "mond_seelie_001",
+      "name": "Seelie - Starfell Valley Stream",
+      "category_id": "seelie",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -1080.0, "y": -2780.0, "z": 22.0 },
+      "description": "Follow the Seelie downstream into its seelie garden court.",
+      "tags": ["seelie", "garden"]
+    },
+    {
+      "id": "mond_dandelion_001",
+      "name": "Dandelion Seed - Mondstadt City Gates",
+      "category_id": "dandelion_seed",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -1450.0, "y": -2400.0, "z": 35.0 },
+      "description": "Outside city entrance along outer defensive stone walls.",
+      "tags": ["specialty", "mondstadt", "anemo_harvest"]
+    },
+    {
+      "id": "mond_dandelion_002",
+      "name": "Dandelion Seed - Starsnatch Cliff Ridge",
+      "category_id": "dandelion_seed",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -520.0, "y": -2890.0, "z": 140.0 },
+      "description": "Group of 3 dandelions blowing in the wind near cliff peak.",
+      "tags": ["specialty", "starsnatch"]
+    },
+    {
+      "id": "dspine_tp_snowcovered",
+      "name": "Waypoint - Snow-Covered Path",
+      "category_id": "teleport_waypoint",
+      "region_id": "dragonspine",
+      "layer": "surface",
+      "coordinates": { "x": 120.0, "y": -450.0, "z": 30.0 },
+      "description": "Entrance to Dragonspine just past the adventurer research camp.",
+      "tags": ["waypoint", "dragonspine"]
+    },
+    {
+      "id": "dspine_cave_prec_001",
+      "name": "Precious Chest - Starglow Cavern Lower Ice Pond",
+      "category_id": "precious_chest",
+      "region_id": "dragonspine",
+      "layer": "underground",
+      "coordinates": { "x": 450.0, "y": 620.0, "z": -40.0 },
+      "description": "Complete the timed freezing combat challenge inside the cavern.",
+      "tags": ["chest", "precious", "underground", "starglow"]
+    },
+    {
+      "id": "dspine_cave_seelie_001",
+      "name": "Seelie - Starglow Cavern Warming Seelie",
+      "category_id": "seelie",
+      "region_id": "dragonspine",
+      "layer": "underground",
+      "coordinates": { "x": 420.0, "y": 590.0, "z": -35.0 },
+      "description": "Fire Seelie warming the lower tunnel path.",
+      "tags": ["seelie", "warming", "underground"]
+    },
+    {
+      "id": "liyue_statue_dihua",
+      "name": "Statue of The Seven - Dihua Marsh",
+      "category_id": "statue_of_the_seven",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": 150.0, "y": 1420.0, "z": 24.0 },
+      "description": "Overlooking Dihua Marsh near the Wangshu Inn northern bridge.",
+      "tags": ["waypoint", "statue", "dihua"]
+    },
+    {
+      "id": "liyue_tp_harbor_north",
+      "name": "Waypoint - Liyue Harbor Northern Entrance",
+      "category_id": "teleport_waypoint",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": 320.0, "y": 3650.0, "z": 30.0 },
+      "description": "On the wooden pavilion overlooking the entry bridge.",
+      "tags": ["waypoint", "harbor"]
+    },
+    {
+      "id": "liyue_tp_wangshu",
+      "name": "Waypoint - Wangshu Inn Top Floor",
+      "category_id": "teleport_waypoint",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": 180.0, "y": 1890.0, "z": 115.0 },
+      "description": "Beside the reception desk at the top of Wangshu Inn.",
+      "tags": ["waypoint", "wangshu"]
+    },
+    {
+      "id": "liyue_tp_jueyun",
+      "name": "Waypoint - Jueyun Karst Peak",
+      "category_id": "teleport_waypoint",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": -1250.0, "y": 2100.0, "z": 260.0 },
+      "description": "High mountain peak overlooking the adepti dwellings.",
+      "tags": ["waypoint", "jueyun"]
+    },
+    {
+      "id": "liyue_oculi_001",
+      "name": "Geoculus - Wangshu Inn Roof",
+      "category_id": "geoculus",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": 182.0, "y": 1895.0, "z": 135.0 },
+      "description": "At the very top finial beam of Wangshu Inn roof.",
+      "tags": ["oculi", "wangshu", "roof"]
+    },
+    {
+      "id": "liyue_oculi_002",
+      "name": "Geoculus - Dihua Marsh Bamboo Stilt",
+      "category_id": "geoculus",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": 95.0, "y": 1320.0, "z": 18.0 },
+      "description": "Floating above fisherman raft near the river reeds.",
+      "tags": ["oculi", "dihua"]
+    },
+    {
+      "id": "liyue_oculi_003",
+      "name": "Geoculus - Qingce Village Terraced Falls",
+      "category_id": "geoculus",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": -520.0, "y": 580.0, "z": 85.0 },
+      "description": "Hovering over the wooden aqueduct waterfall drop.",
+      "tags": ["oculi", "qingce"]
+    },
+    {
+      "id": "liyue_oculi_004",
+      "name": "Geoculus - Guyun Stone Forest Arch",
+      "category_id": "geoculus",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": 1640.0, "y": 3950.0, "z": 70.0 },
+      "description": "Underneath the broken stone arch above the Ruin Guard circle.",
+      "tags": ["oculi", "guyun"]
+    },
+    {
+      "id": "liyue_oculi_005",
+      "name": "Geoculus - Mt. Tianheng Cavern Opening",
+      "category_id": "geoculus",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": -80.0, "y": 3480.0, "z": 120.0 },
+      "description": "At the cliffside opening overlooking Liyue Harbor docks.",
+      "tags": ["oculi", "tianheng"]
+    },
+    {
+      "id": "liyue_chest_lux_001",
+      "name": "Luxurious Chest - Qingyun Peak Cloud Floating Island",
+      "category_id": "luxurious_chest",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": -1680.0, "y": 1950.0, "z": 380.0 },
+      "description": "Unlocked after rotating the three mountain bird statues to Qingyun Peak.",
+      "tags": ["chest", "luxurious", "qingyun", "adepti"]
+    },
+    {
+      "id": "liyue_chest_lux_002",
+      "name": "Luxurious Chest - Guyun Ruin Guard Shipwreck",
+      "category_id": "luxurious_chest",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": 1780.0, "y": 4200.0, "z": 25.0 },
+      "description": "Aboard the pirate Alcor vessel crow's nest or island wreckage.",
+      "tags": ["chest", "luxurious", "guyun"]
+    },
+    {
+      "id": "liyue_chest_prec_001",
+      "name": "Precious Chest - Luhua Pool Pressure Plate Puzzle",
+      "category_id": "precious_chest",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": -210.0, "y": 2750.0, "z": 65.0 },
+      "description": "Activate the Geo totems in order around the painter statue pond.",
+      "tags": ["chest", "precious", "luhua"]
+    },
+    {
+      "id": "liyue_chest_exq_001",
+      "name": "Exquisite Chest - Guili Plains Ruin Camp",
+      "category_id": "exquisite_chest",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": 420.0, "y": 2480.0, "z": 35.0 },
+      "description": "Protected by treasure hoarders guarding ancient stone pillar.",
+      "tags": ["chest", "exquisite", "guili"]
+    },
+    {
+      "id": "liyue_chest_com_001",
+      "name": "Common Chest - Liyue Harbor Wooden Wharf",
+      "category_id": "common_chest",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": 480.0, "y": 3820.0, "z": 10.0 },
+      "description": "Hidden behind fish crates under the wharf stairway.",
+      "tags": ["chest", "common", "harbor"]
+    },
+    {
+      "id": "liyue_shrine_001",
+      "name": "Shrine of Depths - Minlin Solitary Peak",
+      "category_id": "shrine_of_depths",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": -1850.0, "y": 1420.0, "z": 210.0 },
+      "description": "On isolated stone spire southwest of Mt. Aocang lake.",
+      "tags": ["shrine", "minlin", "key"]
+    },
+    {
+      "id": "liyue_seelie_001",
+      "name": "Seelie - Dihua Marsh Northern Island",
+      "category_id": "seelie",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": 80.0, "y": 1210.0, "z": 15.0 },
+      "description": "Guides player across the shallow sandbar to a chest.",
+      "tags": ["seelie", "dihua"]
+    },
+    {
+      "id": "liyue_cor_lapis_001",
+      "name": "Cor Lapis - Mt. Hulao Amber Ridge",
+      "category_id": "cor_lapis",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": -1980.0, "y": 2210.0, "z": 240.0 },
+      "description": "Rich mineral cluster surrounding amber crystal traps.",
+      "tags": ["specialty", "mineral", "hulao"]
+    },
+    {
+      "id": "liyue_cor_lapis_002",
+      "name": "Cor Lapis - Cuijue Slope Valley",
+      "category_id": "cor_lapis",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": -850.0, "y": 2550.0, "z": 110.0 },
+      "description": "Along the red terracotta cliff face near 9 pillars ruins.",
+      "tags": ["specialty", "mineral", "cuijue"]
+    },
+    {
+      "id": "chasm_tp_adit",
+      "name": "Waypoint - Main Mining Area Incline",
+      "category_id": "teleport_waypoint",
+      "region_id": "chasm_underground",
+      "layer": "underground",
+      "coordinates": { "x": -3120.0, "y": 2840.0, "z": -150.0 },
+      "description": "Upper scaffolding overlook inside the Chasm underground mine.",
+      "tags": ["waypoint", "underground", "chasm"]
+    },
+    {
+      "id": "chasm_tp_ruins",
+      "name": "Waypoint - Nameless Ruins Upside-Down City",
+      "category_id": "teleport_waypoint",
+      "region_id": "chasm_underground",
+      "layer": "underground",
+      "coordinates": { "x": -3450.0, "y": 3610.0, "z": -320.0 },
+      "description": "Opposite the inverted celestial teleporter inside ancient ruins.",
+      "tags": ["waypoint", "underground", "chasm", "inverted"]
+    },
+    {
+      "id": "chasm_chest_lux_001",
+      "name": "Luxurious Chest - Inverted Castle Chamber",
+      "category_id": "luxurious_chest",
+      "region_id": "chasm_underground",
+      "layer": "underground",
+      "coordinates": { "x": -3460.0, "y": 3625.0, "z": -310.0 },
+      "description": "At the highest broken ceiling ledge of the inverted ruins.",
+      "tags": ["chest", "luxurious", "underground", "chasm"]
+    },
+    {
+      "id": "chasm_chest_prec_001",
+      "name": "Precious Chest - Underground Waterway Waterfall",
+      "category_id": "precious_chest",
+      "region_id": "chasm_underground",
+      "layer": "underground",
+      "coordinates": { "x": -3310.0, "y": 2980.0, "z": -210.0 },
+      "description": "Behind the subterranean waterfall, requires Geo construct jump.",
+      "tags": ["chest", "precious", "underground", "waterway"]
+    },
+    {
+      "id": "chasm_chest_exq_001",
+      "name": "Exquisite Chest - Stony Halls Lumenspar Cage",
+      "category_id": "exquisite_chest",
+      "region_id": "chasm_underground",
+      "layer": "underground",
+      "coordinates": { "x": -3220.0, "y": 3410.0, "z": -260.0 },
+      "description": "Dispel the level 6 oozing conduit to reveal the chest.",
+      "tags": ["chest", "exquisite", "underground", "lumen"]
+    },
+    {
+      "id": "chasm_seelie_001",
+      "name": "Seelie - Underground Canal Luminescent Seelie",
+      "category_id": "seelie",
+      "region_id": "chasm_underground",
+      "layer": "underground",
+      "coordinates": { "x": -3280.0, "y": 3120.0, "z": -230.0 },
+      "description": "Floating above dark mud; guide along the subterranean canal.",
+      "tags": ["seelie", "underground", "chasm"]
+    },
+    {
+      "id": "mond_tp_canyon",
+      "name": "Waypoint - Dadaupa Gorge Ridge",
+      "category_id": "teleport_waypoint",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -250.0, "y": -1650.0, "z": 80.0 },
+      "description": "On cliff edge overlooking the sword cemetery in Dadaupa Gorge.",
+      "tags": ["waypoint", "dadaupa"]
+    },
+    {
+      "id": "mond_chest_prec_002",
+      "name": "Precious Chest - Dadaupa Sword Cemetery Seal",
+      "category_id": "precious_chest",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -270.0, "y": -1680.0, "z": 30.0 },
+      "description": "Requires unlocking three elemental monuments in surrounding tribes.",
+      "tags": ["chest", "precious", "dadaupa", "puzzle"]
+    },
+    {
+      "id": "liyue_chest_prec_002",
+      "name": "Precious Chest - Dunyu Ruins Pool Drainage",
+      "category_id": "precious_chest",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": -750.0, "y": 3100.0, "z": 50.0 },
+      "description": "Drain Dunyu pool and guide 3 seelies to disable the barrier.",
+      "tags": ["chest", "precious", "dunyu"]
+    },
+    {
+      "id": "liyue_shrine_002",
+      "name": "Shrine of Depths - Guyun Stone Forest Ridge",
+      "category_id": "shrine_of_depths",
+      "region_id": "liyue",
+      "layer": "surface",
+      "coordinates": { "x": 1920.0, "y": 4350.0, "z": 45.0 },
+      "description": "On the furthest southern solitary islet of Guyun archipelago.",
+      "tags": ["shrine", "guyun", "key"]
+    },
+    {
+      "id": "mond_seelie_002",
+      "name": "Seelie - Wolvendom Hollow Ridge",
+      "category_id": "seelie",
+      "region_id": "mondstadt",
+      "layer": "surface",
+      "coordinates": { "x": -1850.0, "y": -1950.0, "z": 75.0 },
+      "description": "Hovering near electro crystals above the trial arena pathway.",
+      "tags": ["seelie", "wolvendom"]
+    },
+    {
+      "id": "liyue_cor_lapis_003",
+      "name": "Cor Lapis - Mt. Aocang Underground Chasm Cave",
+      "category_id": "cor_lapis",
+      "region_id": "liyue",
+      "layer": "underground",
+      "coordinates": { "x": -1620.0, "y": 1280.0, "z": -25.0 },
+      "description": "Underground cavern beneath the mountain lake with Geo Geovishap.",
+      "tags": ["specialty", "mineral", "underground", "aocang"]
+    }
+  ]
+}
