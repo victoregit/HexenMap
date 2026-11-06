@@ -9,9 +9,9 @@ import sys
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.live.catalog import load_catalog
+from src.live.regions import RegionalCatalog
 from src.live.reference import load_pack, ReferenceUnavailable
-from src.live.storage import bundle_dir, install_dir
+from src.live.storage import bundle_dir, install_dir, read_settings
 
 
 def main() -> int:
@@ -19,12 +19,35 @@ def main() -> int:
     parser.add_argument("--references", type=Path, help="Pasta de referências visuais pessoais")
     parser.add_argument("--diagnose", action="store_true", help="Verificar dados sem abrir interface")
     args = parser.parse_args()
-    references = args.references or install_dir()/"userData/references/mondstadt"
     if args.diagnose:
         try:
-            items = load_catalog(bundle_dir()/"data/community/mondstadt")
-            load_pack(references)
-            print(json.dumps({"items": len(items), "references": "available", "live_validated": False}))
+            catalogs=RegionalCatalog(bundle_dir()/"data/community")
+            settings=read_settings(install_dir()/"userData/settings.json")
+            package=settings.get('package',catalogs.default_package(install_dir()/'userData/references'))
+            if package not in catalogs.regions and package!='legacy-mondstadt': package='legacy-mondstadt'
+            items,region,space=catalogs.load(package)
+            layer=settings.get('regional',{}).get(package,{}).get('layer','* / automática' if package!='legacy-mondstadt' else 'teyvat / surface')
+            mapid,layerid=layer.split(' / ')
+            references=args.references or (install_dir()/"userData/references/mondstadt" if package=='legacy-mondstadt'
+                       else install_dir()/"userData/references/kongying"/region)
+            if not args.references and package!='legacy-mondstadt' and mapid!='*':
+                references=references/mapid
+                if layerid!='automática': references=references/layerid
+            if args.references and (references/'manifest.json').is_file():
+                manifest=json.loads((references/'manifest.json').read_text(encoding='utf-8'))
+                load_pack(references,region_id=region,map_id=manifest.get('map_id','teyvat') if mapid=='*' else mapid,
+                          layer_id=None if layerid=='automática' else layerid,coordinate_system=space)
+            elif layerid=='automática' and package!='legacy-mondstadt':
+                candidates=list(references.glob('*/*/manifest.json' if mapid=='*' else '*/manifest.json'))
+                if not candidates: raise ReferenceUnavailable('Nenhuma camada com referência instalada')
+                for candidate in candidates:
+                    load_pack(candidate.parent,region_id=region,map_id=candidate.parent.parent.name if mapid=='*' else mapid,
+                              layer_id=candidate.parent.name,coordinate_system=space)
+            else:
+                load_pack(references,region_id=region,map_id=mapid,layer_id=None if layerid=='automática' else layerid,coordinate_system=space)
+            print(json.dumps({"items": len(items),"region":region,"map":mapid,"layer":layerid,
+                              "references": "available", "live_validated": False,
+                              "expansion_complete":catalogs.inventory['coverage_complete']}))
             return 0
         except (ReferenceUnavailable, ValueError, OSError) as exc:
             print(json.dumps({"ready": False, "reason": str(exc)}, ensure_ascii=True))
@@ -37,7 +60,7 @@ def main() -> int:
                         format="%(asctime)s %(levelname)s %(name)s %(message)s")
     from src.live.desktop import DesktopApp
     try:
-        DesktopApp(references).run()
+        DesktopApp(args.references).run()
         return 0
     except Exception as exc:
         logging.exception("Não foi possível iniciar")
