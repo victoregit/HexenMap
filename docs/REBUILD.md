@@ -1,60 +1,98 @@
-# Reconstrução do overlay — referência única
+# Overlay de exploração — referência única
 
-Atualizado em 6 de novembro de 2026. Estado: **protótipo integrado em validação real; aceite final pendente**.
+Atualizado em 6 de novembro de 2026. **Versão integrada para revisão; expansão completa ainda não aprovada.**
 
-O usuário aprovou o avanço da reconstrução e priorizou a representação visual dos tipos de baú. Essa aprovação não substitui as medições pendentes listadas abaixo.
+## Experiência atual
 
-## Experiência implementada
+O executável procura o Genshin automaticamente e desenha ícones sobre o minimapa e o mapa M nativos. O painel permite selecionar região, caminho territorial pesquisável, mapa/camada e categorias. A seleção territorial permanece fixa durante viagens. Categorias novas começam desmarcadas; seleção vazia não produz ícones. Preferências são restauradas por região.
 
-O aplicativo abre um painel em português e procura a janela do Genshin continuamente. O painel permite selecionar cinco categorias de Mondstadt, configurar atalhos e confirmar um item quando houver ambiguidade. O mapa próprio e os modos manual/simulado foram retirados da entrada normal. A implementação anterior está em `src/legacy_app.py` para histórico e regressão; não entra no executável novo.
+O modo **Todos os mapas · camada automática** reconhece referências dos mapas e andares da região escolhida. Há seleção manual de mapa/camada. Áreas maiores incluem descendentes sem duplicar marcadores. O mesmo recorte vale para desenho, revelação com Ctrl, cartão, coleta, desfazer e contadores. Nomes sem tradução conferida conservam o nome da fonte. A classificação fina de toda a superfície ainda não está disponível; não são inventados limites por proximidade de nomes.
 
-A superfície sobre o jogo desenha somente baús e oculi. Usa uma janela Windows transparente, sem ativação e com passagem de cliques. Reconhecimento positivo da interface e alinhamento do terreno determinam minimapa ou mapa M; nenhuma tecla do jogo é interceptada para adivinhar o estado. Movimento, escala e rotação são obtidos da transformação visual, independentemente da direção do personagem.
+Os filtros incluem baús, oculi, desafios, seelies, puzzles, santuários, recursos e outros grupos da fonte. Os cinco tipos de baú têm desenhos vetoriais originais com materiais e ornamentos distintos. Os demais grupos têm símbolos próprios. A entrada normal não usa mapa fictício, simulação, posição manual nem dados demonstrativos. A implementação anterior permanece em `src/legacy_app.py`, fora do executável.
 
-Os quatro tipos de baú importados (comum, sofisticado, precioso e luxuoso) têm ícones vetoriais próprios com tampa, corpo, ferragens e fechadura, materiais distintos e ornamentos nos tipos mais raros. São desenhos originais, sem copiar assets do jogo. O painel apresenta a mesma imagem usada no overlay, com quantidade restante/total por categoria; o recorte do minimapa considera o contorno inteiro do ícone. Baús extraordinários têm estilo preparado, mas não são exibidos como categoria disponível nem recebem posições inventadas: essa fonte de Mondstadt não os fornece. Formas de obtenção (puzzles, seelies, desafios) não foram confundidas com tipos de baú.
+**Ctrl + clique** abre um cartão com uma única ação reversível: marcar como pego ou desmarcar. Itens coletados ficam ocultos normalmente e em cinza enquanto Ctrl estiver pressionado. A área clicável é invisível, sem quadrado de destaque. Fora dos ícones, os cliques continuam chegando ao jogo. Com o cartão aberto, os desenhos no mapa são ocultados para não conservar coordenadas antigas; mudar filtros fecha o cartão sem tirar o foco do painel. Clicar fora do cartão, concluir a ação ou pressionar Esc fecha a interação e permite continuar jogando. O painel de configurações não é ativado para confirmar coleta.
 
-Sem seleção, sem localização válida, sem foco do jogo ou com captura vencida, não há ícones. A expiração usa o início da captura e relógio monotônico, com limite de 650 ms. Alterações de janela invalidam o resultado anterior. Não há posição inventada nem terreno procedural no caminho de produção.
+Atalhos padrão: **Ctrl+Alt+F12** mostra/oculta; **F9** coleta o candidato próximo sem ambiguidade; **F10** desfaz a última alteração do recorte nesta sessão. São configuráveis. O atalho de visibilidade continua disponível quando o alinhamento falha. Candidatos próximos usam o minimapa reconhecido; vários candidatos exigem seleção explícita no painel, válida por 30 segundos. Proximidade sozinha nunca confirma coleta.
 
-Atalhos padrão: **Ctrl+Alt+F12** mostra/oculta; **F9** confirma coleta próxima; **F10** desfaz a última coleta da sessão. Todas as teclas são configuráveis entre F6–F12, com ou sem Ctrl+Alt. Conflitos de registro são informados no painel. Coleta automática por atalho exige exatamente um candidato selecionado e ainda não coletado dentro de 22 pixels do centro do minimapa. Vários candidatos exigem seleção explícita no painel, válida por 30 segundos. Nunca interpretar proximidade como coleta automática sem o atalho.
+Neste computador, o usuário inicia o overlay como administrador para manter a interação com o Genshin elevado. O programa não automatiza elevação de privilégios.
 
-**Ctrl + clique esquerdo** em um baú ou anemoculus abre um menu com “Marcar como pego” e “Desmarcar”, com a ação aplicável habilitada. Segurar Ctrl revela temporariamente os itens coletados em cinza, permitindo restaurá-los pelo próprio mapa. O gesto funciona nas duas superfícies e não exige proximidade do personagem, pois há seleção explícita do marcador. Sobreposições oferecem uma escolha de item por categoria/ID. Sem Ctrl, os cliques continuam passando para o jogo; uma camada de entrada separada recebe o mouse no retângulo inteiro de cada ícone enquanto Ctrl está pressionado. Essa camada usa transparência alfa e regiões Win32, evitando que pixels transparentes do desenho deixem o clique atingir o seletor do jogo. Os ícones ganham um contorno e cursor de mão; a superfície visual permanece sempre click-through. Cancelar, Esc, trocar de aplicação, esconder o overlay ou perder a janela encerram a interação. O menu expira em 30 segundos. Coletar/desmarcar salva atomicamente, preserva o estado anterior se houver falha de escrita e atualiza as contagens.
+## Dados e cobertura
 
-## Dados, referências e armazenamento
+A fotografia Kongying Tavern contém **126.200 marcadores utilizáveis em oito regiões**, 14 combinações região/mapa e 478 nós territoriais, incluindo 322 localidades explícitas de cavernas. Os pacotes são carregados por região. A versão é a fotografia da fonte adotada, não uma garantia independente de conteúdo de determinada versão do jogo.
 
-- 561 posições comunitárias de Mondstadt: 269 baús comuns, 209 sofisticados, 9 preciosos, 9 luxuosos e 65 anemoculi. Fonte: [Teyvat.moe](https://github.com/EliteMasterEric/Teyvat.moe/tree/e4566515800070fbc70ded91829d423a6361518c/src/data/features/mondstadt), commit fixado `e4566515800070fbc70ded91829d423a6361518c`. Os arquivos originais e a licença GPL-3.0 estão em `data/community/mondstadt`; `SOURCE.json` registra hashes e URLs. Não representam cobertura atual exaustiva ou itens individualmente conferidos.
-- Projeção **Leaflet CRS.Simple**, confirmada no [código da fonte](https://github.com/EliteMasterEric/Teyvat.moe/blob/e4566515800070fbc70ded91829d423a6361518c/src/components/views/map/leaflet/LeafletMap.tsx). Em zoom 7: `x = longitude * 128`, `y = -latitude * 128`. Não é latitude/longitude terrestre nem unidade em metros.
-- Referências pessoais ficam em `userData/references/mondstadt`. Nesta instalação foram preparados terreno de alta resolução da cidade, terreno regional e recortes da UI do jogo aberto pelo usuário. A arte original pertence à HoYoverse; o pacote é usado localmente para validação, **não é incluído no executável e não há autorização independente de redistribuição da arte verificada**. Instalações novas sem pacote mostram o estado de referência ausente, sem cair em demonstração.
-- O pacote tem `manifest.json`, imagens, hashes, origem, uso permitido e transformações para pixels da referência. Templates da UI incluem suas áreas normalizadas de busca. Referências adicionais podem ampliar a região. O carregador rejeita hashes alterados, imagens ausentes, transformações inválidas e caminhos externos ao pacote.
-- Os saves continuam em `userData/progress.json`, ao lado do executável ou na raiz do projeto ao executar Python. IDs da fonte real usam prefixo `teyvat.moe:mondstadt:`; IDs antigos da demonstração são preservados, sem associação geográfica inventada. Coleta e desfazer salvam atomicamente. Preferências ficam em `settings.json`.
-- O estado original, inclusive saves e executável, foi preservado em `backups/before-rebuild-*.zip`. O histórico da documentação está em `docs/archive/pre-rebuild`.
+**29 pontos com associação a mais de uma região estão separados**, pois algumas associações representam contagem de conquistas, e não localização física. Associações de área ambíguas não entram em localidades específicas. Pontos sem andar confiável permanecem sem camada confirmada. Árvores de plugins repetem cavernas em menus de áreas diferentes; cinco vínculos de grupos foram corrigidos pelos vínculos explícitos dos pontos. Grupos compartilhados ficam na raiz regional, sem atribuição arbitrária a uma área. O inventário conserva essa auditoria. Mapas temporários de eventos identificados pela fonte são excluídos.
 
-## Arquitetura e diagnóstico
+O catálogo anterior de Mondstadt, com 561 posições reais Teyvat.moe, permanece como opção de compatibilidade. Os IDs existentes só são reutilizados mediante correspondência explícita de `markerStamp` com `importIds.yuanshen`. Não há transferência por proximidade. Registros sem associação são preservados.
 
-`src/live` separa catálogo, pacote de referências, reconhecimento visual, sessão, Win32 tipado e painel. O reconhecedor usa SIFT e ajuste de similaridade com RANSAC, exigindo consenso, distribuição espacial e erro residual aceitáveis. A busca é refeita em cada captura; não depende de coordenadas anteriores para recuperar um teletransporte. Isso implementa o caminho de recuperação, sem afirmar que todo teletransporte já foi validado.
+Origem, versão, licença, atribuição e hashes acompanham cada pacote. Os dados Kongying Tavern mantêm **CC-BY-NC-SA-4.0**; os dados anteriores mantêm sua própria licença. A licença MIT do aplicativo não substitui essas condições. Créditos:
 
-O serviço de reconhecimento é separado da interface. Após a observação do usuário sobre atraso ao arrastar, foi acrescentado acompanhamento óptico entre capturas: fluxo LK com verificação de ida/volta e consenso espacial. O registro absoluto é recalculado em segundo plano; seus resultados são atualizados para o quadro atual antes de desenhar. Falhas de movimento ocultam os ícones, em vez de preservar pixels antigos, e o acompanhamento não prolonga uma âncora absoluta por mais de 1,5 segundo.
+- `data/community/kongying/NOTICE.md`;
+- `data/community/mondstadt/NOTICE.md`.
 
-As ações de atalhos passam por fila; só a thread Tk altera widgets e desenha ícones. Capturas e resultados são associados à geometria da janela. O reconhecimento não altera o jogo, lê memória, envia teclas ou movimenta o personagem.
+O inventário detalhado, os critérios da importação e as fontes estão em [REGIONAL_COVERAGE.md](REGIONAL_COVERAGE.md). Esse arquivo é um relatório de evidências, não outro plano conflitante.
 
-`userData/live-session.csv` registra superfície reconhecida, latência de captura/reconhecimento, confiança e erro residual; não contém screenshots. `overlay.log` registra erros. O custo de apresentação e impacto no FPS do jogo ainda não estão medidos. Capturas de pesquisa desta sessão ficam somente em `build`, sem entrar no pacote.
+## Referências pessoais
 
-## Evidências e limites do aceite
+Imagens ficam em `userData/references`, fora do executável e do Git. A arte original pertence aos respectivos titulares; não foi estabelecida uma autorização independente para redistribuí-la. Uma instalação limpa sem referências compatíveis não está pronta para abrir e jogar: informa a ausência e não substitui o mapa por demonstração.
 
-**Verificado nesta sessão no Windows:** janela real do Genshin detectada em 1366×768; captura externa; reconhecimento do mapa de Mondstadt e do minimapa real; usuário confirmou que os ícones aparecem no minimapa e que acompanham o mapa M com o mouse funcional. O usuário relatou correção atrasada de posição durante o movimento; a correção de acompanhamento óptico ainda precisa de nova conferência no jogo. No registro inicial: erro residual p95 de aproximadamente 1,22 px no mapa M e 0,82 px no minimapa. Isso mede correspondências de terreno aceitas, não erro independente de localização de cada baú. No pacote local posterior, o mapa também apresentou p95 abaixo de 1 px.
+Cada manifesto associa imagem, hash, origem, permissão de uso, CRS, região, mapa, camada e transformação. Os sistemas de coordenadas Kongying e Teyvat.moe não são misturados. Hash alterado, imagem ausente, transformação inválida ou caminho externo ao pacote impedem o carregamento.
 
-**Verificado automaticamente:** 133 testes aprovados, incluindo seleção vazia, transformação de coordenadas, recorte completo dos ícones, rejeição de estimativas vencidas/futuras, recuperação geométrica sintética, rejeição de telas sem textura, ambiguidade, persistência, desfazer, rollback de coleta, seleção manual após voltar ao painel e integridade das referências. Os testes legados usam mocks explícitos para HWNDs fictícios; não contam como prova de integração nativa. A transformação óptica passou em 20 quadros derivados da captura real com pan/zoom conhecido (p95 de aproximadamente 34 ms de processamento); isso não é uma sessão real de arrasto.
+Nesta instalação há **14 candidatos de mapa/camada principal e 314 referências de cavernas** preparados e conferidos como arquivos. Isso não equivale a aprovação no jogo. Duas camadas explícitas de Fontaine ainda não têm referência correspondente; pontos sem classificação de andar também não ganham referência por aproximação. Há referências de maior detalhe preparadas quando necessárias; o pacote amplo de Natlan ainda exige tratamento do limite de tamanho e validação de desempenho.
 
-**Ainda necessário para aprovar a primeira entrega:**
+## Reposição e progresso
 
-- Conferir posições de itens conhecidos com pontos independentes dos usados no ajuste, nas duas superfícies.
-- Reconfirmar arrasto/zoom no mapa M após a correção do atraso; a passagem de cliques foi confirmada pelo usuário na versão inicial.
-- Conferir caminhada, rotação da câmera, retorno após teletransporte e ocultação em menus/carregamento.
-- Testar resoluções/DPI adicionais e movimentação da janela entre monitores.
-- Completar e avaliar 30 minutos de exploração real, incluindo impacto no jogo. Tempo com o jogo sem foco não conta como exploração.
-- Resolver a disponibilidade de referências com permissão de redistribuição antes de anunciar um pacote público que funcione em instalação limpa sem preparação.
+**Não há regra universal de 72 horas.** Unidade numérica confirmada não basta para aprovar prazo do jogo. Valores positivos `refreshTime` são preservados em milissegundos, mas ficam sem temporizador até qualificação por recurso/tipo de ponto.
 
-Não ampliar cobertura nem declarar o produto pronto usando apenas contagem de testes, correspondências em uma imagem ou benchmarks de funções isoladas.
+As políticas automáticas atualmente associadas são **investigações de artefatos de 12 h ou 24 h**, mediante valor explícito por ponto corroborado pelo guia KQM. Outros valores não recebem automaticamente uma dessas regras. Pesca permanece condicional; códigos negativos não são interpretados por suposição. Os 46 h observados na fonte para especialidades divergem da referência de 48 h: continuam como **Reposição não confirmada**, sem prazo inventado.
 
-## Comandos de desenvolvimento
+O motor distingue permanentes, duração após coleta, reset de servidor, condições especiais e desconhecidos. Reset América usa fronteira explícita em UTC, independente do fuso do Windows; a política foi testada, mas nenhum código negativo da fonte foi associado a ela sem verificação.
+
+Coleta e disponibilidade prevista são persistidas em UTC. Prazos continuam correndo com o aplicativo fechado. Recursos com política qualificada voltam a aparecer ao vencer, como **disponibilidade estimada**, sem afirmar confirmação visual. Desmarcar cancela a indisponibilidade; nova coleta calcula novo prazo; desfazer restaura o registro anterior e seu prazo original. Permanentes nunca expiram. Políticas desconhecidas/condicionais não herdam automaticamente um prazo antigo não qualificado.
+
+Os contadores usam o recorte territorial, independentemente das categorias visíveis, e deduplicam marcadores físicos. Progresso permanente e indisponibilidade de recursos ficam separados.
+
+Os arquivos ficam ao lado do executável em `userData/progress.json` e `settings.json`. A gravação é atômica; falhas restauram o registro anterior em memória. A migração v1→v2 cria `progress.json.pre-v2.bak`, que não é sobrescrito pelas gravações seguintes. `.bak` continua como recuperação da gravação anterior. Executável, progresso e preferências anteriores também foram preservados em `backups/regional-expansion-*`. Após o teste real de coleta/desmarcação, todos os IDs anteriores continuavam preservados.
+
+## Reconhecimento e integração
+
+`src/live` separa catálogo territorial, reposição, referências, captura Windows, reconhecimento, acompanhamento, sessão e desenho. O aplicativo usa captura externa; não lê memória do jogo nem envia comandos ao personagem.
+
+O índice visual contém apenas referências do recorte/região selecionados. A busca inicial aponta candidatos e o refinamento mantém no máximo três reconhecedores completos em cache. Instalar outras regiões não coloca todas as referências no ciclo de cada captura. A construção das referências ocorre fora da thread Tk e resultados de seleções antigas são descartados por geração.
+
+O ajuste visual usa SIFT e RANSAC com consenso, distribuição espacial e erro residual controlados. O minimapa exige evidência visual da interface e da seta; o círculo útil é conservador diante da oclusão do HUD. Amostragem adicional do raster mantém a transformação geográfica exata e os mesmos critérios geométricos.
+
+Fluxo óptico LK acompanha movimento entre registros absolutos, com verificação de ida/volta. Resultados absolutos são atualizados para o quadro atual antes de desenhar. Uma âncora não é prolongada por mais de 1,5 s. Capturas vencidas, troca de janela/região, menus, perda de foco ou alinhamento incerto ocultam os ícones. O desenho exige observação válida com idade de até 650 ms. Mapas e andares diferentes não compartilham a projeção dos seus marcadores.
+
+A superfície visual permanece click-through. Uma superfície de entrada separada usa alfa e regiões Win32 apenas nos ícones enquanto Ctrl estiver pressionado. O leitor de Ctrl observa somente suas transições, sem bloquear ou gravar outras teclas. Atalhos entram por fila; somente Tk altera widgets. O cartão não usa grab global e só solicita retorno de foco se ele ainda pertencer ao jogo ou ao overlay.
+
+## Evidências atuais e limites
+
+**164 testes automatizados aprovados**, cobrindo regressões, filtros descendentes, seleção vazia, deduplicação, mapa/camada, dados e hashes, aliases explícitos, UTC, vencimento exato, reinício, mudança de fuso, desconhecidos, permanentes, desfazer com prazo original, migração e rollback.
+
+**Conferência real nesta instalação, em 1366×768:**
+
+- Mondstadt: captura, reconhecimento de minimapa e M e testes integrados curtos;
+- Liyue: captura e reconhecimento das duas superfícies; usuário confirmou os ícones no executável instalado e aprovou teste curto de caminhada, fechamento/reabertura de M, pan/zoom, Ctrl, marcar/desmarcar e retorno de foco;
+- migração real do progresso com backup e preservação dos IDs anteriores;
+- executável Windows instalado; diagnóstico aprovado e oito pacotes embutidos conferidos contra os arquivos revisados; referências e saves pessoais não foram embutidos.
+
+Os ajustes p95 observados ficaram próximos de 0,41 px no M de Mondstadt, 0,38 px no minimapa do Porto de Liyue e 0,71 px no M de Liyue. **Esses valores medem o ajuste de imagens, não o erro independente de cada marcador nem o atraso ponta a ponta.** Capturas estáticas, testes geométricos e contagem de testes não aprovam a expansão.
+
+Continuam pendentes:
+
+- pontos independentes e precisão de marcadores em cada mapa/camada;
+- exploração real de pelo menos 30 minutos, com registro de falhas e impacto no jogo;
+- validação dos demais mapas, cavernas, teletransportes e resoluções/DPI;
+- classificação fina de toda a superfície e traduções ainda ausentes;
+- referências indisponíveis e tratamento de mapas grandes;
+- qualificação das demais políticas de reposição, códigos de reset e exceções;
+- disponibilidade de arte com direitos de redistribuição para instalação pública limpa.
+
+O inventário mantém `coverage_complete=false` e mapas como não aprovados. A expansão está autorizada, mas **não está declarada concluída**.
+
+## Diagnóstico e desenvolvimento
+
+`userData/live-session-v2.csv` registra superfície, região/mapa/camada reconhecidos, geração, latência de processamento, confiança e erro de ajuste. Não contém screenshots. `overlay.log` registra diagnóstico e interação. O custo de apresentação e o impacto no FPS ainda exigem medição; tempo sem foco não conta como exploração. Capturas de pesquisa ficam em `build`, fora do pacote.
 
 ```powershell
 python src/app.py
@@ -62,8 +100,9 @@ python src/app.py --diagnose
 python -m pytest -q
 python scripts/build_exe.py
 python scripts/live_report.py
+python scripts/coverage_report.py --output build/regional-audit/local-coverage.json
 ```
 
-`--diagnose` retorna código 2 quando dados/referências não estão disponíveis e não abre UI. O build exige PyInstaller no Python utilizado, inclui somente a fonte comunitária com sua licença e não encerra processos do usuário para substituir um executável bloqueado.
+`--diagnose` usa a seleção salva, não abre UI e retorna 2 se faltarem dados/referências. O build não encerra processos do usuário para substituir um executável bloqueado. `scripts/import_kongying.py` importa somente por rotas de leitura, sem conta ou cookies do usuário; `--offline` reconstrói a partir da exportação auditada. Tokens transitórios não são persistidos. Os preparadores de referências mantêm imagens pessoais em `userData`, conferem formato/projeção e não fabricam terreno para downloads ausentes.
 
-Verificação nativa da interação: `python scripts/verify_input_surface.py` usa `WindowFromPoint` para conferir o destino real do mouse dentro/fora da área do ícone e após desativá-la, sem injetar cliques no jogo. A checagem de estilos isolados usada inicialmente não comprovava o destino do clique.
+O histórico anterior fica em `docs/archive/pre-rebuild`.

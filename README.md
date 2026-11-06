@@ -9,11 +9,11 @@ Abra **GenshinOverlay.exe** ou **Iniciar_Overlay.bat**, selecione o que procurar
 - **F10:** desfazer a última coleta da sessão.
 - **Ctrl + clique esquerdo no ícone:** abrir o menu para marcar como pego ou desmarcar. Segurar Ctrl revela os itens já pegos em cinza.
 
-Os atalhos são configuráveis. Sem seleção ou localização confiável, nenhum ícone aparece. A cobertura inicial é a superfície de Mondstadt, com posições comunitárias de baús e anemoculi.
+Os atalhos são configuráveis. Sem seleção ou localização confiável, nenhum ícone aparece. A expansão importou 126.200 marcadores em oito regiões da fonte, com seleção territorial, categorias e reposição estimada por ponto. Os mapas novos ainda dependem da validação no jogo; dados importados não equivalem a cobertura aprovada.
 
-**Estado atual:** há integração real e confirmação do usuário de ícones no minimapa. A validação completa de exploração, posições e desempenho ainda está pendente. A instalação local usa um pacote pessoal de referências em `userData/references/mondstadt`; ele não acompanha o executável. Em outro computador, sem referências, o painel informa que elas estão ausentes. Ainda não é uma distribuição pública pronta para abrir e jogar em uma instalação limpa.
+**Estado atual:** há integração real e confirmação do usuário de ícones no minimapa. A validação completa de exploração, posições e desempenho ainda está pendente. As referências pessoais ficam em `userData/references` e não acompanham o executável. O catálogo anterior de Mondstadt permanece disponível para compatibilidade. Na nova seleção, um mapa sem referência compatível fica sem ícones. Em outro computador, sem referências, o painel informa que elas estão ausentes. Ainda não é uma distribuição pública pronta para abrir e jogar em uma instalação limpa.
 
-[Estado, evidências, limitações e próximos critérios de aceite](docs/REBUILD.md) · [Créditos dos dados comunitários](data/community/mondstadt/NOTICE.md)
+[Estado, evidências e critérios de aceite](docs/REBUILD.md) · [Inventário regional e reposição](docs/REGIONAL_COVERAGE.md) · [Créditos Kongying Tavern](data/community/kongying/NOTICE.md) · [Créditos do catálogo anterior](data/community/mondstadt/NOTICE.md)
 
 ## Desenvolvimento
 
