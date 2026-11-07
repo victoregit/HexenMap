@@ -17,7 +17,7 @@ from src.live.regions import RegionalCatalog
 from src.live.loading import CatalogLoader, ProcessCatalogSource
 from src.live.labels import register_presentation
 from src.live.category_browser import CountIndices
-from src.live.icons import draw_marker, ICON_MARGIN
+from src.live.marker_art import draw_pin, LEGACY
 from src.live.marker_menu import MarkerMenu
 from src.live.panel import CompactPanel
 from src.live.presentation import DisplayMotion, MarkerCanvas, DisplayTelemetry, outside_controls
@@ -120,7 +120,7 @@ class DesktopApp(CompactPanel):
         self.input_surface.update_idletasks()
         try: self.input_hwnd=self.native.input_overlay(self.input_surface.winfo_id())
         except OSError as exc: self.overlay_error=f"Interação indisponível: {exc}"
-        self.renderer=MarkerCanvas(self.canvas,draw_marker)
+        self.renderer=MarkerCanvas(self.canvas,draw_pin)
         self.display_motion=DisplayMotion()
         self.displayed_at=0.0
         self.displayed_observation=None
@@ -397,8 +397,8 @@ class DesktopApp(CompactPanel):
             self.native.interactive(self.input_hwnd,False)
             self.native.hide(self.input_hwnd)
             return
-        boxes=tuple((round(p.x)-ICON_MARGIN,round(p.y)-ICON_MARGIN,
-                     round(p.x)+ICON_MARGIN+1,round(p.y)+ICON_MARGIN+1) for p in self.visible_pins)
+        boxes=tuple(box for p in self.visible_pins
+                    for box in getattr(p,'geometry',LEGACY).rectangles(p.x,p.y))
         if boxes!=self.input_boxes:
             self.native.input_region(self.input_hwnd,list(boxes))
             self.input_boxes=boxes
@@ -474,7 +474,8 @@ class DesktopApp(CompactPanel):
         if (self.rect_key(rect)!=self.geometry_key or now-self.displayed_at>.12
                 or self.displayed_observation is None or not self.displayed_observation.fresh(now)):
             return "break"
-        hits=[p for p in self.visible_pins if abs(p.x-event.x)<=ICON_MARGIN and abs(p.y-event.y)<=ICON_MARGIN]
+        hits=[p for p in self.visible_pins
+              if getattr(p,'geometry',LEGACY).contains(p.x,p.y,event.x,event.y)]
         hits.sort(key=lambda p:(math.hypot(p.x-event.x,p.y-event.y),p.item.id))
         items=[p.item for p in hits]
         if not items:
@@ -598,6 +599,7 @@ class DesktopApp(CompactPanel):
                 elif isinstance(action,tuple): self.session.notice=action[1]
             now=time.monotonic()
             display=self.display_motion.present(self.session.observation,now)
+            self.session.marker_dpi=self.native.dpi_scale(rect.hwnd) if rect.hwnd else 1.
             pins=self.session.pins(rect.width,rect.height,now,include_collected=self.control_down,
                                    observation=display) if foreground and not self.overlay_error and not self.region_loading else []
             controls=self.control_rectangles(rect)

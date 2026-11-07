@@ -3,15 +3,16 @@ from dataclasses import replace
 import csv
 import time
 import numpy as np
-from src.live.icons import ICON_MARGIN
+from src.live.marker_art import LEGACY
 
 
 def outside_controls(pins, rectangles):
     """Exclude whole symbols and their click targets, using game-client coordinates."""
-    return [pin for pin in pins if not any(
-        pin.x+ICON_MARGIN>=left and pin.x-ICON_MARGIN<=right and
-        pin.y+ICON_MARGIN>=top and pin.y-ICON_MARGIN<=bottom
-        for left,top,right,bottom in rectangles)]
+    def intersects(pin,rect):
+        left,top,right,bottom=rect
+        a,b,c,d=getattr(pin,'geometry',LEGACY).bounds(pin.x,pin.y)
+        return c-1>=left and a<=right and d-1>=top and b<=bottom
+    return [pin for pin in pins if not any(intersects(pin,rect) for rect in rectangles)]
 
 
 class DisplayMotion:
@@ -83,8 +84,9 @@ class MarkerCanvas:
             self.canvas.delete(self.entries.pop(identifier)[0])
         for pin in pins:
             identifier = pin.item.id
-            x,y=pin.x,pin.y
-            state = (pin.item.category, collected(identifier))
+            geometry=getattr(pin,'geometry',None)
+            x,y=(round(pin.x),round(pin.y)) if geometry is not None and geometry.size else (pin.x,pin.y)
+            state = (pin.item.category, collected(identifier),geometry)
             old = self.entries.get(identifier)
             if old and old[3] == state:
                 self.canvas.move(old[0], x-old[1], y-old[2])
@@ -94,7 +96,9 @@ class MarkerCanvas:
                 self.canvas.delete(old[0])
             tag = 'pin:'+identifier
             before = set(self.canvas.find_all())
-            self.draw(self.canvas, pin.item.category, x,y, collected=state[1])
+            options={'collected':state[1]}
+            if geometry is not None:options['geometry']=geometry
+            self.draw(self.canvas, pin.item.category, x,y, **options)
             for primitive in set(self.canvas.find_all())-before:
                 self.canvas.addtag_withtag(tag, primitive)
             self.entries[identifier] = (tag, x,y, state)

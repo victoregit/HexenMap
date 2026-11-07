@@ -5,6 +5,7 @@ import ctypes as ct
 from ctypes import wintypes as wt
 import sys
 import os
+import struct
 
 import numpy as np
 
@@ -238,20 +239,40 @@ class Windows:
             raise ct.WinError(ct.get_last_error())
         return hwnd
 
+    def dpi_scale(self, hwnd: int) -> float:
+        try:
+            get=self.u.GetDpiForWindow
+            get.argtypes=[wt.HWND];get.restype=wt.UINT
+            return (get(hwnd) or 96)/96
+        except AttributeError:return 1.
+
     def input_region(self, hwnd: int, boxes: list[tuple[int,int,int,int]]) -> None:
-        region=self.g.CreateRectRgn(0,0,0,0)
+        # RGNDATA accepts a sorted, non-overlapping set of rectangles. Merge
+        # scanline spans in Python and transfer the entire mask in one GDI call.
+        rows={}
+        for left,top,right,bottom in boxes:
+            if right<=left:continue
+            for y in range(top,bottom):rows.setdefault(y,[]).append((left,right))
+        rectangles=[]
+        for y,spans in sorted(rows.items()):
+            end=None
+            for left,right in sorted(spans):
+                if end is None:start,end=left,right
+                elif left<=end:end=max(end,right)
+                else:rectangles.append((start,y,end,y+1));start,end=left,right
+            if end is not None:rectangles.append((start,y,end,y+1))
+        if rectangles:
+            data=np.asarray(rectangles,dtype=np.int32)
+            bounds=(int(data[:,0].min()),int(data[:,1].min()),int(data[:,2].max()),int(data[:,3].max()))
+            raw=struct.pack('<IIIIiiii',32,1,len(rectangles),data.nbytes,*bounds)+data.tobytes()
+            buffer=ct.create_string_buffer(raw)
+            create=self.g.ExtCreateRegion
+            create.argtypes=[ct.c_void_p,wt.DWORD,ct.c_void_p];create.restype=wt.HANDLE
+            region=create(None,len(raw),buffer)
+        else:region=self.g.CreateRectRgn(0,0,0,0)
         if not region:
             raise ct.WinError(ct.get_last_error())
         try:
-            for box in boxes:
-                part=self.g.CreateRectRgn(*box)
-                if not part:
-                    raise ct.WinError(ct.get_last_error())
-                try:
-                    if not self.g.CombineRgn(region,region,part,2):
-                        raise ct.WinError(ct.get_last_error())
-                finally:
-                    self.g.DeleteObject(part)
             if not self.u.SetWindowRgn(hwnd,region,True):
                 raise ct.WinError(ct.get_last_error())
             region=None  # Windows owns the region after a successful assignment.

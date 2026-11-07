@@ -1,4 +1,4 @@
-"""Original vector chest symbols, shared by the game overlay and filter legend."""
+"""Compact legend artwork with original-vector fallbacks for missing assets."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -30,11 +30,13 @@ CHEST_STYLES={
 
 def draw_marker(canvas, category: str, x: float, y: float, scale: float = 1.0,
                 collected: bool = False):
-    """Draw with Canvas primitives: crisp at runtime DPI, no external game assets.
+    """Draw verified personal artwork, or the existing vector fallback.
 
     All coordinates fit within a 10 px half-extent before scaling. The same
     symbol is shown in the panel so color isn't the only clue to its meaning.
     """
+    from src.live.marker_art import draw_chest_legend
+    if draw_chest_legend(canvas,category,x,y,scale,collected):return
     outline="#101e29"
     def tone(color):
         if not collected or not color:

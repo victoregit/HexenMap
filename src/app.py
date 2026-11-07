@@ -52,7 +52,10 @@ def main() -> int:
                               layer_id=candidate.parent.name,coordinate_system=space)
             else:
                 load_pack(references,region_id=region,map_id=mapid,layer_id=None if layerid=='automática' else layerid,coordinate_system=space)
+            from src.live.marker_art import CHESTS,chest_art
+            chest_images={category:chest_art(category) is not None for category in sorted(CHESTS)}
             print(json.dumps({"items": len(items),"region":region,"map":mapid,"layer":layerid,"catalog_worker":"available",
+                              "personal_chest_art":chest_images,
                               "references": "available", "live_validated": False,
                               "expansion_complete":catalogs.inventory['coverage_complete']}))
             return 0

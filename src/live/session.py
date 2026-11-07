@@ -9,7 +9,7 @@ from datetime import datetime,timezone
 import numpy as np
 
 from src.live.catalog import Item
-from src.live.icons import ICON_MARGIN
+from src.live.marker_art import MarkerGeometry, LEGACY, marker_geometry
 from src.live.vision import Observation
 from src.progress.progress_manager import ProgressManager
 from src.live.respawn import PERMANENT,UNKNOWN,parse_utc
@@ -21,6 +21,7 @@ class Pin:
     item: Item
     x: float
     y: float
+    geometry: MarkerGeometry = LEGACY
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,7 @@ class Session:
         self._projection_key=None
         self._projection_items=[]
         self._projection_points=np.empty((0,3))
+        self.marker_dpi=1.
 
     def item_by_id(self,identifier):
         key=(id(self.items),len(self.items))
@@ -158,11 +160,11 @@ class Session:
         items=self._projection_items
         if not items: return []
         projected=self._projection_points @ obs.world_to_screen.T
-        visible=(projected[:,0]>=ICON_MARGIN)&(projected[:,0]<width-ICON_MARGIN)&(projected[:,1]>=ICON_MARGIN)&(projected[:,1]<height-ICON_MARGIN)
+        visible=(projected[:,0]>=0)&(projected[:,0]<width)&(projected[:,1]>=0)&(projected[:,1]<height)
         if obs.surface=='minimap':
             if obs.circle is None: return []
             cx,cy,radius=obs.circle
-            visible &= np.hypot(projected[:,0]-cx,projected[:,1]-cy)<=radius-ICON_MARGIN
+            visible &= np.hypot(projected[:,0]-cx,projected[:,1]-cy)<=radius
         else:
             visible &= ((projected[:,0]>=width*.20)&(projected[:,0]<=width*.80)&
                         (projected[:,1]>=height*.08)&(projected[:,1]<=height*.90))
@@ -172,13 +174,17 @@ class Session:
             # on the exact frame without rebuilding the static coordinate index.
             if not include_collected and self.is_collected(item.id): continue
             x,y=projected[index]
-            pins.append(Pin(item, float(x), float(y)))
+            geometry=marker_geometry(item.category,obs.surface,self.marker_dpi)
+            left,top,right,bottom=geometry.bounds(x,y)
+            if left<0 or top<0 or right>width or bottom>height:continue
+            if obs.surface=='minimap' and not geometry.inside_circle(x,y,cx,cy,radius):continue
+            pins.append(Pin(item, float(x), float(y),geometry))
         return pins
 
     def hit_test(self, width: int, height: int, x: float, y: float,
                  now: float | None = None) -> list[Item]:
         pins=self.pins(width,height,now,include_collected=True)
-        hits=[p for p in pins if abs(p.x-x)<=ICON_MARGIN and abs(p.y-y)<=ICON_MARGIN]
+        hits=[p for p in pins if p.geometry.contains(p.x,p.y,x,y)]
         hits.sort(key=lambda p:(math.hypot(p.x-x,p.y-y),p.item.id))
         return [p.item for p in hits]
 

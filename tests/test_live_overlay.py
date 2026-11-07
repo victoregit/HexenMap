@@ -222,9 +222,11 @@ def test_hit_testing_rejects_stale_hidden_and_unselected_markers(session):
 
 
 def test_overlapping_marker_hit_returns_each_id_without_changing_progress(session):
-    session.selected={"anemoculus","common-chest"}
+    # Two overlapping legacy symbols: independent of personal chest artwork.
+    session.items.append(Item('real:overlap','Overlap','anemoculus',110,100))
+    session.selected={"anemoculus"}
     hits=session.hit_test(600,400,112,100,100)
-    assert {i.id for i in hits}=={"real:a","real:b"}
+    assert {i.id for i in hits}=={"real:a","real:overlap"}
     assert session.progress.collected_count==0
 
 
