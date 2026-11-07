@@ -9,7 +9,7 @@ import logging
 import cv2
 import numpy as np
 
-from src.live.vision import Observation, ScreenRecognizer, gray, template_visible, detect_circle
+from src.live.vision import Observation, ScreenRecognizer, gray, template_visible, detect_circle, foreground_ui_visible
 
 logger=logging.getLogger(__name__)
 
@@ -117,6 +117,9 @@ class MotionRecognizer:
         self.previous_surface='hidden'
         self.circle=None
         self.tracking_status=None
+        self.verified_frame=None
+        self.verified_observation=None
+        self.absolute_reason='pending'
 
     def reset(self):
         self.previous=None
@@ -130,6 +133,8 @@ class MotionRecognizer:
         self.anchor_motion=None
         self.previous_surface='hidden'
         self.circle=None
+        self.verified_frame=None
+        self.verified_observation=None
 
     def close(self):
         self.pool.shutdown(wait=False,cancel_futures=True)
@@ -141,7 +146,8 @@ class MotionRecognizer:
         image=gray(frame)
         pack=self.recognizer.pack
         is_map=template_visible(frame,pack.map_ui,pack.map_ui_roi)
-        is_gameplay=not is_map and template_visible(frame,pack.gameplay_ui,pack.gameplay_ui_roi)
+        is_gameplay=not is_map and (template_visible(frame,pack.gameplay_ui,pack.gameplay_ui_roi) or
+                                   foreground_ui_visible(frame,pack.gameplay_ui,pack.gameplay_ui_roi))
         surface="map" if is_map else "minimap" if is_gameplay else "hidden"
         if surface=="hidden":
             self.reset()
@@ -154,9 +160,15 @@ class MotionRecognizer:
         discontinuity=False
         if self.previous is not None and self.current.surface==surface and stamp-self.last_absolute<=1.5:
             updated=follow(self.previous,image,self.current,stamp)
+        if (updated is None and surface=='minimap' and self.verified_frame is not None
+                and self.verified_observation is not None and stamp-self.last_absolute<=1.5
+                and 0<stamp-self.verified_observation.captured_at<=.25):
+            # A brief occlusion can defeat one LK step. Re-register against the
+            # last verified image; never reuse its old screen coordinates.
+            updated=follow(self.verified_frame,image,self.verified_observation,stamp)
         if self.future is not None and self.anchor_motion is not None:
             step=None
-            if updated is not None:
+            if updated is not None and self.current.world_to_screen is not None:
                 step=updated.world_to_screen@np.vstack([
                     cv2.invertAffineTransform(self.current.world_to_screen),[0,0,1]])
             elif (self.previous is not None and self.previous_surface==surface and
@@ -172,6 +184,7 @@ class MotionRecognizer:
         if self.future is not None and self.future.done():
             try:
                 absolute=self.future.result()
+                self.absolute_reason=absolute.reason
                 if absolute.surface==surface and stamp-self.anchor_stamp<=1.5:
                     if self.anchor_motion is not None:
                         matrix=(self.anchor_motion@np.vstack([absolute.world_to_screen,[0,0,1]]))[:2]
@@ -206,7 +219,8 @@ class MotionRecognizer:
                 self.anchor_motion=None
         # If flow fails, stop drawing immediately; reacquire without waiting for
         # the usual anchor interval. Do not retain the old screen transform.
-        if self.future is None and (updated is None or stamp-self.last_submit>=.65):
+        interval=.25 if surface=='minimap' and stamp-self.last_absolute>=.75 else .65
+        if self.future is None and (updated is None or stamp-self.last_submit>=interval):
             self.anchor_frame=image.copy()
             self.anchor_stamp=stamp
             self.last_submit=stamp
@@ -215,13 +229,16 @@ class MotionRecognizer:
         self.previous=image
         self.previous_surface=surface
         self.current=updated or Observation("hidden",stamp,reason="Localizando no mapa selecionado…")
+        if updated is not None and surface=='minimap':
+            self.verified_frame=image
+            self.verified_observation=updated
         status=('correction' if discontinuity else 'tracking' if updated else
                 'anchor_expired' if stamp-self.last_absolute>1.5 else 'flow_lost')
         if status!=self.tracking_status:
             self.tracking_status=status
-            logger.info('Tracking surface=%s state=%s anchor_age=%.3f pending_age=%.3f',
+            logger.info('Tracking surface=%s state=%s anchor_age=%.3f pending_age=%.3f absolute=%s',
                         surface,status,stamp-self.last_absolute,
-                        stamp-self.anchor_stamp if self.future else 0)
+                        stamp-self.anchor_stamp if self.future else 0,self.absolute_reason)
         if discontinuity:
             # Keep the recovered anchor internally; never animate across a large correction.
             return Observation("hidden",stamp,reason="Recuperando alinhamento…")

@@ -138,3 +138,52 @@ def test_menu_discards_minimap_geometry_and_pending_motion(monkeypatch):
     assert motion.observe(frame(20),100.1).surface=='hidden'
     assert motion.circle is None and motion.anchor_motion is None and pending[0].cancelled()
     motion.close()
+
+
+def test_short_minimap_gap_is_registered_against_last_verified_image(monkeypatch):
+    motion,pending,calls=pipeline(monkeypatch,'minimap')
+    observation=Observation('minimap',100,np.eye(2,3),.95,.3,circle=(50.,50.,40.),map_id='teyvat',layer_id='surface')
+    motion.previous=frame(40);motion.previous_surface='minimap';motion.circle=observation.circle
+    motion.current=Observation('hidden',100.05);motion.last_absolute=100
+    motion.verified_frame=frame(0);motion.verified_observation=observation
+    result=motion.observe(frame(10),100.1)
+    assert result.surface=='minimap' and result.world_to_screen[0,2]==10
+    assert result.captured_at==100.1 and motion.last_absolute==100
+    assert calls==[10]  # Coordinates came from verified image registration.
+    motion.reset();assert motion.verified_frame is None and motion.verified_observation is None
+    motion.close()
+
+
+@pytest.mark.parametrize('stamp,pixel',[(100.26,10),(101.51,10),(100.1,40)])
+def test_gap_recovery_rejects_expired_anchor_long_gap_and_teleport(monkeypatch,stamp,pixel):
+    motion,pending,calls=pipeline(monkeypatch,'minimap')
+    observation=Observation('minimap',100,np.eye(2,3),.95,.3,circle=(50.,50.,40.))
+    motion.previous=frame(40);motion.previous_surface='minimap';motion.circle=observation.circle
+    motion.current=Observation('hidden',100.05);motion.last_absolute=100
+    motion.verified_frame=frame(0);motion.verified_observation=observation
+    assert motion.observe(frame(pixel),stamp).surface=='hidden'
+    motion.close()
+
+
+def test_minimap_requests_confirmation_before_anchor_expires(monkeypatch):
+    motion,pending,calls=pipeline(monkeypatch,'minimap')
+    motion.previous=frame(0);motion.previous_surface='minimap';motion.circle=(50.,50.,40.)
+    motion.current=Observation('minimap',100.5,np.eye(2,3),.95,.3,circle=motion.circle)
+    motion.last_absolute=100;motion.last_submit=100.5
+    assert motion.observe(frame(5),100.85).surface=='minimap'
+    assert len(pending)==1 and motion.last_submit==100.85
+    assert motion.last_absolute==100
+    motion.close()
+
+
+def test_verified_gap_recovery_does_not_invert_a_missing_current_transform(monkeypatch):
+    motion,pending,calls=pipeline(monkeypatch,'minimap')
+    observation=Observation('minimap',100,np.eye(2,3),.95,.3,circle=(50.,50.,40.))
+    motion.previous=frame(40);motion.previous_surface='minimap';motion.circle=observation.circle
+    motion.current=Observation('hidden',100.05);motion.last_absolute=100
+    motion.verified_frame=frame(0);motion.verified_observation=observation
+    motion.future=Future();motion.anchor_motion=np.eye(3);motion.anchor_frame=frame(40);motion.anchor_stamp=100.05
+    result=motion.observe(frame(10),100.1)
+    assert result.surface=='minimap' and result.world_to_screen[0,2]==10
+    assert motion.anchor_motion is None  # The pending chain still has an unverified gap.
+    motion.close()

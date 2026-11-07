@@ -52,7 +52,8 @@ class TerrainMatcher:
         self.matcher.add([self.descriptors])
         self.matcher.train()
 
-    def match(self, frame: np.ndarray, mask: np.ndarray | None = None):
+    def query(self, frame: np.ndarray, mask: np.ndarray | None = None):
+        """Extract screen features once, shared by all blocks of this surface."""
         image=gray(frame)
         ox=oy=0
         local_mask=mask
@@ -68,6 +69,12 @@ class TerrainMatcher:
         keys, descriptors = self.sift.detectAndCompute(image, local_mask)
         if descriptors is None or len(keys) < 14:
             return None
+        return keys,descriptors,ox,oy
+
+    def match(self, frame: np.ndarray, mask: np.ndarray | None = None, query=None):
+        query=self.query(frame,mask) if query is None else query
+        if query is None:return None
+        keys,descriptors,ox,oy=query
         pairs = self.matcher.knnMatch(descriptors, k=2)
         matches = [a for pair in pairs if len(pair) == 2 for a, b in [pair] if a.distance < 0.68*b.distance]
         # Multiple UI features cannot vote for the same reference feature.
@@ -116,6 +123,24 @@ def template_visible(frame: np.ndarray, template: np.ndarray, roi: tuple) -> boo
         if t.shape[0] > crop.shape[0] or t.shape[1] > crop.shape[1]:
             continue
         if cv2.minMaxLoc(cv2.matchTemplate(crop, t, cv2.TM_CCOEFF_NORMED))[1] >= 0.88:
+            return True
+    return False
+
+
+def foreground_ui_visible(frame: np.ndarray, template: np.ndarray, roi: tuple) -> bool:
+    """Confirm the white HUD glyph despite changes in terrain behind it."""
+    if not isinstance(template,np.ndarray) or template.ndim!=3 or frame.ndim!=3:return False
+    h,w=frame.shape[:2];x,y,rw,rh=roi
+    crop=frame[int(y*h):int((y+rh)*h),int(x*w):int((x+rw)*w)]
+    if crop.size==0:return False
+    def silhouette(image):
+        return cv2.inRange(cv2.cvtColor(image,cv2.COLOR_BGR2HSV),(0,0,205),(180,70,255))
+    crop=silhouette(crop)
+    for factor in (.65,.8,1.,1.25,1.5,2.):
+        t=silhouette(cv2.resize(template,None,fx=factor,fy=factor))
+        if t.shape[0]>crop.shape[0] or t.shape[1]>crop.shape[1]:continue
+        fraction=cv2.countNonZero(t)/t.size
+        if .1<fraction<.85 and cv2.minMaxLoc(cv2.matchTemplate(crop,t,cv2.TM_CCOEFF_NORMED))[1]>=.82:
             return True
     return False
 
@@ -194,7 +219,8 @@ recognizers are retained, rather than loading every floor into the hot loop.
         is_map=template_visible(frame,self.pack.map_ui,self.pack.map_ui_roi)
         if is_map:
             crop=frame[int(.08*h):int(.90*h),int(.20*w):int(.80*w)]
-        elif template_visible(frame,self.pack.gameplay_ui,self.pack.gameplay_ui_roi):
+        elif (template_visible(frame,self.pack.gameplay_ui,self.pack.gameplay_ui_roi) or
+              foreground_ui_visible(frame,self.pack.gameplay_ui,self.pack.gameplay_ui_roi)):
             circle=detect_circle(frame)
             if circle is None: return Observation('hidden',stamp,reason='Minimapa não reconhecido')
             x,y,r=circle
@@ -235,7 +261,32 @@ class ScreenRecognizer:
         self.pack = pack
         self.matcher = TerrainMatcher(pack.terrain)
         self.matchers=[self.matcher]+[TerrainMatcher(t) for t in pack.extra_terrain]
+        self.minimap_matchers=[]
+        for terrain in getattr(pack,'minimap_terrain',()):
+            # Atlas edges can contain only sea/empty tiles. Such a block must
+            # not disable all the detailed blocks that do contain landmarks.
+            try:self.minimap_matchers.append(TerrainMatcher(terrain))
+            except ValueError:continue
+        self.last_minimap_matcher=None
+        self.last_minimap_player=None
         self.raster_fallback=None
+
+    def minimap_candidates(self):
+        matchers=list(self.minimap_matchers)
+        point=self.last_minimap_player
+        if point is not None:
+            def distance(matcher):
+                terrain=matcher.terrain
+                x,y=terrain.world_to_image@np.array([*point,1.])
+                h,w=terrain.image.shape[:2]
+                # Distance outside each raster, expressed in world units.
+                scale=np.linalg.norm(terrain.world_to_image[:,0])
+                return math.hypot(max(0,-x,x-w),max(0,-y,y-h))/scale
+            matchers.sort(key=distance)
+        if self.last_minimap_matcher in matchers:
+            matchers.remove(self.last_minimap_matcher)
+            matchers.insert(0,self.last_minimap_matcher)
+        return matchers
 
     def observe(self, frame: np.ndarray, captured_at: float | None = None) -> Observation:
         stamp = time.monotonic() if captured_at is None else captured_at
@@ -248,7 +299,8 @@ class ScreenRecognizer:
             surface = "map"
             mask = np.zeros((h,w), np.uint8)
             mask[int(.08*h):int(.90*h), int(.20*w):int(.80*w)] = 255
-        elif template_visible(frame, self.pack.gameplay_ui, self.pack.gameplay_ui_roi):
+        elif (template_visible(frame, self.pack.gameplay_ui, self.pack.gameplay_ui_roi) or
+              foreground_ui_visible(frame,self.pack.gameplay_ui,self.pack.gameplay_ui_roi)):
             circle = detect_circle(frame)
             if circle is None:
                 return Observation("hidden", stamp, reason="Minimapa não reconhecido")
@@ -270,10 +322,24 @@ class ScreenRecognizer:
                 disk=np.zeros_like(mask)
                 cv2.circle(disk,(round(cx),round(cy)),max(1,round((r-8)*fraction)),255,-1)
                 masks.append(cv2.bitwise_and(inner,disk))
-        for candidate_mask in masks:
-            for matcher in self.matchers:
-                fit=matcher.match(frame,candidate_mask)
-                if fit is not None: break
+        matchers=self.matchers
+        if circle and self.minimap_matchers:
+            matchers=self.minimap_candidates()
+        queries={}
+        # Exhaust the current block and its neighbours across all annuli before
+        # searching distant blocks. Teleports still fall through to a full search.
+        groups=[matchers[:3],matchers[3:]] if circle else [matchers]
+        for group in groups:
+            for index,candidate_mask in enumerate(masks):
+                if index not in queries:queries[index]=matchers[0].query(frame,candidate_mask)
+                query=queries[index]
+                if query is None:continue
+                for matcher in group:
+                    fit=matcher.match(frame,candidate_mask,query=query)
+                    if fit is not None:
+                        if circle:self.last_minimap_matcher=matcher
+                        break
+                if fit is not None:break
             if fit is not None: break
         if fit is None and circle:
             # Re-sampling changes SIFT extrema at HUD scale; CRS and geometric
@@ -292,5 +358,6 @@ class ScreenRecognizer:
             inverse = cv2.invertAffineTransform(matrix)
             point = inverse @ np.array([circle[0], circle[1], 1])
             player = (float(point[0]), float(point[1]))
+            self.last_minimap_player=player
         return Observation(surface, stamp, matrix, confidence, error, circle, player,
                            "Explorando" if circle else "Mapa reconhecido",self.pack.map_id,self.pack.layer_id)

@@ -39,6 +39,7 @@ class ReferencePack:
     map_id: str = "teyvat"
     layer_id: str = "surface"
     coordinate_system: str = "leaflet-simple-z7"
+    minimap_terrain: tuple[Terrain, ...] = ()
 
 
 def load_pack(directory: Path, region_id="mondstadt", map_id="teyvat", layer_id=None,
@@ -83,17 +84,18 @@ def load_pack(directory: Path, region_id="mondstadt", map_id="teyvat", layer_id=
             if len(values) != 4 or not all(0 <= v <= 1 for v in values) or values[2] <= 0 or values[3] <= 0 or values[0]+values[2] > 1 or values[1]+values[3] > 1:
                 raise ValueError("Área de reconhecimento inválida")
             return values
-        extra=[]
+        extra=[]; minimap=[]
         for entry in data.get("extra_terrain",[]):
             transform=np.asarray(entry["world_to_image"],dtype=np.float64)
             if transform.shape!=(2,3) or not np.isfinite(transform).all() or abs(np.linalg.det(transform[:,:2]))<1e-10:
                 raise ValueError("Transformação de referência adicional inválida")
-            extra.append(Terrain(read_image(entry),transform,data["source"]))
+            target=minimap if entry.get('surface')=='minimap' else extra
+            target.append(Terrain(read_image(entry),transform,data["source"]))
         return ReferencePack(
             Terrain(read_image(data["terrain"]), matrix, data["source"]),
             read_image(data["map_ui"]), read_image(data["gameplay_ui"]),
             roi(data["map_ui"]), roi(data["gameplay_ui"]), tuple(extra),
-            region_id,map_id,data["layer"],coordinate_system,
+            region_id,map_id,data["layer"],coordinate_system,tuple(minimap),
         )
     except (KeyError, TypeError, OSError, ValueError, cv2.error) as exc:
         raise ReferenceUnavailable(f"Pacote de referência inválido: {exc}") from exc
