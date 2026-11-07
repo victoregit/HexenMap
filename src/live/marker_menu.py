@@ -22,32 +22,32 @@ class MarkerMenu:
         self.window=tk.Toplevel(parent)
         self.window.withdraw()
         self.window.overrideredirect(True)
-        self.window.configure(bg="#b8a477")
+        self.window.configure(bg="#cbb88a")
         self.window.bind("<Escape>",lambda event:on_close())
-        card=tk.Frame(self.window,bg="#17252e",padx=16,pady=14)
+        card=tk.Frame(self.window,bg="#1c2a3b",padx=16,pady=14)
         card.pack(fill="both",expand=True,padx=1,pady=1)
-        header=tk.Frame(card,bg="#17252e");header.pack(fill="x")
-        self.icon=tk.Canvas(header,width=40,height=40,bg="#17252e",highlightthickness=0)
+        header=tk.Frame(card,bg="#1c2a3b");header.pack(fill="x")
+        self.icon=tk.Canvas(header,width=40,height=40,bg="#1c2a3b",highlightthickness=0)
         self.icon.pack(side="left",padx=(0,8))
-        titles=tk.Frame(header,bg="#17252e");titles.pack(side="left",fill="x",expand=True)
-        self.title=tk.Label(titles,bg="#17252e",fg="#f1dfb1",font=("Segoe UI",12,"bold"),anchor="w")
+        titles=tk.Frame(header,bg="#1c2a3b");titles.pack(side="left",fill="x",expand=True)
+        self.title=tk.Label(titles,bg="#1c2a3b",fg="#eee9df",font=("Segoe UI",12,"bold"),anchor="w")
         self.title.pack(fill="x")
-        self.badge=tk.Label(titles,bg="#17252e",fg="#9fb6b5",font=("Segoe UI",9),anchor="w")
+        self.badge=tk.Label(titles,bg="#1c2a3b",fg="#a0adbd",font=("Segoe UI",9),anchor="w")
         self.badge.pack(fill="x")
-        close=tk.Label(header,text="×",bg="#17252e",fg="#b9cacb",font=("Segoe UI",16),cursor="hand2")
+        close=tk.Label(header,text="×",bg="#1c2a3b",fg="#a0adbd",font=("Segoe UI",16),cursor="hand2")
         close.pack(side="right",anchor="n")
         close.bind("<ButtonRelease-1>",lambda event:on_close())
         if len(items)>1:
-            tk.Label(card,text="Há itens sobrepostos. Escolha qual alterar:",bg="#17252e",fg="#b5c5c5",
+            tk.Label(card,text="Há itens sobrepostos. Escolha qual alterar:",bg="#1c2a3b",fg="#a0adbd",
                      font=("Segoe UI",9)).pack(anchor="w",pady=(10,4))
             selector=ttk.Combobox(card,state="readonly",width=34,
                                  values=[f"{i+1}. {LABELS.get(item.category,CATEGORIES.get(item.category,(item.name,))[0])}" for i,item in enumerate(items)])
             selector.pack(fill="x")
             selector.current(0)
             selector.bind("<<ComboboxSelected>>",lambda event:self.select(selector.current()))
-        tk.Frame(card,bg="#34464c",height=1).pack(fill="x",pady=12)
+        tk.Frame(card,bg="#3c495b",height=1).pack(fill="x",pady=12)
         self.action=self._button(card)
-        tk.Label(card,text="Clique fora para voltar ao jogo",bg="#17252e",fg="#90a6aa",
+        tk.Label(card,text="Clique fora para voltar ao jogo",bg="#1c2a3b",fg="#a0adbd",
                  font=("Segoe UI",8)).pack(pady=(10,0))
         self.select(0)
         self.window.update_idletasks()
@@ -76,8 +76,8 @@ class MarkerMenu:
 
     def _hover(self,hover):
         collected=self.progress.is_collected(self.items[self.index].id)
-        bg=("#33554f" if hover else "#27443f") if collected else ("#e8d5a7" if hover else "#cfb982")
-        self.action.configure(bg=bg,fg="#c9efe1" if collected else "#17252e")
+        bg=("#354860" if hover else "#293b51") if collected else ("#e8d5a7" if hover else "#cbb88a")
+        self.action.configure(bg=bg,fg="#eee9df" if collected else "#1c2a3b")
 
     def select(self,index):
         self.index=index
