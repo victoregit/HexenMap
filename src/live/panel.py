@@ -69,14 +69,23 @@ class CompactPanel:
         style.layout('Compact.TNotebook.Tab', [])
         self.tabs.configure(style='Compact.TNotebook')
         scope = ttk.Frame(self.explore)
+        if self.catalogs.appsample_available:
+            source_row=ttk.Frame(self.explore);source_row.pack(fill='x',pady=(3,0))
+            ttk.Label(source_row,text='Fonte').pack(side='left')
+            self.source_var=tk.StringVar(value='AppSample' if self.package_id=='appsample' else 'Kongying')
+            source_box=ttk.Combobox(source_row,textvariable=self.source_var,values=['Kongying','AppSample'],state='readonly',width=15)
+            source_box.pack(side='right');source_box.bind('<<ComboboxSelected>>',self.change_source)
         scope.pack(fill='x', pady=(5, 3))
         self.region_names = {r['name']: r['id'] for r in self.catalogs.regions.values()}
-        if self.package_id == 'legacy-mondstadt':
+        if self.package_id == 'legacy-mondstadt' or (self.package_id=='appsample' and self.settings.get('last_kongying_package')=='legacy-mondstadt'):
             self.region_names['Mondstadt · compatibilidade'] = 'legacy-mondstadt'
-        self.region_var = tk.StringVar(value=next(k for k, v in self.region_names.items() if v == self.package_id))
+        active_region=self.settings.get('last_kongying_package','mondstadt') if self.package_id=='appsample' else self.package_id
+        self.region_var = tk.StringVar(value=next((k for k,v in self.region_names.items() if v==active_region),next(iter(self.region_names))))
         box = NationSelector(scope,self.region_var,self.region_names,self.change_region,self.close_layers)
         self.region_box=box
         box.pack(side='left', fill='x', expand=True)
+        self.source_caption=tk.Label(scope,text='AppSample · seleção por mapa',bg=BG,fg=GOLD,font=('Segoe UI',9),anchor='w')
+        if hasattr(self,'source_var'):self.sync_source_controls()
         self.layer_var = tk.StringVar()
         button = tk.Canvas(scope, width=32, height=28, bg=ROW, highlightthickness=0, cursor='hand2')
         button.pack(side='right', padx=(5, 0))
@@ -136,6 +145,8 @@ class CompactPanel:
         ttk.Label(self.prefs, text='Ctrl + clique: marcar ou desmarcar.\nSegure Ctrl para revelar os itens pegos.\nServidor de reposição: América.').pack(anchor='w', pady=5)
         ttk.Button(self.prefs, text='Verificar referências', command=self.reload_reference).pack(fill='x', pady=5)
         ttk.Button(self.prefs, text='Encerrar overlay', command=self.close).pack(fill='x', pady=5)
+        if self.catalogs.appsample_available:
+            ttk.Button(self.prefs,text='Importar coletados do AppSample…',command=self.import_appsample_progress).pack(fill='x',pady=3)
         self.compact = tk.Canvas(self.root, width=38, height=38, bg=BG, highlightthickness=0, cursor='hand2')
         draw_marker(self.compact, 'anemoculus', 19, 19, scale=1.2)
         self.compact.bind('<Button-1>', self.start_panel_drag)

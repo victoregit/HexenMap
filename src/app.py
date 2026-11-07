@@ -21,21 +21,22 @@ def main() -> int:
     args = parser.parse_args()
     if args.diagnose:
         try:
-            catalogs=RegionalCatalog(bundle_dir()/"data/community")
+            catalogs=RegionalCatalog(bundle_dir()/"data/community",install_dir()/'userData/catalogs')
             settings=read_settings(install_dir()/"userData/settings.json")
             package=settings.get('package',catalogs.default_package(install_dir()/'userData/references'))
-            if package not in catalogs.regions and package!='legacy-mondstadt': package='legacy-mondstadt'
+            if not catalogs.accepts(package): package='legacy-mondstadt'
             items,region,space=catalogs.load(package)
             from src.live.loading import ProcessCatalogSource
-            worker=ProcessCatalogSource(catalogs.community)
+            worker=ProcessCatalogSource(catalogs.community,install_dir()/'userData/catalogs')
             try:
                 worker_package=worker(package)
                 if [i.id for i in worker_package.items]!=[i.id for i in items]:
                     raise ValueError('Catálogo do processo auxiliar não corresponde à instalação')
             finally:worker.close()
-            layer=settings.get('regional',{}).get(package,{}).get('layer','* / automática' if package!='legacy-mondstadt' else 'teyvat / surface')
+            default='as-map-2 / surface' if package=='appsample' else '* / automática' if package!='legacy-mondstadt' else 'teyvat / surface'
+            layer=settings.get('regional',{}).get(package,{}).get('layer',default)
             mapid,layerid=layer.split(' / ')
-            references=args.references or (install_dir()/"userData/references/mondstadt" if package=='legacy-mondstadt'
+            references=args.references or (install_dir()/"userData/references/appsample" if package=='appsample' else install_dir()/"userData/references/mondstadt" if package=='legacy-mondstadt'
                        else install_dir()/"userData/references/kongying"/region)
             if not args.references and package!='legacy-mondstadt' and mapid!='*':
                 references=references/mapid

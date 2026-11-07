@@ -44,17 +44,18 @@ class DesktopApp(CompactPanel):
         self.settings_path=self.user_dir/"settings.json"
         self.settings=read_settings(self.settings_path)
         self.preference_writer=PreferenceWriter(self.settings_path)
-        self.catalogs=RegionalCatalog(bundle_dir()/"data/community")
+        self.catalogs=RegionalCatalog(bundle_dir()/"data/community",self.user_dir/'catalogs')
         self.package_id=self.settings.get("package",self.catalogs.default_package(self.user_dir/'references'))
-        if self.package_id not in self.catalogs.regions and self.package_id!="legacy-mondstadt": self.package_id="legacy-mondstadt"
+        if not self.catalogs.accepts(self.package_id): self.package_id="legacy-mondstadt"
         package=self.catalogs.load_package(self.package_id)
         self.category_metadata=package.categories
+        self.map_names=getattr(package,'map_names',{}) or {}
         register_presentation(package.categories)
         items,region,coordinate_system=package.items,package.region,package.coordinate_system
         self.region_loading=False
         self.catalog_generation=0
         self.requested_package=self.package_id
-        self.catalog_source=ProcessCatalogSource(self.catalogs.community)
+        self.catalog_source=ProcessCatalogSource(self.catalogs.community,self.user_dir/'catalogs')
         self.catalog_loader=CatalogLoader(self.catalog_source)
         self.count_indices=CountIndices()
         self.coordinate_system=coordinate_system
@@ -139,20 +140,27 @@ class DesktopApp(CompactPanel):
         region=self.session.region_id
         layers=sorted({f"{i.map_id} / {layer}" for i in self.session.items for layer in (i.layer_ids or (i.layer_id,))} |
                       {f"{i.map_id} / automática" for i in self.session.items})
+        if self.package_id=='appsample':
+            available={f'{p.parent.parent.name} / {p.parent.name}' for p in (self.user_dir/'references/appsample').glob('*/*/manifest.json')}
+            layers=[value for value in layers if value in available] or ['as-map-2 / surface']
         map_names={'teyvat':'Mapa principal','chasm':'Minas do Despenhadeiro','enkanomiya':'Enkanomiya',
                    'sea_of_bygone_eras':'Mar das Eras Passadas','sky_temple':'Templo do Céu',
                    'ancient_sacred_mountain':'Montanha Sagrada Antiga','frost_moon':'Lua Gélida',
                    'unclassified-map':'Mapa não confirmado'}
+        map_names.update(getattr(self,'map_names',{}))
         self.layer_names={}
-        if self.package_id!='legacy-mondstadt': self.layer_names['Todos os mapas · camada automática']='* / automática'
+        if self.package_id not in {'legacy-mondstadt','appsample'}: self.layer_names['Todos os mapas · camada automática']='* / automática'
         for value in layers:
             mapid,layer=value.split(' / ')
             node=self.catalogs.territories.nodes.get(layer)
             name=node.name if node else {'surface':'Superfície','automática':'Camada automática',
                                         'underground-unclassified':'Subterrâneo · camada não confirmada'}.get(layer,layer)
+            if layer.startswith('as-layer-'):name='Camada '+layer.removeprefix('as-layer-').replace('-', '/')+' · sem referência'
+            if mapid.startswith('as-map-') and mapid not in map_names:map_names[mapid]='Mapa '+mapid.removeprefix('as-map-')+' · sem referência'
             self.layer_names[f'{map_names.get(mapid,mapid)} · {name}']=value
         pref=self.settings.get("regional",{}).get(self.package_id,{})
-        choice=pref.get("layer",'* / automática' if self.package_id!='legacy-mondstadt' else 'teyvat / surface')
+        default='as-map-2 / surface' if self.package_id=='appsample' else '* / automática' if self.package_id!='legacy-mondstadt' else 'teyvat / surface'
+        choice=pref.get("layer",default)
         choice=choice if choice in self.layer_names.values() else 'teyvat / surface' if 'teyvat / surface' in layers else layers[0]
         self.layer_var.set(next(k for k,v in self.layer_names.items() if v==choice))
         if self.package_id in self.settings.get("regional",{}):
@@ -179,6 +187,46 @@ class DesktopApp(CompactPanel):
 
     def change_region(self,event=None):
         identifier=self.region_names[self.region_var.get()]
+        self.request_package(identifier)
+
+    def change_source(self,event=None):
+        identifier='appsample' if self.source_var.get()=='AppSample' else self.settings.get('last_kongying_package','mondstadt')
+        if not self.catalogs.accepts(identifier):identifier='mondstadt'
+        self.request_package(identifier)
+
+    def import_appsample_progress(self):
+        if self.region_loading:return
+        if self.package_id!='appsample':
+            self.session.notice='Selecione a fonte AppSample antes de importar.';return
+        from tkinter import filedialog
+        from src.live.appsample_import import parse_marker_ids
+        from src.live.appsample_runtime import import_records
+        import json
+        filename=filedialog.askopenfilename(parent=self.root,title='Coletados do AppSample',
+            initialdir=self.user_dir/'imports/appsample',filetypes=[('Progresso JSON','*.json *.txt')])
+        if not filename:return
+        try:
+            path=Path(filename)
+            if path.stat().st_size>16*1024*1024:raise ValueError('Arquivo maior que 16 MiB')
+            ids,_=parse_marker_ids(json.loads(path.read_text(encoding='utf-8-sig')))
+            records,missing,key=import_records(ids,self.session.items)
+            if not messagebox.askyesno('Importar coletados',f'{len(records)} itens encontrados no catálogo.\n{len(missing)} IDs ausentes serão preservados no arquivo original.\n\nMesclar com o progresso atual, criando backup?',parent=self.root):return
+            result=self.session.progress.merge_imported_records(records,key,'appsample')
+            self.refresh_counts();self.session.notice=f"AppSample: {result['added']} novos coletados; {len(missing)} IDs sem posição nesta versão."
+        except Exception as exc:
+            logger.exception('Importação AppSample não aplicada');self.session.notice=f'Falha na importação: {exc}'
+
+    def sync_source_controls(self):
+        if not hasattr(self,'source_var'):return
+        appsample=self.package_id=='appsample'
+        self.source_var.set('AppSample' if appsample else 'Kongying')
+        if appsample:
+            self.region_box.pack_forget();self.source_caption.pack(side='left',fill='x',expand=True)
+        else:
+            self.source_caption.pack_forget();self.region_box.pack(side='left',fill='x',expand=True)
+            self.region_var.set(next(k for k,v in self.region_names.items() if v==self.package_id))
+
+    def request_package(self,identifier):
         if identifier==self.package_id and not self.region_loading:return
         try:self.persist_settings()
         except OSError as exc:
@@ -197,7 +245,7 @@ class DesktopApp(CompactPanel):
         if self.input_hwnd:
             self.native.interactive(self.input_hwnd,False);self.native.hide(self.input_hwnd)
         self.category_browser.set_model(None,set())
-        self.territory_path.set('Carregando '+self.region_var.get()+'…')
+        self.territory_path.set('Carregando '+('AppSample' if identifier=='appsample' else self.region_var.get())+'…')
         self.progress_text.set('Carregando catálogo…')
         self.catalog_generation=self.catalog_loader.request(identifier)
 
@@ -213,16 +261,19 @@ class DesktopApp(CompactPanel):
             if generation!=self.catalog_generation or identifier!=self.requested_package:continue
             self.region_loading=False
             if error:
-                self.region_var.set(next(k for k,v in self.region_names.items() if v==self.package_id))
+                if hasattr(self,'source_var'):self.sync_source_controls()
+                else:self.region_var.set(next(k for k,v in self.region_names.items() if v==self.package_id))
                 self.session.notice=f"Pacote regional indisponível: {error}"
                 self.populate_region_controls();self.reload_reference()
                 continue
             self.package_id=package.id;self.coordinate_system=package.coordinate_system
             self.category_metadata=package.categories
+            self.map_names=getattr(package,'map_names',{}) or {}
             register_presentation(package.categories)
             self.session.items=package.items;self.session.region_id=package.region
             self.session.selected=set()
             self.category_query.set('')
+            self.sync_source_controls()
             self.populate_region_controls()
             try:self.persist_settings()
             except OSError as exc:self.session.notice=f"Falha ao salvar preferências: {exc}"
@@ -242,6 +293,7 @@ class DesktopApp(CompactPanel):
     def persist_settings(self):
         self.settings["categories"]=sorted(self.session.selected)
         self.settings["package"]=self.package_id
+        if self.package_id!='appsample':self.settings['last_kongying_package']=self.package_id
         self.settings["server"]="America"
         self.settings.setdefault("regional",{})[self.package_id]={"categories":sorted(self.session.selected),"layer":self.layer_names[self.layer_var.get()]}
         x,y=self.panel_position()
@@ -294,7 +346,7 @@ class DesktopApp(CompactPanel):
         epoch=self.selection_epoch
         region,mapid,layer,space=self.session.region_id,self.session.map_id,self.session.layer_id,self.coordinate_system
         legacy=self.package_id=="legacy-mondstadt"
-        directory=self.reference_override or (self.reference_root/'mondstadt' if legacy else self.reference_root/'kongying'/region)
+        directory=self.reference_override or (self.reference_root/'mondstadt' if legacy else self.reference_root/'appsample' if self.package_id=='appsample' else self.reference_root/'kongying'/region)
         if not self.reference_override and not legacy and mapid: directory=directory/mapid
         if not self.reference_override and not legacy and layer: directory=directory/layer
         allowed_layers={(item.map_id,value) for item in self.session.scoped_items() for value in (item.layer_ids or (item.layer_id,))}

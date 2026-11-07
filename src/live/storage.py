@@ -108,6 +108,7 @@ def read_settings(path: Path) -> dict:
                     'area':None,
                     'layer':pref.get('layer') if isinstance(pref.get('layer'),str) else 'teyvat / surface'}
         if isinstance(data.get("package"),str): result["package"]=data["package"]
+        if isinstance(data.get('last_kongying_package'),str):result['last_kongying_package']=data['last_kongying_package']
         result["server"]="America"
         panel=data.get("panel",{})
         if isinstance(panel,dict):

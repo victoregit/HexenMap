@@ -36,7 +36,7 @@ class CategoryModel:
             group={'Oculi':'Destaques','Seelies':'Enigmas','Desafios':'Enigmas',
                    'Puzzles':'Enigmas','Santuários':'Exploração'}.get(original_group,original_group)
             if source in INTERNAL: group='Etiquetas da fonte'
-            if label is None:
+            if label is None or meta.get('translation_reviewed') is False:
                 group='Sem tradução revisada'
                 label=source  # Explicit secondary section, never fabricated Portuguese.
             key=(original_group,source)
