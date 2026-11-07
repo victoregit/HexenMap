@@ -86,7 +86,7 @@ O usuário confirmou os ícones no executável instalado e o funcionamento do
 teste curto de caminhada, fechamento/reabertura de M, pan/zoom, Ctrl,
 marcar/desmarcar e retorno de foco em Liyue. São locais de teste, não aprovação
 de todos os pontos ou de uma sessão de 30 minutos.
-Nenhum mapa regional novo tem sessão completa de aceite registrada nesta expansão.
+Mondstadt e Liyue foram aprovados pelo usuário; esse aceite não será reaberto como bloqueio da expansão. Os mapas novos continuam sem sessão completa registrada.
 O inventário mantém `reference_status=not_validated` e `coverage_complete=false`.
 
 Foram preparados localmente 14 candidatos de mapa/camada principal e 314
@@ -139,7 +139,7 @@ recursos indisponíveis, somando cada marcador físico uma vez.
 
 ## Aceite ainda pendente
 
-- Conferir limites de áreas pequenas da superfície ou obter classificação oficial
+- Metadados de áreas pequenas da superfície são internos e não bloqueiam a interface de nações/camadas; obter classificação oficial
   da fonte; não inventar polígonos por proximidade de rótulos.
 - Completar e validar referências de todas as camadas, incluindo cavernas.
 - Validar pontos independentes por mapa, movimento, rotação, pan/zoom,
@@ -159,3 +159,15 @@ corrigida por associação explícita e unânime dos pontos, ou foram mantidos e
 raiz compartilhada quando não havia filiação única. `territorial_audit` preserva
 a origem e a decisão. A regressão compara cada área aos vínculos explícitos
 dos seus pontos, evitando inclusão por uma árvore de menu reutilizada.
+
+## Avanço da expansão — 6 de novembro de 2026
+
+A auditoria local confirmou os oito catálogos (126.200 pontos), 14 mapas principais/separados e 328 manifestos válidos, sem referências com hashes inválidos. Inazuma, Sumeru, Fontaine, Natlan, Nod-Krai e Snezhnaya, conforme a classificação da fonte, já possuem pacotes e referências locais selecionáveis pelo mesmo fluxo. Isso registra disponibilidade técnica nesta instalação, sem afirmar cobertura completa de todas as cavernas.
+
+A lacuna da superfície detalhada de Natlan foi corrigida: a imagem única excedia 600 tiles. O preparador agora aceita `--partition`, mantém o raster principal e acrescenta seis blocos detalhados em zoom -1, com sobreposição de um tile e transformações geográficas explícitas. O download foi concluído; nenhuma referência fictícia foi usada. Esses arquivos pessoais são lidos da instalação existente e não exigem trocar o executável. Saves e preferências não são alterados por essa preparação.
+
+`build/regional-audit/expansion-coverage.json` detalha por mapa a quantidade de pontos com/sem referência de camada, rasters e camadas presentes. Pontos com camada não confirmada e as duas cavernas sem chunks explícitos permanecem lacunas conhecidas; disponibilidade de superfície não as aprova automaticamente.
+
+`scripts/check_regional_alignment.py` conferiu três recortes detalhados em cada um dos 14 mapas, com todos passando no limite de 3 px do teste de reprojeção. Esses recortes vêm da própria referência, podem se sobrepor e não incluem UI real, oclusões, movimento ou comparação independente com o jogo. O relatório é uma checagem de integração/CRS, não aceite no jogo. A regressão automatizada passou em 202 testes, incluindo a partição de coordenadas negativas, cobertura sem lacunas e rejeição de partições inválidas.
+
+O diagnóstico do executável instalado também passou nos oito catálogos em uma instalação isolada, conferindo identidade regional, processo auxiliar e referências de superfície. Relatório: `build/regional-package-check/results.json`. Não abriu o jogo nem alterou preferências/progresso da instalação principal.
