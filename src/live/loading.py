@@ -7,19 +7,20 @@ import multiprocessing
 from pathlib import Path
 
 
-def read_package(community, identifier):
+def read_package(community, identifier, personal_root=None):
     from src.live.regions import RegionalCatalog
-    return RegionalCatalog(Path(community)).load_package(identifier)
+    return RegionalCatalog(Path(community),Path(personal_root) if personal_root else None).load_package(identifier)
 
 
 class ProcessCatalogSource:
     """JSON decoding and catalog validation cannot hold Tk's Python interpreter."""
-    def __init__(self, community):
+    def __init__(self, community, personal_root=None):
         self.community=str(community)
+        self.personal_root=str(personal_root) if personal_root else None
         self.pool=ProcessPoolExecutor(max_workers=1,mp_context=multiprocessing.get_context('spawn'))
 
     def __call__(self, identifier):
-        return self.pool.submit(read_package,self.community,identifier).result()
+        return self.pool.submit(read_package,self.community,identifier,self.personal_root).result()
 
     def close(self):
         self.pool.shutdown(wait=False,cancel_futures=True)
