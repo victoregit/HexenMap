@@ -18,7 +18,7 @@ def report():
     for region in catalogs.regions:
         items,_,space=catalogs.load(region)
         required={(i.map_id,layer) for i in items for layer in (i.layer_ids or (i.layer_id,))}
-        valid=set();invalid=[]
+        valid=set();invalid=[];reference_details={}
         root=ROOT/'userData/references/kongying'/region
         for candidate in sorted(root.glob('*/*/manifest.json')):
             mapid,layer=candidate.parent.parent.name,candidate.parent.name
@@ -26,10 +26,21 @@ def report():
             except (OSError,ValueError) as exc:
                 invalid.append({'map':mapid,'layer':layer,'error':str(exc)});continue
             valid.add((mapid,layer))
+            manifest=json.loads(candidate.read_text(encoding='utf-8'))
+            reference_details[(mapid,layer)]={'raster_count':1+len(manifest.get('extra_terrain',[])),
+                                            'validation':manifest.get('validation','unspecified')}
+        maps=[]
+        for mapid in sorted({i.map_id for i in items}):
+            points=[i for i in items if i.map_id==mapid]
+            ready=sum(any((mapid,l) in valid for l in (i.layer_ids or (i.layer_id,))) for i in points)
+            maps.append({'id':mapid,'items':len(points),'items_with_reference_layer':ready,
+                         'items_without_reference_layer':len(points)-ready,
+                         'surface_reference':reference_details.get((mapid,'surface')),
+                         'reference_layers':sum(m==mapid for m,l in valid)})
         result['regions'].append({'id':region,'items':len(items),'unclassified_area_items':sum(i.area_id=='unclassified' for i in items),
-            'reference_candidates':len(valid),'invalid_references':invalid,
+            'reference_candidates':len(valid),'invalid_references':invalid,'maps':maps,
             'missing_reference_layers':[{'map':m,'layer':l} for m,l in sorted(required-valid)],
-            'maps_live_accepted':[]})
+            'live_acceptance_record':'docs/REBUILD.md; reference availability does not change user acceptance'})
     return result
 
 

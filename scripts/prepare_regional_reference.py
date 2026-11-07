@@ -12,12 +12,35 @@ import json
 import math
 from pathlib import Path
 import shutil
+import subprocess
+import sys
 import time
 import urllib.request
 
 from PIL import Image
 
 ROOT=Path(__file__).resolve().parents[1]
+
+
+def partition_bounds(bounds, side=16, overlap=1):
+    """Bound raster memory while retaining common terrain at chunk seams."""
+    if side <= overlap or overlap < 0:
+        raise ValueError('Invalid tile partition size')
+    x0,y0,x1,y1=bounds
+    if x1<x0 or y1<y0:
+        raise ValueError('Empty tile rectangle')
+    result=[]
+    x=x0
+    while x<=x1:
+        right=min(x+side-1,x1);y=y0
+        while y<=y1:
+            bottom=min(y+side-1,y1)
+            result.append((x,y,right,bottom))
+            if bottom==y1: break
+            y=bottom-overlap+1
+        if right==x1: break
+        x=right-overlap+1
+    return result
 
 
 def main():
@@ -27,6 +50,7 @@ def main():
     parser.add_argument('--zoom',type=int,choices=[-3,-2,-1,0],default=-1)
     parser.add_argument('--bounds',type=int,nargs=4,metavar=('X0','Y0','X1','Y1'),help='Tile rectangle, inclusive')
     parser.add_argument('--append',action='store_true',help='Add terrain at another scale without replacing the primary reference')
+    parser.add_argument('--partition',action='store_true',help='Prepare large maps as overlapping bounded rasters')
     args=parser.parse_args()
     catalog=ROOT/'data/community/kongying'
     inventory=json.loads((catalog/'inventory.json').read_text(encoding='utf-8'))
@@ -52,6 +76,14 @@ def main():
         x1=min(x1,math.ceil((offset[0]+size[0])*scale/256)-1)
         y1=min(y1,math.ceil((offset[1]+size[1])*scale/256)-1)
     if x1<x0 or y1<y0: raise ValueError('No points within the published map bounds')
+    if args.partition:
+        # Keep the proven coarse reference and add detailed chunks. Never create
+        # one enormous raster or silently omit a failed download.
+        for bounds in partition_bounds((x0,y0,x1,y1)):
+            subprocess.run([sys.executable,str(Path(__file__).resolve()),'--region',args.region,
+                            '--map',args.map,'--zoom',str(args.zoom),'--append',
+                            '--bounds',*(str(v) for v in bounds)],check=True)
+        return
     if (x1-x0+1)*(y1-y0+1)>600: raise ValueError('Reference too large; use lower zoom or an explicit tile rectangle')
     cache=ROOT/'userData/reference-tile-cache'/code/str(args.zoom+13)
     cache.mkdir(parents=True,exist_ok=True)
@@ -61,7 +93,9 @@ def main():
         if not path.exists():
             for attempt in range(3):
                 try:
-                    with urllib.request.urlopen(url,timeout=25) as response: raw=response.read()
+                    request=urllib.request.Request(url if attempt==0 else f'{url}?retry={attempt}',
+                                                   headers={'Cache-Control':'no-cache'} if attempt else {})
+                    with urllib.request.urlopen(request,timeout=25) as response: raw=response.read()
                     break
                 except (OSError,http.client.HTTPException) as exc:
                     if attempt==2: raise RuntimeError(f'Could not read source tile {url}: {exc}') from exc
