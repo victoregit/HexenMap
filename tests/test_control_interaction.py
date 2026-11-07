@@ -42,7 +42,10 @@ def test_marker_menu_accepts_own_window_focus_and_control_event(monkeypatch):
     app.control_listener=ControlKeyListener()
     app.control_listener.transition(0xa2,True)
     app.menu_open=False
-    app.visible_pins=[SimpleNamespace(item=item)]
+    app.visible_pins=[SimpleNamespace(item=item,x=100,y=100)]
+    app.geometry_key=app.rect_key(rect)
+    app.displayed_at=time.monotonic()
+    app.displayed_observation=SimpleNamespace(fresh=lambda now:True)
     app.session=SimpleNamespace(hit_test=lambda *a:[item],progress=SimpleNamespace(is_collected=lambda i:False))
     app.root=object();app.input_hwnd=2
     result=app.open_marker_menu(SimpleNamespace(x=100,y=100,x_root=100,y_root=100))

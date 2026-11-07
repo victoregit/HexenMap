@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import csv
+import math
+from collections import Counter
 import logging
 from pathlib import Path
 import queue
@@ -12,13 +14,18 @@ from tkinter import ttk, messagebox
 
 from src.live.catalog import CATEGORIES, CATEGORY_GROUPS, load_catalog
 from src.live.regions import RegionalCatalog
+from src.live.loading import CatalogLoader, ProcessCatalogSource
+from src.live.labels import register_presentation
+from src.live.category_browser import CountIndices
 from src.live.icons import draw_marker, ICON_MARGIN
 from src.live.marker_menu import MarkerMenu
-from src.live.native import Windows
+from src.live.panel import CompactPanel
+from src.live.presentation import DisplayMotion, MarkerCanvas, DisplayTelemetry, outside_controls
+from src.live.native import Windows, OverlayAlreadyRunning
 from src.live.motion import MotionRecognizer
-from src.live.reference import load_pack, ReferenceUnavailable
+from src.live.reference import load_pack, ReferenceUnavailable, ReferenceCancelled
 from src.live.session import Session, CollectionCount
-from src.live.storage import bundle_dir, install_dir, read_settings, write_json, HOTKEY_OPTIONS, parse_hotkey
+from src.live.storage import bundle_dir, install_dir, read_settings, write_json, HOTKEY_OPTIONS, parse_hotkey, PreferenceWriter
 from src.live.vision import Observation, ScreenRecognizer, LayerRecognizer
 from src.overlay.global_hotkeys import GlobalHotkeyListener, MOD_NOREPEAT
 from src.overlay.control_key import ControlKeyListener
@@ -27,18 +34,29 @@ from src.progress.progress_manager import ProgressManager
 logger=logging.getLogger(__name__)
 
 
-class DesktopApp:
+class DesktopApp(CompactPanel):
     def __init__(self, reference_dir: Path | None = None):
         self.native=Windows()
         self.native.enable_dpi()
+        if not self.native.acquire_instance():raise OverlayAlreadyRunning()
         self.user_dir=install_dir()/"userData"
         self.user_dir.mkdir(exist_ok=True)
         self.settings_path=self.user_dir/"settings.json"
         self.settings=read_settings(self.settings_path)
+        self.preference_writer=PreferenceWriter(self.settings_path)
         self.catalogs=RegionalCatalog(bundle_dir()/"data/community")
         self.package_id=self.settings.get("package",self.catalogs.default_package(self.user_dir/'references'))
         if self.package_id not in self.catalogs.regions and self.package_id!="legacy-mondstadt": self.package_id="legacy-mondstadt"
-        items,region,coordinate_system=self.catalogs.load(self.package_id)
+        package=self.catalogs.load_package(self.package_id)
+        self.category_metadata=package.categories
+        register_presentation(package.categories)
+        items,region,coordinate_system=package.items,package.region,package.coordinate_system
+        self.region_loading=False
+        self.catalog_generation=0
+        self.requested_package=self.package_id
+        self.catalog_source=ProcessCatalogSource(self.catalogs.community)
+        self.catalog_loader=CatalogLoader(self.catalog_source)
+        self.count_indices=CountIndices()
         self.coordinate_system=coordinate_system
         self.selection_epoch=0
         self.counts_at=0.0
@@ -67,6 +85,7 @@ class DesktopApp:
         self.input_boxes=None
         self.overlay_error=""
         self.geometry_key=None
+        self.overlay_exclusions=None
         self.pending_order=[]
         self.control_down=False
         self.visible_pins=[]
@@ -101,121 +120,23 @@ class DesktopApp:
         self.input_surface.update_idletasks()
         try: self.input_hwnd=self.native.input_overlay(self.input_surface.winfo_id())
         except OSError as exc: self.overlay_error=f"Interação indisponível: {exc}"
+        self.renderer=MarkerCanvas(self.canvas,draw_marker)
+        self.display_motion=DisplayMotion()
+        self.displayed_at=0.0
+        self.displayed_observation=None
+        self.telemetry=None
+        try: self.telemetry=DisplayTelemetry(self.user_dir/'display-session.csv')
+        except OSError: logger.exception("Métricas de desenho indisponíveis")
         self.reload_reference()
         self.configure_hotkeys()
         self.control_listener.start()
         self.worker=threading.Thread(target=self._worker,name="LiveRecognition",daemon=True)
         self.worker.start()
-        self.root.after(50,self._tick)
+        self.root.after(16,self._tick)
         self.root.after(10,self._poll_pointer)
-
-    def _panel(self):
-        bg="#101b24";card="#17252e";gold="#cfb982";text="#e7eeeb";muted="#91a9ad"
-        self.root.geometry("520x850")
-        self.root.minsize(470,680)
-        self.root.configure(bg=bg)
-        style=ttk.Style(self.root);style.theme_use("clam")
-        style.configure("TFrame",background=bg)
-        style.configure("TLabel",background=bg,foreground=text,font=("Segoe UI",10))
-        style.configure("TButton",background="#243944",foreground=text,borderwidth=0,
-                        font=("Segoe UI",10),padding=(12,8))
-        style.map("TButton",background=[("active","#314d58")])
-        style.configure("Accent.TButton",background=gold,foreground=bg,font=("Segoe UI",10,"bold"))
-        style.map("Accent.TButton",background=[("active","#e4d1a1")])
-        style.configure("Row.TCheckbutton",background=card,foreground=text,font=("Segoe UI",10),padding=4)
-        style.map("Row.TCheckbutton",background=[("active","#213943")],foreground=[("disabled",muted)])
-        style.configure("TNotebook",background=bg,borderwidth=0,bordercolor=bg,lightcolor=bg,darkcolor=bg)
-        style.configure("TNotebook.Tab",background=bg,foreground=muted,padding=(18,8),font=("Segoe UI",10),borderwidth=0)
-        style.map("TNotebook.Tab",background=[("selected",card)],foreground=[("selected",gold)])
-        style.configure("TCombobox",fieldbackground="#233944",foreground=text,arrowcolor=gold,
-                        background="#233944",bordercolor="#344d56",padding=5)
-        style.map("TCombobox",fieldbackground=[("readonly","#233944")],foreground=[("readonly",text)])
-        style.configure("TEntry",fieldbackground="#233944",foreground=text,insertcolor=text,padding=5)
-        style.configure("Exploration.Horizontal.TProgressbar",background="#83cbb1",troughcolor="#243a43",
-                        borderwidth=0,lightcolor="#83cbb1",darkcolor="#83cbb1")
-        frame=ttk.Frame(self.root,padding=20);frame.pack(fill="both",expand=True)
-        header=tk.Frame(frame,bg=bg);header.pack(fill="x",pady=(0,10))
-        tk.Label(header,text="✦",font=("Segoe UI",29),bg=bg,fg=gold).pack(side="left",padx=(0,12))
-        heading=tk.Frame(header,bg=bg);heading.pack(side="left")
-        tk.Label(heading,text="GENSHIN GEM WISH",font=("Segoe UI",9,"bold"),bg=bg,fg=gold,anchor="w").pack(fill="x")
-        tk.Label(heading,text="Sua próxima descoberta",font=("Segoe UI",19,"bold"),bg=bg,fg=text).pack(anchor="w")
-        self.territory_path=tk.StringVar(value="Mondstadt · Superfície")
-        tk.Label(heading,textvariable=self.territory_path,font=("Segoe UI",9),bg=bg,fg=muted,wraplength=410,justify="left").pack(anchor="w",pady=(3,0))
-        connection=tk.Frame(frame,bg=card,highlightbackground="#30454d",highlightthickness=1,padx=12,pady=7)
-        connection.pack(fill="x",pady=(0,8))
-        tk.Label(connection,text="●  CONEXÃO COM O JOGO",bg=card,fg="#86cbb8",font=("Segoe UI",8,"bold")).pack(anchor="w")
-        self.status=tk.StringVar(value="Procurando o Genshin…")
-        tk.Label(connection,textvariable=self.status,bg=card,fg=text,font=("Segoe UI",9),wraplength=400,justify="left").pack(anchor="w",pady=(4,0))
-        progress=tk.Frame(frame,bg=card,padx=12,pady=8);progress.pack(fill="x",pady=(0,10))
-        tk.Label(progress,text="PROGRESSO DO RECORTE SELECIONADO",bg=card,fg=muted,font=("Segoe UI",8,"bold")).pack(anchor="w")
-        self.progress_text=tk.StringVar(value="Carregando progresso…")
-        tk.Label(progress,textvariable=self.progress_text,bg=card,fg=text,font=("Segoe UI",10,"bold")).pack(anchor="w",pady=(4,8))
-        self.progress_value=tk.DoubleVar(value=0)
-        ttk.Progressbar(progress,variable=self.progress_value,maximum=100,style="Exploration.Horizontal.TProgressbar").pack(fill="x")
-        tabs=ttk.Notebook(frame);tabs.pack(fill="both",expand=True)
-        explore=ttk.Frame(tabs,padding=(10,12));prefs=ttk.Frame(tabs,padding=(10,12))
-        tabs.add(explore,text="Exploração");tabs.add(prefs,text="Preferências")
-        filters=tk.Frame(explore,bg=bg);filters.pack(fill="x",pady=(0,8))
-        tk.Label(filters,text="Mostrar no mapa",bg=bg,fg=text,font=("Segoe UI",11,"bold")).pack(side="left")
-        ttk.Button(filters,text="Todos",command=lambda:self.set_categories(True)).pack(side="right",padx=(6,0))
-        ttk.Button(filters,text="Limpar",command=lambda:self.set_categories(False)).pack(side="right")
-        self.region_names={"Mondstadt · catálogo anterior":"legacy-mondstadt",**{r["name"]:r["id"] for r in self.catalogs.regions.values()}}
-        self.region_var=tk.StringVar(value=next(k for k,v in self.region_names.items() if v==self.package_id))
-        region_box=ttk.Combobox(explore,textvariable=self.region_var,values=list(self.region_names),state="readonly")
-        region_box.pack(fill="x",pady=2);region_box.bind("<<ComboboxSelected>>",self.change_region)
-        self.area_var=tk.StringVar(value="Todas as áreas")
-        self.area_box=ttk.Combobox(explore,textvariable=self.area_var)
-        self.area_box.pack(fill="x",pady=2)
-        self.area_box.bind("<<ComboboxSelected>>",self.change_territory)
-        self.area_box.bind("<Return>",self.change_territory)
-        self.area_box.bind("<KeyRelease>",self.search_territories)
-        self.layer_var=tk.StringVar(value="teyvat / surface")
-        self.layer_box=ttk.Combobox(explore,textvariable=self.layer_var,state="readonly")
-        self.layer_box.pack(fill="x",pady=2);self.layer_box.bind("<<ComboboxSelected>>",self.change_territory)
-        self.category_query=tk.StringVar()
-        search=ttk.Entry(explore,textvariable=self.category_query)
-        search.pack(fill="x",pady=(4,2))
-        self.category_query.trace_add("write",lambda *args:self.filter_categories())
-        ttk.Label(explore,text="Buscar recurso ou categoria").pack(anchor="w")
-        category_canvas=tk.Canvas(explore,bg=bg,highlightthickness=0,height=160)
-        scrollbar=ttk.Scrollbar(explore,orient="vertical",command=category_canvas.yview)
-        scrollbar.pack(side="right",fill="y");category_canvas.pack(fill="both",expand=True)
-        category_canvas.configure(yscrollcommand=scrollbar.set)
-        self.category_frame=tk.Frame(category_canvas,bg=bg)
-        window=category_canvas.create_window((0,0),window=self.category_frame,anchor="nw")
-        self.category_frame.bind("<Configure>",lambda e:category_canvas.configure(scrollregion=category_canvas.bbox("all")))
-        category_canvas.bind("<Configure>",lambda e:category_canvas.itemconfigure(window,width=e.width))
-        self.category_vars={};self.category_labels={};self.category_widgets=[]
-        self.populate_region_controls()
-        tk.Label(explore,text="Ctrl + clique em um ícone para alterar a coleta.\nSegure Ctrl para ver os itens já pegos.",
-                 bg=bg,fg=muted,font=("Segoe UI",9),justify="left").pack(anchor="w",pady=(10,0))
-        self.candidates=ttk.Combobox(explore,state="readonly")
-        self.confirm_button=ttk.Button(explore,text="Confirmar item selecionado",command=self.confirm_candidate)
-        ttk.Label(prefs,text="Atalhos durante o jogo",font=("Segoe UI",11,"bold")).pack(anchor="w",pady=(0,10))
-        self.key_vars={}
-        for action,label in (("visibility","Mostrar / ocultar"),("collect","Coletar item próximo"),("undo","Desfazer última coleta")):
-            row=ttk.Frame(prefs);row.pack(fill="x",pady=5)
-            ttk.Label(row,text=label).pack(side="left")
-            var=tk.StringVar(value=self.settings["hotkeys"][action]);self.key_vars[action]=var
-            ttk.Combobox(row,textvariable=var,values=HOTKEY_OPTIONS,state="readonly",width=16).pack(side="right")
-        ttk.Button(prefs,text="Salvar atalhos",command=self.save_keys).pack(fill="x",pady=(12,18))
-        ttk.Label(prefs,text="Reconhecimento",font=("Segoe UI",11,"bold")).pack(anchor="w",pady=(0,6))
-        ttk.Label(prefs,text="Se o alinhamento ficar indisponível, os ícones\nsão ocultados até a localização ser recuperada.",foreground=muted).pack(anchor="w")
-        ttk.Button(prefs,text="Verificar referências novamente",command=self.reload_reference).pack(fill="x",pady=(10,0))
-        self.notice=tk.StringVar()
-        notice_label=tk.Label(frame,textvariable=self.notice,bg=bg,fg=gold,font=("Segoe UI",9),wraplength=430,justify="left")
-        footer=ttk.Frame(frame);footer.pack(side="bottom",fill="x",pady=(4,0),before=tabs)
-        notice_label.pack(side="bottom",fill="x",pady=(4,2),before=tabs)
-        self.visibility_button=ttk.Button(footer,text="Ocultar overlay",command=self.toggle_visibility)
-        self.visibility_button.pack(side="left")
-        ttk.Button(footer,text="Continuar jogando",style="Accent.TButton",command=self.root.iconify).pack(side="right")
 
     def populate_region_controls(self):
         region=self.session.region_id
-        self.area_names={"Todas as áreas":None,"Área não confirmada":"unclassified"}
-        if self.package_id!="legacy-mondstadt":
-            self.area_names.update({self.catalogs.territories.path(n.id):n.id for n in self.catalogs.territories.search(region) if n.kind!="region"})
-        self.area_box.configure(values=list(self.area_names))
         layers=sorted({f"{i.map_id} / {layer}" for i in self.session.items for layer in (i.layer_ids or (i.layer_id,))} |
                       {f"{i.map_id} / automática" for i in self.session.items})
         map_names={'teyvat':'Mapa principal','chasm':'Minas do Despenhadeiro','enkanomiya':'Enkanomiya',
@@ -230,53 +151,26 @@ class DesktopApp:
             name=node.name if node else {'surface':'Superfície','automática':'Camada automática',
                                         'underground-unclassified':'Subterrâneo · camada não confirmada'}.get(layer,layer)
             self.layer_names[f'{map_names.get(mapid,mapid)} · {name}']=value
-        self.layer_box.configure(values=list(self.layer_names))
         pref=self.settings.get("regional",{}).get(self.package_id,{})
         choice=pref.get("layer",'* / automática' if self.package_id!='legacy-mondstadt' else 'teyvat / surface')
         choice=choice if choice in self.layer_names.values() else 'teyvat / surface' if 'teyvat / surface' in layers else layers[0]
         self.layer_var.set(next(k for k,v in self.layer_names.items() if v==choice))
-        self.area_var.set(next((k for k,v in self.area_names.items() if v==pref.get("area")),"Todas as áreas"))
         if self.package_id in self.settings.get("regional",{}):
             self.session.selected=set(pref.get("categories",[]))
-        for child in self.category_frame.winfo_children(): child.destroy()
-        self.category_vars={};self.category_labels={};self.category_widgets=[]
         categories={c for i in self.session.items for c in (i.category_ids or (i.category,))}
         self.session.selected.intersection_update(categories)
-        group=None
-        for category in sorted(categories,key=lambda c:(CATEGORY_GROUPS.get(c,"Outros"),CATEGORIES[c][0])):
-            label=CATEGORIES[category][0];new_group=CATEGORY_GROUPS.get(category,"Outros")
-            if new_group!=group:
-                title=ttk.Label(self.category_frame,text=new_group)
-                title.pack(anchor="w",pady=(8,2));self.category_widgets.append((title,new_group.casefold()));group=new_group
-            var=tk.BooleanVar(value=category in self.session.selected);self.category_vars[category]=var
-            label_var=tk.StringVar(value=label);self.category_labels[category]=label_var
-            button=ttk.Checkbutton(self.category_frame,textvariable=label_var,variable=var,command=self.select_categories,style="Row.TCheckbutton")
-            button.pack(fill="x");self.category_widgets.append((button,(new_group+' '+label).casefold()))
+        self.build_category_rows(categories)
         self.apply_territory()
 
-    def filter_categories(self):
-        query=self.category_query.get().casefold().strip()
-        for widget,label in self.category_widgets:
-            widget.pack_forget()
-        for widget,label in self.category_widgets:
-            if not query or query in label: widget.pack(fill="x")
-
-    def search_territories(self,event=None):
-        query=self.area_var.get().casefold()
-        self.area_box.configure(values=[k for k in self.area_names if query in k.casefold()])
-
     def apply_territory(self):
-        self.session.area_id=self.area_names.get(self.area_var.get())
+        self.session.area_id=None
         self.session.map_id,self.session.layer_id=self.layer_names[self.layer_var.get()].split(" / ")
         if self.session.map_id=='*': self.session.map_id=None
         if self.session.layer_id=="automática": self.session.layer_id=None
-        path=self.catalogs.territories.path(self.session.area_id) if self.session.area_id else self.catalogs.regions[self.session.region_id]['name']
-        self.territory_path.set(f"{path or 'Área não confirmada'} · {self.layer_var.get()}")
+        self.territory_path.set(self.layer_var.get())
         self.counts_at=0
 
     def change_territory(self,event=None):
-        if self.area_var.get() not in self.area_names:
-            self.session.notice="Selecione uma área da lista de resultados.";return
         self.close_marker_menu(restore_focus=False)
         self.apply_territory()
         try: self.persist_settings()
@@ -285,32 +179,74 @@ class DesktopApp:
 
     def change_region(self,event=None):
         identifier=self.region_names[self.region_var.get()]
-        if identifier==self.package_id: return
-        try:
-            self.persist_settings()
-            items,region,space=self.catalogs.load(identifier)
-        except (OSError,ValueError,KeyError,TypeError) as exc:
-            self.region_var.set(next(k for k,v in self.region_names.items() if v==self.package_id))
-            self.session.notice=f"Pacote regional indisponível: {exc}";return
-        self.close_marker_menu(restore_focus=False);self.session.invalidate("Trocando região…")
-        self.package_id=identifier;self.coordinate_system=space
-        self.session.items=items;self.session.region_id=region;self.session.selected=set()
-        self.populate_region_controls()
-        try: self.persist_settings()
-        except OSError as exc: self.session.notice=f"Falha ao salvar preferências: {exc}"
-        self.reload_reference()
+        if identifier==self.package_id and not self.region_loading:return
+        try:self.persist_settings()
+        except OSError as exc:
+            self.session.notice=f"Falha ao salvar preferências: {exc}";return
+        self.close_layers();self.close_marker_menu(restore_focus=False)
+        self.requested_package=identifier
+        self.region_loading=True
+        self.session.invalidate("Trocando nação…")
+        with self.reference_lock:
+            self.selection_epoch+=1
+            self.recognizer=None
+            self.reference_error="Carregando catálogo…"
+        self.display_motion.reset();self.displayed_observation=None
+        self.visible_pins=[];self.renderer.clear()
+        if self.overlay_hwnd:self.native.hide(self.overlay_hwnd)
+        if self.input_hwnd:
+            self.native.interactive(self.input_hwnd,False);self.native.hide(self.input_hwnd)
+        self.category_browser.set_model(None,set())
+        self.territory_path.set('Carregando '+self.region_var.get()+'…')
+        self.progress_text.set('Carregando catálogo…')
+        self.catalog_generation=self.catalog_loader.request(identifier)
+
+    def poll_catalog(self):
+        while True:
+            try:generation,error=self.preference_writer.errors.get_nowait()
+            except queue.Empty:break
+            if generation==self.preference_writer.generation:
+                self.session.notice=f'Preferências não salvas: {error}'
+        while True:
+            try:generation,identifier,package,error=self.catalog_loader.results.get_nowait()
+            except queue.Empty:return
+            if generation!=self.catalog_generation or identifier!=self.requested_package:continue
+            self.region_loading=False
+            if error:
+                self.region_var.set(next(k for k,v in self.region_names.items() if v==self.package_id))
+                self.session.notice=f"Pacote regional indisponível: {error}"
+                self.populate_region_controls();self.reload_reference()
+                continue
+            self.package_id=package.id;self.coordinate_system=package.coordinate_system
+            self.category_metadata=package.categories
+            register_presentation(package.categories)
+            self.session.items=package.items;self.session.region_id=package.region
+            self.session.selected=set()
+            self.category_query.set('')
+            self.populate_region_controls()
+            try:self.persist_settings()
+            except OSError as exc:self.session.notice=f"Falha ao salvar preferências: {exc}"
+            self.reload_reference()
 
     def set_categories(self,selected):
-        for var in self.category_vars.values():
-            var.set(selected)
-        self.select_categories()
+        if self.region_loading:return
+        if not selected:
+            self.choose_categories(set(self.session.selected),False);return
+        browser=self.category_browser
+        entries=[e for e in self.category_model.entries if
+                 (not browser.query or browser.query in e.search) and
+                 (e.group not in {'Etiquetas da fonte','Sem tradução revisada'} or browser.query or
+                  e.group not in browser.collapsed)]
+        self.choose_categories(set().union(*(e.members for e in entries)),True)
 
     def persist_settings(self):
         self.settings["categories"]=sorted(self.session.selected)
         self.settings["package"]=self.package_id
         self.settings["server"]="America"
-        self.settings.setdefault("regional",{})[self.package_id]={"categories":sorted(self.session.selected),"area":self.session.area_id,"layer":self.layer_names[self.layer_var.get()]}
-        write_json(self.settings_path,self.settings)
+        self.settings.setdefault("regional",{})[self.package_id]={"categories":sorted(self.session.selected),"layer":self.layer_names[self.layer_var.get()]}
+        x,y=self.panel_position()
+        self.settings["panel"]={"collapsed":self.panel_collapsed,"detached":self.panel_detached,"x":x,"y":y}
+        self.preference_writer.request(self.settings)
 
     def select_categories(self):
         self.session.selected={c for c,v in self.category_vars.items() if v.get()}
@@ -321,7 +257,7 @@ class DesktopApp:
 
     def save_keys(self):
         keys={k:v.get() for k,v in self.key_vars.items()}
-        if len(set(keys.values()))!=3:
+        if len(set(keys.values()))!=len(self.key_vars):
             messagebox.showerror("Atalhos","Escolha uma tecla diferente para cada ação.",parent=self.root)
             return
         self.settings["hotkeys"]=keys
@@ -347,6 +283,9 @@ class DesktopApp:
             self.reference_error="Carregando referência do mapa selecionado…"
             self.reference_context=(self.session.region_id,self.session.map_id or 'auto',self.session.layer_id or 'auto')
         self.session.invalidate("Localizando…")
+        self.display_motion.reset()
+        self.displayed_observation=None
+        self.renderer.clear()
         self.visible_pins=[]
         if self.overlay_hwnd: self.native.hide(self.overlay_hwnd)
         if self.input_hwnd:
@@ -359,6 +298,7 @@ class DesktopApp:
         if not self.reference_override and not legacy and mapid: directory=directory/mapid
         if not self.reference_override and not legacy and layer: directory=directory/layer
         allowed_layers={(item.map_id,value) for item in self.session.scoped_items() for value in (item.layer_ids or (item.layer_id,))}
+        cancelled=lambda:self.stop_event.is_set() or epoch!=self.selection_epoch
         def build():
             # Serialize construction and discard superseded selections before doing work.
             with self.reference_build_lock:
@@ -368,19 +308,22 @@ class DesktopApp:
                         import json
                         manifest=json.loads((directory/'manifest.json').read_text(encoding='utf-8'))
                         recognizer=ScreenRecognizer(load_pack(directory,region_id=region,map_id=mapid or manifest.get('map_id','teyvat'),
-                                                  layer_id=layer,coordinate_system=space))
+                                                  layer_id=layer,coordinate_system=space,cancelled=cancelled))
                     elif layer is None and not legacy:
                         factories=[]
                         for candidate in sorted(directory.glob("*/manifest.json" if mapid else '*/*/manifest.json')):
                             candidate_map=mapid or candidate.parent.parent.name
                             if (candidate_map,candidate.parent.name) not in allowed_layers: continue
                             factories.append(lambda path=candidate.parent,mid=candidate_map:load_pack(path,region_id=region,map_id=mid,
-                                             layer_id=path.name,coordinate_system=space))
-                        recognizer=LayerRecognizer(factories)
+                                             layer_id=path.name,coordinate_system=space,cancelled=cancelled))
+                        recognizer=LayerRecognizer(factories,cancelled=cancelled)
                     else:
-                        recognizer=ScreenRecognizer(load_pack(directory,region_id=region,map_id=mapid,layer_id=layer,coordinate_system=space))
+                        recognizer=ScreenRecognizer(load_pack(directory,region_id=region,map_id=mapid,layer_id=layer,coordinate_system=space,cancelled=cancelled))
                     error=""
+                except ReferenceCancelled:
+                    return
                 except Exception as exc:
+                    if cancelled():return
                     logger.exception("Referência regional indisponível")
                     recognizer=None;error=str(exc)
                 with self.reference_lock:
@@ -479,6 +422,31 @@ class DesktopApp:
             self.close_marker_menu()
 
     def refresh_counts(self):
+        if hasattr(self,'category_browser'):
+            if self.region_loading:return
+            if hasattr(self,'count_indices'):
+                index=self.count_indices.get(self.session,self.category_model)
+                if index is None:
+                    self.progress_text.set('Contando itens…')
+                    return False
+                totals,memberships,permanent_ids,other_ids=index
+                collected_counts=Counter();collected=unavailable=0
+                for identifier in self.session.progress.get_collected_ids():
+                    if identifier in memberships and self.session.is_collected(identifier):
+                        collected_counts.update(memberships[identifier])
+                        if identifier in permanent_ids:collected+=1
+                        else:unavailable+=1
+                counts={entry.key:(collected_counts[entry.key],totals[entry.key]) for entry in self.category_model.entries}
+                total=len(permanent_ids)
+            else:
+                counts=self.category_model.counts(self.session)
+                collected,total,unavailable=self.session.progress_summary()
+            browser=self.category_browser
+            if counts!=browser.counts or browser.selected!=self.session.selected:
+                browser.counts=counts;browser.selected=set(self.session.selected);browser.schedule_paint()
+            self.progress_text.set(f"{collected}/{total} permanentes · {unavailable} recursos indisponíveis")
+            self.progress_value.set(100*collected/total if total else 0)
+            return
         counts=self.session.collection_counts()
         items=self.session.scoped_items()
         permanent=[i for i in items if self.session.rules.get(i.rule_id,self.session.rules["unknown"]).kind=="permanent"]
@@ -502,9 +470,13 @@ class DesktopApp:
             logger.info("Marker click rejected: Ctrl=%s foreground=%s menu=%s",
                         control,self.native.menu_foreground(rect),self.menu_open)
             return "break"
-        displayed={p.item.id for p in self.visible_pins}
-        items=[i for i in self.session.hit_test(rect.width,rect.height,event.x,event.y)
-               if i.id in displayed]
+        now=time.monotonic()
+        if (self.rect_key(rect)!=self.geometry_key or now-self.displayed_at>.12
+                or self.displayed_observation is None or not self.displayed_observation.fresh(now)):
+            return "break"
+        hits=[p for p in self.visible_pins if abs(p.x-event.x)<=ICON_MARGIN and abs(p.y-event.y)<=ICON_MARGIN]
+        hits.sort(key=lambda p:(math.hypot(p.x-event.x,p.y-event.y),p.item.id))
+        items=[p.item for p in hits]
         if not items:
             logger.info("Marker click without current hit at %s,%s",event.x,event.y)
             return "break"
@@ -581,13 +553,17 @@ class DesktopApp:
     def _tick(self):
         if self.stop_event.is_set(): return
         try:
+            self.poll_catalog()
             rect=self.native.game(); foreground=self.native.foreground(rect); key=self.rect_key(rect)
+            self.sync_panel_visibility(rect)
             if self.menu_open:
                 # Keep the visibility shortcut responsive while a menu owns input.
                 while True:
                     try: action=self.events.get_nowait()
                     except queue.Empty: break
                     if action=="visibility": self.toggle_visibility()
+                    elif action=="panel":
+                        self.close_marker_menu(restore_focus=False);self.panel_shortcut()
                     elif isinstance(action,tuple): self.session.notice=action[1]
                 if (key!=self.menu_geometry or not rect.is_found or rect.is_minimized
                         or time.monotonic()>self.menu_deadline or self.session.hidden
@@ -597,8 +573,10 @@ class DesktopApp:
                     # Keep the explicit item selection, never old map coordinates.
                     if self.overlay_hwnd: self.native.hide(self.overlay_hwnd)
                     self.canvas.delete("all")
+                    if hasattr(self,"renderer"): self.renderer.clear()
+                    if hasattr(self,"display_motion"): self.display_motion.reset()
                     self.visible_pins=[]
-                    self.root.after(50,self._tick)
+                    self.root.after(16,self._tick)
                     return
             if key!=self.geometry_key:
                 self.session.invalidate("Localizando após mudança de janela…"); self.geometry_key=key
@@ -612,32 +590,52 @@ class DesktopApp:
             while True:
                 try: action=self.events.get_nowait()
                 except queue.Empty: break
-                if action=="visibility": self.toggle_visibility()
-                elif action=="collect" and foreground: self.session.collect()
-                elif action=="undo" and foreground: self.session.undo()
+                if action=="panel" and (self.panel_detached or foreground or self.native.menu_foreground(rect) or not rect.is_found):
+                    self.panel_shortcut()
+                elif action=="visibility": self.toggle_visibility()
+                elif action=="collect" and foreground and not self.region_loading: self.session.collect()
+                elif action=="undo" and foreground and not self.region_loading: self.session.undo()
                 elif isinstance(action,tuple): self.session.notice=action[1]
-            pins=self.session.pins(rect.width,rect.height,include_collected=self.control_down) if foreground and not self.overlay_error else []
+            now=time.monotonic()
+            display=self.display_motion.present(self.session.observation,now)
+            pins=self.session.pins(rect.width,rect.height,now,include_collected=self.control_down,
+                                   observation=display) if foreground and not self.overlay_error and not self.region_loading else []
+            controls=self.control_rectangles(rect)
+            pins=outside_controls(pins,controls)
+            exclusion_key=(rect.width,rect.height,tuple(controls))
+            if self.overlay_hwnd and rect.width>0 and rect.height>0 and exclusion_key!=self.overlay_exclusions:
+                self.native.exclude_controls(self.overlay_hwnd,rect.width,rect.height,controls)
+                self.overlay_exclusions=exclusion_key
             self.visible_pins=pins
-            self.canvas.delete("all")
+            self.displayed_at=now
+            self.displayed_observation=display
             if pins and self.overlay_hwnd:
                 self.native.place(self.overlay_hwnd,rect)
                 self.canvas.configure(width=rect.width,height=rect.height)
-                for pin in pins:
-                    draw_marker(self.canvas,pin.item.category,pin.x,pin.y,
-                                collected=self.session.is_collected(pin.item.id))
-            elif self.overlay_hwnd: self.native.hide(self.overlay_hwnd)
+                self.renderer.render(pins,self.session.is_collected)
+            elif self.overlay_hwnd:
+                self.native.hide(self.overlay_hwnd)
+                self.renderer.clear()
+            if not foreground: self.display_motion.reset()
+            if self.telemetry:
+                try: self.telemetry.record(self.session.region_id,self.session.observation,display,pins,now)
+                except OSError:
+                    logger.exception("Métricas de desenho interrompidas")
+                    self.telemetry.close();self.telemetry=None
             self._sync_input(rect)
+            self.raise_attached_controls()
             status=self.overlay_error or self.reference_error or self.session.observation.reason
             if self.session.hidden: status="Overlay oculto · use o atalho para mostrar"
             elif not self.session.selected and not self.reference_error: status+=" · selecione o que procurar"
             elif foreground and self.session.observation.surface!="hidden" and not self.session.observation.fresh(time.monotonic()):
                 status="Localização atrasada · ícones ocultos"
             if self.package_id!='legacy-mondstadt': status+=" · cobertura em validação"
-            self.status.set(status); self.notice.set(self.session.notice)
+            if self.status.get()!=status:self.status.set(status)
+            if self.notice.get()!=self.session.notice:self.notice.set(self.session.notice)
             if self.listener and self.listener.registration_errors:
                 self.notice.set("Um atalho está em uso por outro programa. Escolha outra tecla e salve.")
             if time.monotonic()-self.counts_at>=1:
-                self.refresh_counts();self.counts_at=time.monotonic()
+                if self.refresh_counts() is not False:self.counts_at=time.monotonic()
             if self.session.pending_ids and time.monotonic()-self.session.pending_at>30: self.session.pending_ids.clear()
             order=[i for i in self.session.items if i.id in self.session.pending_ids]
             if [i.id for i in order]!=self.pending_order:
@@ -650,18 +648,30 @@ class DesktopApp:
         except Exception as exc:
             logger.exception("Falha na atualização do overlay")
             self.close_marker_menu()
+            self.visible_pins=[];self.displayed_observation=None
+            if self.input_hwnd:
+                self.native.interactive(self.input_hwnd,False);self.native.hide(self.input_hwnd)
             if self.overlay_hwnd: self.native.hide(self.overlay_hwnd)
             self.session.invalidate("Overlay pausado após uma falha"); self.session.notice=str(exc)
-        self.root.after(50,self._tick)
+        self.root.after(16,self._tick)
 
     def close(self):
+        try: self.persist_settings()
+        except OSError: logger.exception("Falha ao salvar painel")
         self.stop_event.set()
+        self.catalog_loader.close()
+        self.catalog_source.close()
+        self.count_indices.close()
+        if not self.preference_writer.close():logger.error('Preferências pendentes não puderam ser salvas ao encerrar')
+        self.close_layers()
         self.close_marker_menu(restore_focus=False)
         if self.listener: self.listener.stop()
         self.control_listener.stop()
         if self.overlay_hwnd: self.native.hide(self.overlay_hwnd)
         self.worker.join(timeout=2)
+        if self.telemetry: self.telemetry.close()
         self.root.destroy()
+        self.native.release_instance()
 
     def run(self):
         self.root.mainloop()

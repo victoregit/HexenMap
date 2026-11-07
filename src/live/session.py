@@ -56,6 +56,9 @@ class Session:
         self._scope_items=[]
         self._lookup_key=None
         self._lookup={}
+        self._projection_key=None
+        self._projection_items=[]
+        self._projection_points=np.empty((0,3))
 
     def item_by_id(self,identifier):
         key=(id(self.items),len(self.items))
@@ -116,44 +119,59 @@ class Session:
                 values[category]=(collected+int(self.is_collected(item.id)),total+1)
         return {category:CollectionCount(*count) for category,count in values.items()}
 
+    def progress_summary(self):
+        items=self.scoped_items()
+        key=(self._scope_key,id(self.rules))
+        if getattr(self,'_summary_key',None)!=key:
+            self._permanent_ids={i.id for i in items if self.rules.get(i.rule_id,UNKNOWN).kind=='permanent'}
+            self._other_ids={i.id for i in items}-self._permanent_ids
+            self._summary_key=key
+        collected=unavailable=0
+        for identifier in self.progress.get_collected_ids():
+            if identifier in self._permanent_ids and self.is_collected(identifier):collected+=1
+            elif identifier in self._other_ids and self.is_collected(identifier):unavailable+=1
+        return collected,len(self._permanent_ids),unavailable
+
     def invalidate(self, reason: str, clear_pending: bool = True) -> None:
         self.observation = Observation("hidden", time.monotonic(), reason=reason)
         if clear_pending:
             self.pending_ids.clear()
 
     def pins(self, width: int, height: int, now: float | None = None,
-             include_collected: bool = False) -> list[Pin]:
-        obs = self.observation
+             include_collected: bool = False, observation: Observation | None = None) -> list[Pin]:
+        obs = self.observation if observation is None else observation
         now = time.monotonic() if now is None else now
         if self.hidden or not obs.fresh(now):
             return []
         if (self.region_id and (not obs.map_id or not obs.layer_id)) or (self.map_id and obs.map_id!=self.map_id):
             return []
         pins = []
-        items=([i for i in self.scoped_items() if bool(set(i.category_ids or (i.category,)) & self.selected)]
-               if include_collected else self.active())
+        scoped=self.scoped_items()
+        key=(self._scope_key,frozenset(self.selected),obs.map_id,obs.layer_id)
+        if key!=self._projection_key:
+            self._projection_items=[i for i in scoped if
+                bool(set(i.category_ids or (i.category,)) & self.selected) and
+                (not obs.map_id or i.map_id==obs.map_id) and
+                (not obs.layer_id or obs.layer_id in (i.layer_ids or (i.layer_id,)))]
+            self._projection_points=np.array([(i.x,i.y,1) for i in self._projection_items],dtype=np.float64)
+            self._projection_key=key
+        items=self._projection_items
         if not items: return []
-        points=np.array([(i.x,i.y,1) for i in items],dtype=np.float64)
-        projected=points @ obs.world_to_screen.T
+        projected=self._projection_points @ obs.world_to_screen.T
         visible=(projected[:,0]>=ICON_MARGIN)&(projected[:,0]<width-ICON_MARGIN)&(projected[:,1]>=ICON_MARGIN)&(projected[:,1]<height-ICON_MARGIN)
+        if obs.surface=='minimap':
+            if obs.circle is None: return []
+            cx,cy,radius=obs.circle
+            visible &= np.hypot(projected[:,0]-cx,projected[:,1]-cy)<=radius-ICON_MARGIN
+        else:
+            visible &= ((projected[:,0]>=width*.20)&(projected[:,0]<=width*.80)&
+                        (projected[:,1]>=height*.08)&(projected[:,1]<=height*.90))
         for index in np.flatnonzero(visible):
             item=items[index]
-            if obs.map_id and item.map_id!=obs.map_id: continue
-            if getattr(obs,"layer_id",None) and obs.layer_id not in (item.layer_ids or (item.layer_id,)):
-                continue
+            # Query deadlines only for visible points, so expiry still takes effect
+            # on the exact frame without rebuilding the static coordinate index.
+            if not include_collected and self.is_collected(item.id): continue
             x,y=projected[index]
-            if not (ICON_MARGIN <= x < width-ICON_MARGIN and ICON_MARGIN <= y < height-ICON_MARGIN):
-                continue
-            if obs.surface == "minimap":
-                if obs.circle is None:
-                    continue
-                cx, cy, radius = obs.circle
-                # Entire icon stays inside the circle, rather than its center only.
-                if math.hypot(x-cx, y-cy) > radius-ICON_MARGIN:
-                    continue
-            elif not (width*.20 <= x <= width*.80 and height*.08 <= y <= height*.90):
-                # Leave native sidebars, zoom controls, and close button clear.
-                continue
             pins.append(Pin(item, float(x), float(y)))
         return pins
 

@@ -68,6 +68,8 @@ def test_open_card_does_not_keep_old_map_coordinates_visible(app):
     app.stop_event=threading.Event();app.events=queue.Queue()
     app.overlay_hwnd=3
     app.root=SimpleNamespace(after=lambda *args:None)
+    app.sync_panel_visibility=lambda rect:None
+    app.poll_catalog=lambda:None
     app.canvas=SimpleNamespace(delete=lambda *args:app.calls.append('clear-pins'))
     app.visible_pins=[object()]
     app.native.foreground=lambda rect:True
