@@ -1,6 +1,6 @@
 # Overlay de exploração — referência única
 
-Atualizado em 6 de novembro de 2026. **Versão integrada para revisão; expansão completa ainda não aprovada.**
+Atualizado em 7 de novembro de 2026. **Versão integrada para revisão; expansão completa ainda não aprovada.**
 
 ## Experiência atual
 
@@ -182,3 +182,45 @@ A região nativa de entrada é construída por spans de pixels, unidos e normali
 Prévias locais: `build/chest-pins-preview.png` (cinco tipos, dois tamanhos, fundos claros/escuros e estado coletado) e `build/panel-preview.png` (widgets reais). A prévia do painel usa somente a própria janela, sem capturar outras aplicações. A aparência foi conferida nessas prévias; o teste no jogo desta apresentação ainda não foi registrado e não reabre o aceite das regiões anteriores.
 
 A revisão dos pins foi instalada na raiz após confirmar o overlay fechado. Backup: `backups/chest-pins-20261107-014048Z`. SHA-256 do executável instalado conferido contra dist; preferências e progresso conservaram os hashes anteriores. O diagnóstico empacotado em instalação isolada de Snezhnaya confirmou 10.091 pontos, processo auxiliar e cinco imagens pessoais disponíveis. A inspeção do pacote confirmou o código otimizado e somente metadados dos baús, sem redistribuir seus PNGs.
+
+## Ferramentas de preparação do AppSample
+
+`python scripts/inspect_appsample_progress.py <arquivo.json>` arquiva os IDs e audita os vínculos explícitos entre fontes sem modificar o progresso. Com `--catalog <catalogo.json> --catalog-url <url>`, valida o formato comprimido atual e resolve os IDs no próprio namespace AppSample. A ajuda de embed descreve exibição em iframe, não exportação de progresso ou licença geral de redistribuição.
+
+O arquivo Firestore fornecido contém 3.755 IDs únicos. A preparação extrai somente esses IDs, sem nome do documento/conta, cabeçalhos ou credenciais. `python scripts/prepare_appsample_package.py --catalog <catalogo.json> --labels <labels.json> --references` prepara o pacote pessoal e as referências. A tabela exige `code=0`, `compressionVersion=1`, deltas cumulativos de IDs e coordenadas finitas; variantes desconhecidas são rejeitadas. A referência verifica os hashes e não fabrica terreno quando um tile falta.
+
+A URL atual fornecida pelo usuário foi `https://game-data.lemonapi.com/gim/markers_all.v5.compressed.json?ver=9f0c3fe69094909c`. O HTTP direto retornou 403; a abertura normal no navegador forneceu o catálogo público, exportado por blocos e validado: 3.109.019 bytes, SHA-256 `0d57491936253a8c0546f16c13b1bb0f7ac4c1f90754d06fd4c2f83d5e49f5cc`. Nenhum token foi solicitado, extraído ou enviado a ferramentas de terceiros.
+
+## AppSample: fonte alternativa e importação pessoal (07/11/2026)
+
+O painel permite alternar entre Kongying (seleção por nação) e AppSample (seleção por mapa). A troca invalida o alinhamento, esconde os marcadores anteriores e mantém preferências e IDs separados. Kongying permanece disponível; seus registros não são convertidos por aproximação.
+
+O catálogo pessoal AppSample contém 88.957 pontos e 757 categorias da versão `2026-11-06T16:21:36.582Z`, obtida no endereço público fornecido pelo usuário. IDs são decodificados por soma cumulativa dos deltas e mantidos como `appsample:marker:<id>`. A projeção é WebMercator centrada no zoom 14, conforme o adaptador Leaflet e o esquema de tiles observados no código público. Dados, imagens e referências ficam em userData, fora do Git e do executável; esta preparação pessoal não constitui autorização de redistribuição.
+
+A importação local resolveu exatamente 3.666 das 3.755 marcações fornecidas, incluindo 1.267 baús. Os 89 IDs ausentes permanecem no arquivo original normalizado, sem correspondência inventada. Foram adicionados 3.666 registros, preservando os dois registros preexistentes. Backup anterior à aplicação: `backups/appsample-20261107-060859Z`. Não há sincronização contínua com a conta do site. A importação não inventa horários de coleta nem prazos de reposição e registra um histórico para não reaplicar marcações manualmente desfeitas. Ajustes oferece importação de novos arquivos JSON/TXT, com confirmação dos totais e backup.
+
+Disponível visualmente nesta entrega: Teyvat · Superfície, com referência geral no zoom 12 e referência detalhada de Snezhnaya no zoom 13. Demais mapas e camadas têm dados conservados, mas não são habilitados sem referência correspondente. A cobertura da referência detalhada usa a distribuição dos Cryoculi apenas para definir o recorte da imagem; não atribui nações aos outros pontos. Categorias sem tradução conferida conservam sua identificação de origem e ficam separadas das categorias traduzidas.
+
+Validação: 241 testes passaram, incluindo projeção, IDs entre fontes, hash do catálogo, backup imutável, reimportação, preservação de registros e recorte dos coletados. Widgets reais do painel foram verificados em janela isolada, incluindo alternância da apresentação entre fontes. O executável empacotado confirmou 88.957 pontos, processo auxiliar, referências AppSample e cinco artes pessoais de baús. Capturas antigas do mapa M alinharam com erro p95 de ajuste entre 1,35 e 1,44 px; isso não mede precisão independente dos baús. Capturas antigas de minimapas fora da referência detalhada não foram reconhecidas. A nova fonte ainda não recebeu validação no minimapa de Snezhnaya nem sessão prolongada no jogo; a expansão completa continua pendente.
+
+### Correção do minimapa AppSample em Snezhnaya
+
+A troca de fonte expôs uma lacuna nas referências: o mapa M alinhava, mas a captura real do minimapa não encontrava correspondências suficientes. A referência geral e a detalhada anterior, isoladamente, não eram suficientes. Um raster global de maior resolução também descartava detalhes locais pelo limite de features.
+
+A preparação agora acrescenta blocos sobrepostos do zoom 14, pré-amostrados em 1,25×, com geometria WebMercator preservada. O manifesto identifica esses blocos como `surface: minimap`; o carregador valida seus hashes e os mantém separados da referência do mapa M. O reconhecedor prioriza o último bloco que alinhou, volta a procurar nos demais quando necessário e ignora blocos vazios de borda. As rejeições geométricas e a validade temporal continuam as mesmas; nenhuma posição antiga é congelada para encobrir a falha.
+
+Na mesma captura real de Snezhnaya que falhava antes, três reconhecimentos passaram com confiança 1,0 e erro p95 de ajuste de 0,45 px. Processamento: 59 ms na primeira busca e 27 ms nas seguintes, após aproximadamente 18 segundos de inicialização das referências no processo de diagnóstico. Estes números são de registro de uma captura, não atraso completo do overlay nem medição durante corrida. O relatório local fica em `build/appsample-minimap-fix-proof.json`. Os 241 testes da base passaram, e 29 testes do módulo de overlay passaram após a correção final, incluindo dois novos casos de separação por superfície, projeção e hashes. Progresso, catálogo de itens e IDs não foram alterados por esta correção.
+
+A regressão final passou nos 243 testes. O diagnóstico empacotado carregou as referências corrigidas e os 88.957 itens. Instalação concluída com backup `backups/appsample-minimap-20261107-062302Z`; executável conferido contra dist por SHA-256 e hashes das preferências/progresso preservados. A conferência durante movimento no jogo desta revisão ainda não foi registrada.
+
+### Continuidade do minimapa durante caminhada
+
+Uma gravação local de 450 recortes do canto do minimapa (30,4 segundos de Snezhnaya, incluindo aberturas/fechamentos de M) revelou perdas de confirmação do HUD e de confirmação absoluta. A confirmação do símbolo branco do HUD agora aceita sua silhueta, além da comparação original, para não depender do cenário atrás do botão. Ausência do símbolo não é tratada como partida. A localização continua exigindo geometria válida, e o rastreamento externo continua sendo reiniciado ao perder foco ou mudar de superfície.
+
+A busca absoluta extrai descritores uma vez por máscara, compartilha-os entre blocos e tenta o bloco anterior e os próximos antes dos distantes. Os blocos distantes continuam acessíveis após teletransporte. A confirmação passa a ser solicitada com maior frequência quando a âncora do minimapa se aproxima do vencimento. O prazo máximo da âncora continua em 1,5 segundo.
+
+Uma falha curta de fluxo pode ser recuperada por nova comparação contra a última imagem validada, limitada a 250 ms e sujeita aos mesmos testes de fluxo, distribuição espacial e erro geométrico. A posição antiga não é reapresentada sem registrar a imagem atual. Teletransporte, lacuna maior, menu e âncora vencida continuam ocultando o resultado. O log identifica a última resposta absoluta junto das transições de continuidade.
+
+Na reprodução da gravação, usando o mesmo reconhecedor absoluto otimizado nos dois casos para isolar a mudança do pipeline de movimento, houve 313 quadros classificados como partida: 39 sem alinhamento com o pipeline anterior e 31 com o novo. O restante inclui mapa M e transições; essas telas não entram no denominador. O custo p95 da etapa principal foi 24,57 ms antes e 24,21 ms depois. O resultado não mede FPS nem latência ponta a ponta, e não equivale a sessão prolongada do executável instalado. Relatório pessoal: `build/minimap-continuity-comparison.json`. A revisão passou na regressão de 249 testes e depois nos 14 testes de movimento, incluindo um caso adicional com reconhecimento pendente.
+
+Revisão instalada com backup `backups/minimap-continuity-20261107-063346Z`. O executável passou no diagnóstico isolado, teve o módulo de movimento conferido contra o código final e conservou os hashes das preferências e do progresso. Nenhum item foi importado novamente ou remarcado nesta atualização. O teste durante a sessão do usuário com este executável ainda não foi registrado.
