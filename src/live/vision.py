@@ -163,18 +163,24 @@ class LayerRecognizer:
 Factories release nonselected artwork after indexing. At most three full SIFT
 recognizers are retained, rather than loading every floor into the hot loop.
 """
-    def __init__(self,factories):
+    def __init__(self,factories,cancelled=lambda:False):
         self.factories=[];self.owners=[];self.cache={};self.last=None
         self.sift=cv2.SIFT_create(nfeatures=1800,contrastThreshold=.025)
         self.matcher=cv2.FlannBasedMatcher(dict(algorithm=1,trees=4),dict(checks=64))
         self.surface_index=None
         for factory in factories:
+            if cancelled():
+                from src.live.reference import ReferenceCancelled
+                raise ReferenceCancelled('Seleção substituída')
             try: pack=factory()
             except (ValueError,OSError): continue
             index=len(self.factories);self.factories.append(factory)
             if index==0: self.pack=pack
             if pack.layer_id=='surface': self.surface_index=index
             for terrain in (pack.terrain,*pack.extra_terrain):
+                if cancelled():
+                    from src.live.reference import ReferenceCancelled
+                    raise ReferenceCancelled('Seleção substituída')
                 _,descriptors=self.sift.detectAndCompute(gray(terrain.image),None)
                 if descriptors is not None and len(descriptors)>=20:
                     self.matcher.add([descriptors]);self.owners.append(index)

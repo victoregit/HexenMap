@@ -75,3 +75,4 @@ Desktop.ini
 # Original installation snapshot, including personal progress
 backups/
 *.exe.new
+.test-deps/

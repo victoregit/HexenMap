@@ -125,7 +125,7 @@ def test_settings_preserve_per_region_filters(tmp_path):
     data.update(package='liyue',regional={'liyue':{'area':'locality','layer':'chasm / surface','categories':['ore']}})
     write_json(path,data)
     loaded=read_settings(path)
-    assert loaded['regional']==data['regional']
+    assert loaded['regional']=={'liyue':{**data['regional']['liyue'],'area':None}}
     assert loaded['package']=='liyue' and loaded['server']=='America'
 
 

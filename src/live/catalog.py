@@ -47,7 +47,7 @@ def map_pixel(latitude: float, longitude: float) -> tuple[float, float]:
     return longitude * 128, -latitude * 128
 
 
-def load_catalog(directory: Path) -> list[Item]:
+def load_catalog(directory: Path, *, register: bool = True) -> list[Item]:
     source = json.loads((directory / "SOURCE.json").read_text(encoding="utf-8"))
     region=source.get("region_id",directory.name)
     if not isinstance(region,str) or not re.fullmatch(r"[a-z][a-z0-9_-]*",region):
@@ -94,5 +94,6 @@ def load_catalog(directory: Path) -> list[Item]:
             title = row.get("popupTitle", {})
             name = title.get("pt") or title.get("en") or categories[category][0]
             result.append(Item(identifier, name, category, x, y,region))
-    CATEGORIES.update(categories);CATEGORY_GROUPS.update(groups)
+    if register:
+        CATEGORIES.update(categories);CATEGORY_GROUPS.update(groups)
     return result

@@ -14,6 +14,10 @@ class ReferenceUnavailable(ValueError):
     pass
 
 
+class ReferenceCancelled(RuntimeError):
+    pass
+
+
 @dataclass(frozen=True)
 class Terrain:
     image: np.ndarray
@@ -38,7 +42,7 @@ class ReferencePack:
 
 
 def load_pack(directory: Path, region_id="mondstadt", map_id="teyvat", layer_id=None,
-              coordinate_system="leaflet-simple-z7") -> ReferencePack:
+              coordinate_system="leaflet-simple-z7", cancelled=lambda:False) -> ReferencePack:
     manifest = directory / "manifest.json"
     if not manifest.is_file():
         raise ReferenceUnavailable("Referência visual deste mapa ainda não instalada e validada.")
@@ -54,6 +58,7 @@ def load_pack(directory: Path, region_id="mondstadt", map_id="teyvat", layer_id=
             raise ValueError("Falta a origem e a permissão de uso das referências")
 
         def read_image(entry: dict) -> np.ndarray:
+            if cancelled():raise ReferenceCancelled('Seleção substituída')
             if not isinstance(entry,dict):
                 raise ValueError("Metadados de imagem inválidos")
             path = (directory / entry["file"]).resolve()
@@ -63,6 +68,7 @@ def load_pack(directory: Path, region_id="mondstadt", map_id="teyvat", layer_id=
             if not raw or hashlib.sha256(raw).hexdigest() != entry["sha256"]:
                 raise ValueError(f"Referência alterada: {path.name}")
             image = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)
+            if cancelled():raise ReferenceCancelled('Seleção substituída')
             if image is None or min(image.shape[:2]) < 12:
                 raise ValueError(f"Imagem inválida: {path.name}")
             return image

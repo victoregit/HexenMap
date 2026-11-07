@@ -1,8 +1,19 @@
 """Selected-package loading; coordinate systems are never silently mixed."""
 from pathlib import Path
+from dataclasses import dataclass
+import json
 from src.live.catalog import load_catalog
 from src.live.territory import load_inventory
 from src.live.respawn import load_rules
+
+
+@dataclass(frozen=True)
+class CatalogPackage:
+    id: str
+    items: list
+    region: str
+    coordinate_system: str
+    categories: dict
 
 
 class RegionalCatalog:
@@ -24,3 +35,17 @@ class RegionalCatalog:
         if not path.is_relative_to(self.community.resolve()):
             raise ValueError('Pacote regional fora do catálogo')
         return load_catalog(path),identifier,region['coordinate_system']
+
+    def load_package(self, identifier):
+        """Read/validate off the UI thread without changing global drawing metadata."""
+        if identifier=='legacy-mondstadt':
+            path=self.community/'mondstadt'; region='mondstadt';space='leaflet-simple-z7'
+        else:
+            info=self.regions[identifier]
+            path=(self.community/info['catalog']).resolve()
+            if not path.is_relative_to(self.community.resolve()):
+                raise ValueError('Pacote regional fora do catálogo')
+            region=identifier;space=info['coordinate_system']
+        items=load_catalog(path,register=False)
+        source=json.loads((path/'SOURCE.json').read_text(encoding='utf-8'))
+        return CatalogPackage(identifier,items,region,space,source.get('categories',{}))
