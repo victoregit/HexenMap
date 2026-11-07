@@ -222,9 +222,11 @@ def test_hit_testing_rejects_stale_hidden_and_unselected_markers(session):
 
 
 def test_overlapping_marker_hit_returns_each_id_without_changing_progress(session):
-    session.selected={"anemoculus","common-chest"}
+    # Two overlapping legacy symbols: independent of personal chest artwork.
+    session.items.append(Item('real:overlap','Overlap','anemoculus',110,100))
+    session.selected={"anemoculus"}
     hits=session.hit_test(600,400,112,100,100)
-    assert {i.id for i in hits}=={"real:a","real:b"}
+    assert {i.id for i in hits}=={"real:a","real:overlap"}
     assert session.progress.collected_count==0
 
 
@@ -245,3 +247,60 @@ def test_unmark_failure_restores_exact_record(session,monkeypatch):
     monkeypatch.setattr(session.progress,"save",lambda:(_ for _ in ()).throw(OSError("disk full")))
     with pytest.raises(OSError): session.set_collected("real:a",False)
     assert session.progress.get_collection_record("real:a")==record
+
+
+def test_detailed_minimap_blocks_preserve_world_projection_and_skip_empty_edges(textured_reference,monkeypatch):
+    from src.live.reference import ReferencePack
+    from src.live.vision import ScreenRecognizer
+    import src.live.vision as vision
+    matrix=np.array([[2.,0,-50],[0,2.,-40]])
+    coarse=Terrain(textured_reference,np.array([[1.,0,0],[0,1.,0]]),'coarse')
+    detail=Terrain(textured_reference,matrix,'detail')
+    blank=Terrain(np.zeros((100,100,3),np.uint8),matrix,'empty edge')
+    pack=ReferencePack(coarse,textured_reference,textured_reference,(0,0,1,1),(0,0,1,1),minimap_terrain=(blank,detail))
+    recognizer=ScreenRecognizer(pack)
+    monkeypatch.setattr(vision,'template_visible',lambda frame,template,roi:template is pack.gameplay_ui)
+    # Distinct UI arrays so the map check cannot classify gameplay.
+    object.__setattr__(pack,'map_ui',textured_reference.copy())
+    monkeypatch.setattr(vision,'detect_circle',lambda frame:(350.,350.,280.))
+    result=recognizer.observe(textured_reference,100)
+    assert len(recognizer.minimap_matchers)==1 and result.surface=='minimap'
+    assert result.world_to_screen==pytest.approx(matrix,abs=.1)
+    assert result.player==pytest.approx((200,195),abs=.1)
+    assert recognizer.last_minimap_matcher is recognizer.minimap_matchers[0]
+    monkeypatch.setattr(vision,'template_visible',lambda *args:True)
+    result=recognizer.observe(textured_reference,101)
+    assert result.surface=='map'
+    assert result.world_to_screen==pytest.approx(np.array([[1.,0,0],[0,1.,0]]),abs=.1)
+
+
+def test_manifest_keeps_minimap_rasters_separate_and_checks_their_hash(tmp_path,textured_reference):
+    image=cv2.imencode('.png',textured_reference)[1].tobytes()
+    (tmp_path/'terrain.png').write_bytes(image)
+    entry={'file':'terrain.png','sha256':hashlib.sha256(image).hexdigest()}
+    matrix=[[1,0,0],[0,1,0]]
+    data={'region':'mondstadt','map_id':'teyvat','layer':'surface','coordinate_system':'leaflet-simple-z7',
+          'source':'test','permission':{'usage':'test','evidence':'test'},'world_to_image':matrix,
+          'terrain':entry,'map_ui':{**entry,'roi':[0,0,1,1]},'gameplay_ui':{**entry,'roi':[0,0,1,1]},
+          'extra_terrain':[{**entry,'world_to_image':matrix,'surface':'minimap'}]}
+    manifest=tmp_path/'manifest.json';manifest.write_text(json.dumps(data))
+    pack=load_pack(tmp_path)
+    assert len(pack.minimap_terrain)==1 and pack.extra_terrain==()
+    data['extra_terrain'][0]['sha256']='0'*64;manifest.write_text(json.dumps(data))
+    with pytest.raises(ReferenceUnavailable):load_pack(tmp_path)
+
+
+def test_white_hud_confirmation_rejects_empty_or_unrelated_shapes():
+    from src.live.vision import foreground_ui_visible
+    rng=np.random.default_rng(801)
+    template=np.zeros((40,40,3),np.uint8);template[:]=(70,80,50)
+    for x,y in rng.integers(5,35,(15,2)):cv2.circle(template,(int(x),int(y)),3,(250,250,250),-1)
+    frame=np.zeros((160,200,3),np.uint8);frame[:]=(150,90,20)
+    frame[20:60,20:60]=template
+    # Replace the old scene behind the glyph, preserving its white foreground.
+    patch=frame[20:60,20:60];patch[np.any(patch<205,axis=2)]=(170,30,100)
+    assert foreground_ui_visible(frame,template,(0,0,1,1))
+    assert not foreground_ui_visible(np.zeros_like(frame),template,(0,0,1,1))
+    assert not foreground_ui_visible(np.full_like(frame,250),template,(0,0,1,1))
+    other=np.zeros_like(frame);cv2.rectangle(other,(20,20),(60,60),(250,250,250),-1)
+    assert not foreground_ui_visible(other,template,(0,0,1,1))

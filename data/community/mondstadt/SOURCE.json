@@ -1,5 +1,6 @@
 {
   "project": "Teyvat.moe",
+  "region_id": "mondstadt",
   "repository": "https://github.com/EliteMasterEric/Teyvat.moe",
   "commit": "e4566515800070fbc70ded91829d423a6361518c",
   "license": "GPL-3.0-only",

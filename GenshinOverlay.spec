@@ -4,7 +4,10 @@ from pathlib import Path
 root=Path(SPECPATH)
 a=Analysis(
     [str(root/'src/app.py')],pathex=[str(root)],binaries=[],
-    datas=[(str(root/'data/community/mondstadt'),'data/community/mondstadt')],
+    datas=[(str(root/'data/community/mondstadt'),'data/community/mondstadt'),
+           (str(root/'data/community/kongying'),'data/community/kongying'),
+           (str(root/'data/assets/nations'),'data/assets/nations'),
+           (str(root/'data/assets/chests'),'data/assets/chests')],
     hiddenimports=['PIL._tkinter_finder'],
     excludes=['src.legacy_app'],
     noarchive=False,

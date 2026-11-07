@@ -7,6 +7,8 @@ import logging
 import os
 import shutil
 import tempfile
+import copy
+import hashlib
 from typing import Any, Dict, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
@@ -20,7 +22,7 @@ class ProgressStorageError(Exception):
 class ProgressManager:
     """Manages player marker collection progress with atomic writes, backups, and versioning."""
 
-    STORAGE_VERSION = 1
+    STORAGE_VERSION = 2
 
     def __init__(self, filepath: Optional[str] = None) -> None:
         if filepath is None:
@@ -62,6 +64,20 @@ class ProgressManager:
         """Get collection metadata (timestamp, notes) for a marker."""
         return self._collected_records.get(marker_id)
 
+    def replace_record(self, marker_id: str, record: Optional[Dict[str, Any]]) -> None:
+        """Restore or replace a complete record, including its original deadline."""
+        if record is None:
+            self._collected_records.pop(marker_id,None)
+        else:
+            self._collected_records[marker_id]=dict(record)
+
+    @staticmethod
+    def _clean_record(record: Dict[str, Any]) -> Dict[str, Any]:
+        result={"collected_at":str(record.get("collected_at","")),"notes":str(record.get("notes",""))}
+        for key in ("ready_at","rule_id"):
+            if isinstance(record.get(key),str): result[key]=record[key]
+        return result
+
     def mark_collected(self, marker_id: str, notes: str = "") -> bool:
         """Mark marker as collected.
 
@@ -76,6 +92,40 @@ class ProgressManager:
             "notes": notes,
         }
         return True
+
+    def merge_imported_records(self, records, import_key, source):
+        """Merge one reviewed snapshot once, preserving records and rollback data."""
+        if source!='appsample' or not isinstance(import_key,str) or len(import_key)!=64 or any(c not in '0123456789abcdef' for c in import_key):
+            raise ValueError('Origem ou identificador de importação inválido')
+        if not isinstance(records,dict) or any(not isinstance(k,str) or not k.startswith('appsample:marker:') or not isinstance(v,dict) for k,v in records.items()):
+            raise ValueError('IDs fora do namespace AppSample')
+        cleaned={identifier:self._clean_record(record) for identifier,record in records.items()}
+        if not isinstance(self._metadata,dict) or not isinstance(self._metadata.get('imports',{}),dict):
+            raise ValueError('Metadados de importação incompatíveis')
+        ledger=self._metadata.get('imports',{})
+        if import_key in ledger:return {'added':0,'repeated':True,'backup':ledger[import_key].get('backup')}
+        historical={identifier for entry in ledger.values() if isinstance(entry,dict) for identifier in entry.get('imported_ids',[])}
+        before=copy.deepcopy(self._collected_records);metadata=copy.deepcopy(self._metadata)
+        backup=None
+        if os.path.exists(self._filepath):
+            with open(self._filepath,'rb') as existing:raw=existing.read()
+            backup=self._filepath+'.pre-appsample-'+hashlib.sha256(raw).hexdigest()[:20]+'.bak'
+            if not os.path.exists(backup):
+                shutil.copy2(self._filepath,backup)
+            else:
+                with open(backup,'rb') as existing:saved=existing.read()
+                if saved!=raw:raise ProgressStorageError('Backup de importação divergente')
+        added=0
+        for identifier,record in cleaned.items():
+            if identifier not in self._collected_records and identifier not in historical:
+                self._collected_records[identifier]=record;added+=1
+        self._metadata.setdefault('imports',{})[import_key]={'source':source,'added':added,'backup':backup,
+            'imported_ids':sorted(set(cleaned)-historical),
+            'imported_at':datetime.now(timezone.utc).isoformat()}
+        try:self.save()
+        except Exception:
+            self._collected_records=before;self._metadata=metadata;raise
+        return {'added':added,'repeated':False,'backup':backup}
 
     def mark_uncollected(self, marker_id: str) -> bool:
         """Unmark marker as collected.
@@ -116,6 +166,18 @@ class ProgressManager:
 
         # 1. Create backup if current file exists
         if os.path.exists(self._filepath):
+            # Keep the original pre-migration file forever, independently of .bak.
+            try:
+                try:
+                    with open(self._filepath,encoding="utf-8") as current:
+                        previous_version=json.load(current).get("version",1)
+                except (ValueError,AttributeError):
+                    previous_version=1
+                migration=f"{self._filepath}.pre-v{self.STORAGE_VERSION}.bak"
+                if previous_version<self.STORAGE_VERSION and not os.path.exists(migration):
+                    shutil.copy2(self._filepath,migration)
+            except (OSError,ValueError,TypeError) as exc:
+                raise ProgressStorageError(f"Cannot back up progress before migration: {exc}") from exc
             try:
                 shutil.copy2(self._filepath, self._backup_filepath)
             except Exception as e:
@@ -187,10 +249,7 @@ class ProgressManager:
             if isinstance(records, dict):
                 # Clean and validate records
                 self._collected_records = {
-                    str(k): {
-                        "collected_at": str(v.get("collected_at", "")),
-                        "notes": str(v.get("notes", "")),
-                    }
+                    str(k): self._clean_record(v)
                     if isinstance(v, dict)
                     else {"collected_at": "", "notes": ""}
                     for k, v in records.items()
@@ -247,10 +306,7 @@ class ProgressManager:
         count = 0
         for marker_id, info in records.items():
             if isinstance(info, dict):
-                self._collected_records[str(marker_id)] = {
-                    "collected_at": str(info.get("collected_at", "")),
-                    "notes": str(info.get("notes", "")),
-                }
+                self._collected_records[str(marker_id)] = self._clean_record(info)
             else:
                 self._collected_records[str(marker_id)] = {
                     "collected_at": datetime.now(timezone.utc).isoformat(),

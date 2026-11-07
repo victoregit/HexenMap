@@ -1,0 +1,53 @@
+{
+  "snezhnaya": {
+    "file": "snezhnaya.png",
+    "url": "https://oss.yuanshen.site/kyjg/2026-07-03/b64b22929f684a6c87f89c1de37ef670bf859e7375496289d454ef6ae284f03a.png",
+    "sha256": "b64b22929f684a6c87f89c1de37ef670bf859e7375496289d454ef6ae284f03a",
+    "icon_id": 154,
+    "source": "Kongying Tavern public icon/get/list"
+  },
+  "nod_krai": {
+    "file": "nod_krai.png",
+    "url": "https://oss.yuanshen.site/kyjg/2025-08-25/17f4c82588fe152aba22425a7138c7ac56c756f0d54409ddb14e90639fb72d72.png",
+    "sha256": "17f4c82588fe152aba22425a7138c7ac56c756f0d54409ddb14e90639fb72d72",
+    "icon_id": 1253,
+    "source": "Kongying Tavern public icon/get/list"
+  },
+  "natlan": {
+    "file": "natlan.png",
+    "url": "https://oss.yuanshen.site/kyjg/2024-09-03/157b2b7e8a64bbda74f1358fd64e20dcab378430ec815b531b4f3780e86d5e61.png",
+    "sha256": "157b2b7e8a64bbda74f1358fd64e20dcab378430ec815b531b4f3780e86d5e61",
+    "icon_id": 958,
+    "source": "Kongying Tavern public icon/get/list"
+  },
+  "mondstadt": {
+    "file": "mondstadt.png",
+    "url": "https://raw.githubusercontent.com/genshindev/api/mistress/assets/images/nations/mondstadt/icon",
+    "sha256": "07949bf87c6c239713495b74e1c18771243ddc7fdd41c68141af84616b68f681",
+    "source": "genshindev/api nation image collection"
+  },
+  "liyue": {
+    "file": "liyue.png",
+    "url": "https://raw.githubusercontent.com/genshindev/api/mistress/assets/images/nations/liyue/icon",
+    "sha256": "f16690c80c49da7935ce489069ab87d2d1747684eccdfab501d46aa37eb56ccb",
+    "source": "genshindev/api nation image collection"
+  },
+  "inazuma": {
+    "file": "inazuma.webp",
+    "url": "https://raw.githubusercontent.com/genshindev/api/mistress/assets/images/nations/inazuma/icon",
+    "sha256": "d84448f2fbd1ea8ab263d79c03b38d7a9f49d80f7c7697bd2986f4bdf7a1cb66",
+    "source": "genshindev/api nation image collection"
+  },
+  "sumeru": {
+    "file": "sumeru.webp",
+    "url": "https://raw.githubusercontent.com/genshindev/api/mistress/assets/images/nations/sumeru/icon",
+    "sha256": "ae5c3d29c695009af26b2675186068c7d3c0b7f63454f3e236efcd32933b58f7",
+    "source": "genshindev/api nation image collection"
+  },
+  "fontaine": {
+    "file": "fontaine.webp",
+    "url": "https://raw.githubusercontent.com/genshindev/api/mistress/assets/images/nations/fontaine/icon",
+    "sha256": "b067098b985b4f65c46caed8a08fd12b77a397163c48f273d37a0858c2a2b920",
+    "source": "genshindev/api nation image collection"
+  }
+}

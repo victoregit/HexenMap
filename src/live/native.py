@@ -5,10 +5,15 @@ import ctypes as ct
 from ctypes import wintypes as wt
 import sys
 import os
+import struct
 
 import numpy as np
 
 from src.overlay.window_tracker import GameWindowRect
+
+
+class OverlayAlreadyRunning(RuntimeError):
+    pass
 
 
 class Windows:
@@ -17,14 +22,25 @@ class Windows:
             raise OSError("O overlay ao vivo requer Windows 10/11")
         self.u = ct.WinDLL("user32", use_last_error=True)
         self.g = ct.WinDLL("gdi32", use_last_error=True)
+        self.k=ct.WinDLL('kernel32',use_last_error=True)
+        self.k.CreateMutexW.argtypes=[ct.c_void_p,wt.BOOL,wt.LPCWSTR]
+        self.k.CreateMutexW.restype=wt.HANDLE
+        self.k.CloseHandle.argtypes=[wt.HANDLE];self.k.CloseHandle.restype=wt.BOOL
+        self.instance_handle=None
         signatures = {
             "FindWindowW": ([wt.LPCWSTR,wt.LPCWSTR],wt.HWND),
             "IsWindow": ([wt.HWND],wt.BOOL), "IsIconic": ([wt.HWND],wt.BOOL),
             "GetForegroundWindow": ([],wt.HWND),
+            "SetForegroundWindow": ([wt.HWND],wt.BOOL),
             "GetWindowThreadProcessId": ([wt.HWND,ct.POINTER(wt.DWORD)],wt.DWORD),
             "GetAsyncKeyState": ([ct.c_int],ct.c_short),
             "GetCursorPos": ([ct.POINTER(wt.POINT)],wt.BOOL),
             "GetClientRect": ([wt.HWND,ct.POINTER(wt.RECT)],wt.BOOL),
+            "GetWindowRect": ([wt.HWND,ct.POINTER(wt.RECT)],wt.BOOL),
+            "IsWindowVisible": ([wt.HWND],wt.BOOL),
+            "GetWindow": ([wt.HWND,wt.UINT],wt.HWND),
+            "GetWindowTextW": ([wt.HWND,wt.LPWSTR,ct.c_int],ct.c_int),
+            "GetSystemMetrics": ([ct.c_int],ct.c_int),
             "ClientToScreen": ([wt.HWND,ct.POINTER(wt.POINT)],wt.BOOL),
             "GetDC": ([wt.HWND],wt.HDC), "ReleaseDC": ([wt.HWND,wt.HDC],ct.c_int),
             "GetAncestor": ([wt.HWND,wt.UINT],wt.HWND),
@@ -53,6 +69,38 @@ class Windows:
             f=getattr(self.g,name); f.argtypes=args; f.restype=result
         self.u.SetWindowRgn.argtypes=[wt.HWND,wt.HANDLE,wt.BOOL]
         self.u.SetWindowRgn.restype=ct.c_int
+
+    def existing_panel(self):
+        found=[]
+        callback_type=ct.WINFUNCTYPE(wt.BOOL,wt.HWND,wt.LPARAM)
+        def visit(hwnd,param):
+            text=ct.create_unicode_buffer(256);self.u.GetWindowTextW(hwnd,text,256)
+            if text.value!='Genshin Gem Wish · Exploração':return True
+            pid=wt.DWORD();self.u.GetWindowThreadProcessId(hwnd,ct.byref(pid))
+            if pid.value==os.getpid():return True
+            if self.get_style(hwnd,-20)&(0x80000|0x8000000):return True
+            if self.u.GetWindow(hwnd,4):return True
+            found.append(hwnd);return False
+        enum=self.u.EnumWindows;enum.argtypes=[callback_type,wt.LPARAM];enum.restype=wt.BOOL
+        enum(callback_type(visit),0)
+        return found[0] if found else None
+
+    def acquire_instance(self):
+        handle=self.k.CreateMutexW(None,False,'Local\\GenshinGemWish.LiveOverlay')
+        if not handle:raise ct.WinError(ct.get_last_error())
+        already=ct.get_last_error()==183
+        panel=self.existing_panel()
+        if already or panel:
+            self.k.CloseHandle(handle)
+            if panel:
+                self.u.ShowWindow(panel,9);self.u.SetForegroundWindow(panel)
+            return False
+        self.instance_handle=handle
+        return True
+
+    def release_instance(self):
+        if self.instance_handle:
+            self.k.CloseHandle(self.instance_handle);self.instance_handle=None
 
     def enable_dpi(self):
         try:
@@ -85,8 +133,87 @@ class Windows:
         self.u.GetWindowThreadProcessId(hwnd,ct.byref(pid))
         return pid.value==os.getpid()
 
+    def restore_game_focus(self, rect: GameWindowRect) -> bool:
+        # Only return from our UI; never pull focus back from another application.
+        if not rect.hwnd or rect.is_minimized or not self.u.IsWindow(rect.hwnd):
+            return False
+        if not self.menu_foreground(rect):
+            return False
+        return bool(self.u.SetForegroundWindow(rect.hwnd))
+
+    def key_down(self, key: int) -> bool:
+        return bool(self.u.GetAsyncKeyState(key)&0x8000)
+
+    def panel(self, child_hwnd: int) -> None:
+        """Interactive controls must also stay out of recognition captures."""
+        hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
+        if not self.u.SetWindowDisplayAffinity(hwnd,0x11):
+            raise OSError("Não foi possível excluir o painel da captura")
+
+    def desktop_bounds(self):
+        x,y=self.u.GetSystemMetrics(76),self.u.GetSystemMetrics(77)
+        return x,y,x+self.u.GetSystemMetrics(78),y+self.u.GetSystemMetrics(79)
+
+    def move_panel(self, child_hwnd, x, y):
+        hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
+        self.u.SetWindowPos(hwnd,None,x,y,0,0,0x01|0x04|0x10)
+
+    def control_bounds(self, child_hwnd, occluder=None):
+        hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
+        if not self.u.IsWindowVisible(hwnd) or self.u.IsIconic(hwnd):return None
+        # A normal detached window behind the game must not cut a hole in its map.
+        if occluder:
+            previous=self.u.GetWindow(hwnd,3)
+            seen=set()
+            while previous and previous not in seen:
+                if previous==occluder:return None
+                seen.add(previous);previous=self.u.GetWindow(previous,3)
+        rect=wt.RECT()
+        if not self.u.GetWindowRect(hwnd,ct.byref(rect)):return None
+        return rect.left,rect.top,rect.right,rect.bottom
+
+    def above_icons(self, child_hwnd):
+        hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
+        if self.u.IsWindowVisible(hwnd) and not self.u.IsIconic(hwnd):
+            # Reorder only. Never activate, move, resize or unminimize the panel.
+            self.u.SetWindowPos(hwnd,ct.c_void_p(-1),0,0,0,0,0x01|0x02|0x10)
+
+    def exclude_controls(self, hwnd, width, height, rectangles):
+        """OS-level clipping supplements symbol filtering; coordinates are physical pixels."""
+        region=self.g.CreateRectRgn(0,0,width,height)
+        if not region:raise ct.WinError(ct.get_last_error())
+        try:
+            for left,top,right,bottom in rectangles:
+                cut=self.g.CreateRectRgn(round(left),round(top),round(right),round(bottom))
+                if not cut:raise ct.WinError(ct.get_last_error())
+                try:
+                    if not self.g.CombineRgn(region,region,cut,4):raise ct.WinError(ct.get_last_error())
+                finally:self.g.DeleteObject(cut)
+            if not self.u.SetWindowRgn(hwnd,region,True):raise ct.WinError(ct.get_last_error())
+            region=None
+        finally:
+            if region:self.g.DeleteObject(region)
+
+    def show_panel(self, child_hwnd: int) -> None:
+        hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
+        self.u.ShowWindow(hwnd,4)  # SW_SHOWNOACTIVATE: returning to the game must not focus us.
+
+    def popup(self, child_hwnd: int, game: GameWindowRect) -> int:
+        hwnd=self.overlay(child_hwnd)
+        # The popup belongs to the game window, not the configuration panel.
+        ct.set_last_error(0)
+        self.set_style(hwnd,-8,game.hwnd)
+        if ct.get_last_error():
+            raise ct.WinError(ct.get_last_error())
+        if not self.u.SetLayeredWindowAttributes(hwnd,0,255,2):
+            raise ct.WinError(ct.get_last_error())
+        self.interactive(hwnd,True)
+        return hwnd
+
     def overlay(self, child_hwnd: int) -> int:
         hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
+        # Minimize the independent panel without minimizing its marker surfaces.
+        self.set_style(hwnd,-8,0)
         style=self.get_style(hwnd,-20)
         # Layered, transparent to input, tool window, never activates.
         ct.set_last_error(0)
@@ -112,20 +239,40 @@ class Windows:
             raise ct.WinError(ct.get_last_error())
         return hwnd
 
+    def dpi_scale(self, hwnd: int) -> float:
+        try:
+            get=self.u.GetDpiForWindow
+            get.argtypes=[wt.HWND];get.restype=wt.UINT
+            return (get(hwnd) or 96)/96
+        except AttributeError:return 1.
+
     def input_region(self, hwnd: int, boxes: list[tuple[int,int,int,int]]) -> None:
-        region=self.g.CreateRectRgn(0,0,0,0)
+        # RGNDATA accepts a sorted, non-overlapping set of rectangles. Merge
+        # scanline spans in Python and transfer the entire mask in one GDI call.
+        rows={}
+        for left,top,right,bottom in boxes:
+            if right<=left:continue
+            for y in range(top,bottom):rows.setdefault(y,[]).append((left,right))
+        rectangles=[]
+        for y,spans in sorted(rows.items()):
+            end=None
+            for left,right in sorted(spans):
+                if end is None:start,end=left,right
+                elif left<=end:end=max(end,right)
+                else:rectangles.append((start,y,end,y+1));start,end=left,right
+            if end is not None:rectangles.append((start,y,end,y+1))
+        if rectangles:
+            data=np.asarray(rectangles,dtype=np.int32)
+            bounds=(int(data[:,0].min()),int(data[:,1].min()),int(data[:,2].max()),int(data[:,3].max()))
+            raw=struct.pack('<IIIIiiii',32,1,len(rectangles),data.nbytes,*bounds)+data.tobytes()
+            buffer=ct.create_string_buffer(raw)
+            create=self.g.ExtCreateRegion
+            create.argtypes=[ct.c_void_p,wt.DWORD,ct.c_void_p];create.restype=wt.HANDLE
+            region=create(None,len(raw),buffer)
+        else:region=self.g.CreateRectRgn(0,0,0,0)
         if not region:
             raise ct.WinError(ct.get_last_error())
         try:
-            for box in boxes:
-                part=self.g.CreateRectRgn(*box)
-                if not part:
-                    raise ct.WinError(ct.get_last_error())
-                try:
-                    if not self.g.CombineRgn(region,region,part,2):
-                        raise ct.WinError(ct.get_last_error())
-                finally:
-                    self.g.DeleteObject(part)
             if not self.u.SetWindowRgn(hwnd,region,True):
                 raise ct.WinError(ct.get_last_error())
             region=None  # Windows owns the region after a successful assignment.

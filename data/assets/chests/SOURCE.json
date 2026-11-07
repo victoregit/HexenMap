@@ -1,0 +1,38 @@
+{
+  "source": "HoYoLAB Teyvat Interactive Map public label tree",
+  "catalog_url": "https://sg-public-api.hoyolab.com/common/map_user/ys_obc/v1/map/label/tree?map_id=2&app_sn=ys_obc&lang=en-us",
+  "checked_at": "2026-11-06",
+  "usage": "Personal local installation only; original HoYoverse artwork; redistribution permission not established",
+  "icons": {
+    "common-chest": {
+      "file": "common-chest.png",
+      "url": "https://act-webstatic.hoyoverse.com/map_manage/20240726/35cf41aad7620ce6d5dc516defb967f7_7806440070871726330.png",
+      "label_id": 17,
+      "sha256": "405ecac8090d3b9e4238be262bdd01b0aac6a6767c2eaddc29995ffdb77808c8"
+    },
+    "exquisite-chest": {
+      "file": "exquisite-chest.png",
+      "url": "https://act-webstatic.hoyoverse.com/map_manage/20240726/8cd1c9d66f0adf4b34a7dfcf7715c99f_1064467135939485371.png",
+      "label_id": 44,
+      "sha256": "28c50def49b695f1e3d5aab391ec482ed130563cfe300c39b506430adcf33405"
+    },
+    "precious-chest": {
+      "file": "precious-chest.png",
+      "url": "https://act-webstatic.hoyoverse.com/map_manage/20240726/1556afa613e0cb0e8c8f93222ad504da_4646723101390558864.png",
+      "label_id": 45,
+      "sha256": "45bff0447b09aca592907f2326c48000c24a4af3df275f1e96a66a8b63824d1b"
+    },
+    "luxurious-chest": {
+      "file": "luxurious-chest.png",
+      "url": "https://act-webstatic.hoyoverse.com/map_manage/20240726/3c110f9d0de63330f592ba922952d776_784803524970068534.png",
+      "label_id": 46,
+      "sha256": "298a4c11ffce72b7821695d38303beffb96fc0ad4ad1304d65428ad9a815e476"
+    },
+    "remarkable-chest": {
+      "file": "remarkable-chest.png",
+      "url": "https://act-webstatic.hoyoverse.com/map_manage/20240726/a883a243fe84f9f7be605b713ece1273_7582172183824672745.png",
+      "label_id": 269,
+      "sha256": "e52dd31449fca4f40ae6d1af98e0673751e9334057590cdd53029a163a5c64f3"
+    }
+  }
+}
