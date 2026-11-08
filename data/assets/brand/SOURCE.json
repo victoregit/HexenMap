@@ -1,0 +1,18 @@
+{
+  "origin": "Arquivos fornecidos pelo usuário no chat para a identidade visual do Hexen Map.",
+  "license": "Não foi fornecida licença de redistribuição; não presumir autorização para distribuição pública.",
+  "files": {
+    "app-original.png": {
+      "sha256": "2bb72569d832a60bc15ac65da89fe8f0dd7d653b6a73bf21c22d91ddee38b30a"
+    },
+    "app.ico": {
+      "sha256": "5cbb4dba6d2d62f120d9d563edc861a44dda2f9c0ce2132b611cb24ca0c8f96e"
+    },
+    "app.png": {
+      "sha256": "100272afbd2290cc92f64ef1d93540d4d6285b8877c4ea5871f614dd63c00f29"
+    },
+    "minimized.gif": {
+      "sha256": "57b2356bc5e83fe1ac52d3c3cf66d073dbf947d16b368c96f45760a4722cf659"
+    }
+  }
+}
