@@ -1,4 +1,4 @@
-"""Reproducible performance benchmark suite for Genshin Gem Wish subsystems."""
+"""Reproducible performance benchmark suite for Hexen Map subsystems."""
 
 from __future__ import annotations
 import gc
@@ -39,7 +39,7 @@ def run_all_benchmarks(
     cv_iterations: int = 250,
 ) -> Dict[str, Any]:
     """Execute rigorous benchmark suite and collect timing percentiles."""
-    print(f"[*] Starting Genshin Gem Wish Benchmark Suite...")
+    print(f"[*] Starting Hexen Map Benchmark Suite...")
     perf = PerformanceMonitor()
     data_path = os.path.join(PROJECT_ROOT, "data", "demo_markers.json")
 

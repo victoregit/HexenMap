@@ -12,6 +12,7 @@ if __package__ in (None, ""):
 from src.live.regions import RegionalCatalog
 from src.live.reference import load_pack, ReferenceUnavailable
 from src.live.storage import bundle_dir, install_dir, read_settings
+from src.live.identity import DISPLAY_NAME
 
 
 def main() -> int:
@@ -81,7 +82,7 @@ def main() -> int:
         import tkinter as tk
         from tkinter import messagebox
         root = tk.Tk(); root.withdraw()
-        messagebox.showerror("Genshin Gem Wish", f"Não foi possível iniciar: {exc}", parent=root)
+        messagebox.showerror(DISPLAY_NAME, f"Não foi possível iniciar: {exc}", parent=root)
         root.destroy()
         return 1
 

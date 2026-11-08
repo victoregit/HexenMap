@@ -7,6 +7,7 @@ from src.live.icons import draw_marker
 from src.live.storage import HOTKEY_OPTIONS
 from src.live.category_browser import CategoryBrowser, CategoryModel
 from src.live.nation_selector import NationSelector
+from src.live.identity import DISPLAY_NAME
 
 BG = '#111923'
 ROW = '#1b2734'
@@ -52,7 +53,7 @@ class CompactPanel:
         style.layout('Compact.TNotebook',[('Notebook.client',{'sticky':'nswe'})])
         self.shell=tk.Frame(self.root,bg=BG);self.shell.pack(fill='both',expand=True)
         header=tk.Frame(self.shell,bg=BG);header.pack(fill='x',padx=16,pady=(10,6))
-        title=tk.Label(header,text='Explorar',bg=BG,fg=TEXT,font=('Segoe UI',15,'bold'));title.pack(side='left')
+        title=tk.Label(header,text=DISPLAY_NAME,bg=BG,fg=TEXT,font=('Segoe UI',15,'bold'));title.pack(side='left')
         for widget in (header,title):
             widget.bind('<Button-1>',self.start_panel_drag)
             widget.bind('<B1-Motion>',self.drag_panel)

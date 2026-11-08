@@ -15,7 +15,7 @@ from src.markers.models import Marker, MarkerCoordinate
 from src.tracking.base import PositionEstimate
 from src.tracking.reference_tile_manager import ReferenceTile, ReferenceTileManager
 from src.tracking.smooth_tracker import ConfidenceGatedTracker, SmoothedPositionTracker
-from src.legacy_app import GenshinOverlayApp
+from src.legacy_app import HexenMapApp
 
 
 class TestDatasetImporters:
@@ -52,7 +52,7 @@ class TestDatasetImporters:
             "provenance": {
                 "name": "Dragonspine Georeferenced Chests",
                 "license": "CC-BY-4.0",
-                "attribution": "Genshin Gem Wish Community",
+                "attribution": "Hexen Map Community",
                 "version": "2.1.0",
             },
             "features": [
@@ -320,7 +320,7 @@ class TestAppDatasetIntegration:
         }
         geojson_file.write_text(json.dumps(data))
 
-        app = GenshinOverlayApp(
+        app = HexenMapApp(
             progress_path=str(tmp_path / "progress.json"),
             headless=True,
         )

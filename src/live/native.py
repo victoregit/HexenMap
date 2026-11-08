@@ -10,6 +10,7 @@ import struct
 import numpy as np
 
 from src.overlay.window_tracker import GameWindowRect
+from src.live.identity import WINDOW_TITLE,INSTANCE_MUTEX,LEGACY_INSTANCE_MUTEX,LEGACY_WINDOW_TITLES
 
 
 class OverlayAlreadyRunning(RuntimeError):
@@ -75,7 +76,7 @@ class Windows:
         callback_type=ct.WINFUNCTYPE(wt.BOOL,wt.HWND,wt.LPARAM)
         def visit(hwnd,param):
             text=ct.create_unicode_buffer(256);self.u.GetWindowTextW(hwnd,text,256)
-            if text.value!='Genshin Gem Wish · Exploração':return True
+            if text.value not in (WINDOW_TITLE,*LEGACY_WINDOW_TITLES):return True
             pid=wt.DWORD();self.u.GetWindowThreadProcessId(hwnd,ct.byref(pid))
             if pid.value==os.getpid():return True
             if self.get_style(hwnd,-20)&(0x80000|0x8000000):return True
@@ -86,21 +87,28 @@ class Windows:
         return found[0] if found else None
 
     def acquire_instance(self):
-        handle=self.k.CreateMutexW(None,False,'Local\\GenshinGemWish.LiveOverlay')
-        if not handle:raise ct.WinError(ct.get_last_error())
-        already=ct.get_last_error()==183
+        handles=[];already=False
+        for name in (INSTANCE_MUTEX,LEGACY_INSTANCE_MUTEX):
+            handle=self.k.CreateMutexW(None,False,name)
+            if not handle:
+                error=ct.get_last_error()
+                for owned in handles:self.k.CloseHandle(owned)
+                raise ct.WinError(error)
+            already=already or ct.get_last_error()==183
+            handles.append(handle)
         panel=self.existing_panel()
         if already or panel:
-            self.k.CloseHandle(handle)
+            for handle in handles:self.k.CloseHandle(handle)
             if panel:
                 self.u.ShowWindow(panel,9);self.u.SetForegroundWindow(panel)
             return False
-        self.instance_handle=handle
+        self.instance_handles=handles;self.instance_handle=handles[0]
         return True
 
     def release_instance(self):
         if self.instance_handle:
-            self.k.CloseHandle(self.instance_handle);self.instance_handle=None
+            for handle in getattr(self,'instance_handles',[self.instance_handle]):self.k.CloseHandle(handle)
+            self.instance_handles=[];self.instance_handle=None
 
     def enable_dpi(self):
         try:

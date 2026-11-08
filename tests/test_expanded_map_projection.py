@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from src.legacy_app import GenshinOverlayApp
+from src.legacy_app import HexenMapApp
 from src.map.expanded_projector import ExpandedMapProjector
 from src.map.registration import MapRegistration
 from src.markers.models import Marker, MarkerCoordinate
@@ -14,7 +14,7 @@ class TestExpandedMapProjection:
 
     def test_zero_selected_categories_returns_zero_markers(self, tmp_path):
         """Regression test: verify that zero selected categories returns 0 markers, NEVER all."""
-        app = GenshinOverlayApp(
+        app = HexenMapApp(
             progress_path=str(tmp_path / "progress.json"),
             headless=True,
         )

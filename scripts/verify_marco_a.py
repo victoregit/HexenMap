@@ -131,7 +131,7 @@ def extract_chests_from_interactive_reference(
 def verify_marco_a() -> int:
     """Run Marco A registration, projection, error calculation, and image output."""
     print("=" * 70)
-    print("GENSHIN GEM WISH - MARCO A: GEOREFERENCED EXPANDED MAP VERIFICATION")
+    print("HEXEN MAP - MARCO A: GEOREFERENCED EXPANDED MAP VERIFICATION")
     print("=" * 70)
 
     ref_dir = os.path.join(PROJECT_ROOT, "data", "reference")
@@ -243,7 +243,7 @@ def verify_marco_a() -> int:
     # Title text
     cv2.putText(
         comparison,
-        "GENSHIN GEM WISH - MARCO A PROOF OF CONCEPT: GEOREFERENCED EXPANDED MAP (M-KEY)",
+        "HEXEN MAP - MARCO A PROOF OF CONCEPT: GEOREFERENCED EXPANDED MAP (M-KEY)",
         (24, 30),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.75,

@@ -28,6 +28,7 @@ from src.live.session import Session, CollectionCount
 from src.live.storage import bundle_dir, install_dir, read_settings, write_json, HOTKEY_OPTIONS, parse_hotkey, PreferenceWriter
 from src.live.vision import Observation, ScreenRecognizer, LayerRecognizer
 from src.live.chest_farm import CompassCanvas, TargetHighlight
+from src.live.identity import WINDOW_TITLE
 from src.overlay.global_hotkeys import GlobalHotkeyListener, MOD_NOREPEAT
 from src.overlay.control_key import ControlKeyListener
 from src.progress.progress_manager import ProgressManager
@@ -98,7 +99,7 @@ class DesktopApp(CompactPanel):
         self.menu_geometry=None
         self.menu_mouse_down=False
         self.root=tk.Tk()
-        self.root.title("Genshin Gem Wish · Exploração")
+        self.root.title(WINDOW_TITLE)
         self.root.geometry("470x710")
         self.root.minsize(440,690)
         self.root.protocol("WM_DELETE_WINDOW",self.close)

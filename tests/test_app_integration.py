@@ -1,8 +1,8 @@
-"""Integration tests for GenshinOverlayApp end-to-end execution."""
+"""Integration tests for HexenMapApp end-to-end execution."""
 
 import os
 import pytest
-from src.legacy_app import GenshinOverlayApp
+from src.legacy_app import HexenMapApp
 from src.overlay.overlay_manager import OverlayMode
 
 
@@ -10,7 +10,7 @@ class TestAppIntegration:
     @pytest.fixture
     def app_instance(self, tmp_path):
         progress_file = str(tmp_path / "app_progress.json")
-        app = GenshinOverlayApp(
+        app = HexenMapApp(
             data_path=None,  # Defaults to data/demo_markers.json
             progress_path=progress_file,
             initial_mode=OverlayMode.EXPANDED,
@@ -84,7 +84,7 @@ class TestAppIntegration:
 
         # Fresh app
         new_progress = str(tmp_path / "fresh_app_progress.json")
-        fresh_app = GenshinOverlayApp(
+        fresh_app = HexenMapApp(
             progress_path=new_progress,
             headless=True,
         )
