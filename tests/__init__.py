@@ -1,1 +1,1 @@
-"""Test suite for Genshin Gem Wish."""
+"""Test suite for Hexen Map."""

@@ -27,6 +27,8 @@ from src.live.reference import load_pack, ReferenceUnavailable, ReferenceCancell
 from src.live.session import Session, CollectionCount
 from src.live.storage import bundle_dir, install_dir, read_settings, write_json, HOTKEY_OPTIONS, parse_hotkey, PreferenceWriter
 from src.live.vision import Observation, ScreenRecognizer, LayerRecognizer
+from src.live.chest_farm import CompassCanvas, TargetHighlight
+from src.live.identity import WINDOW_TITLE
 from src.overlay.global_hotkeys import GlobalHotkeyListener, MOD_NOREPEAT
 from src.overlay.control_key import ControlKeyListener
 from src.progress.progress_manager import ProgressManager
@@ -43,6 +45,7 @@ class DesktopApp(CompactPanel):
         self.user_dir.mkdir(exist_ok=True)
         self.settings_path=self.user_dir/"settings.json"
         self.settings=read_settings(self.settings_path)
+        self.native.set_capture_visible(self.settings.get('capture_visible',False))
         self.preference_writer=PreferenceWriter(self.settings_path)
         self.catalogs=RegionalCatalog(bundle_dir()/"data/community",self.user_dir/'catalogs')
         self.package_id=self.settings.get("package",self.catalogs.default_package(self.user_dir/'references'))
@@ -96,7 +99,7 @@ class DesktopApp(CompactPanel):
         self.menu_geometry=None
         self.menu_mouse_down=False
         self.root=tk.Tk()
-        self.root.title("Genshin Gem Wish · Exploração")
+        self.root.title(WINDOW_TITLE)
         self.root.geometry("470x710")
         self.root.minsize(440,690)
         self.root.protocol("WM_DELETE_WINDOW",self.close)
@@ -122,6 +125,8 @@ class DesktopApp(CompactPanel):
         try: self.input_hwnd=self.native.input_overlay(self.input_surface.winfo_id())
         except OSError as exc: self.overlay_error=f"Interação indisponível: {exc}"
         self.renderer=MarkerCanvas(self.canvas,draw_pin)
+        self.compass=CompassCanvas(self.canvas)
+        self.target_highlight=TargetHighlight(self.canvas)
         self.display_motion=DisplayMotion()
         self.displayed_at=0.0
         self.displayed_observation=None
@@ -232,6 +237,7 @@ class DesktopApp(CompactPanel):
         except OSError as exc:
             self.session.notice=f"Falha ao salvar preferências: {exc}";return
         self.close_layers();self.close_marker_menu(restore_focus=False)
+        self.session.farm.stop()
         self.requested_package=identifier
         self.region_loading=True
         self.session.invalidate("Trocando nação…")
@@ -577,7 +583,7 @@ class DesktopApp(CompactPanel):
                         if motion: motion.close()
                         motion=MotionRecognizer(recognizer) if recognizer else None
                         active_recognizer=recognizer
-                    key=self.rect_key(rect)
+                    key=(self.rect_key(rect),getattr(self.native,'capture_visible',False))
                     if key!=previous_key:
                         if motion: motion.reset()
                         previous_key=key
@@ -648,6 +654,8 @@ class DesktopApp(CompactPanel):
                 elif action=="visibility": self.toggle_visibility()
                 elif action=="collect" and foreground and not self.region_loading: self.session.collect()
                 elif action=="undo" and foreground and not self.region_loading: self.session.undo()
+                elif action=="farm" and foreground and not self.region_loading:self.toggle_farm()
+                elif action=="farm_next" and foreground and not self.region_loading:self.next_farm_target()
                 elif isinstance(action,tuple): self.session.notice=action[1]
             now=time.monotonic()
             display=self.display_motion.present(self.session.observation,now)
@@ -655,6 +663,7 @@ class DesktopApp(CompactPanel):
             pins=self.session.pins(rect.width,rect.height,now,include_collected=self.control_down,
                                    observation=display) if foreground and not self.overlay_error and not self.region_loading else []
             controls=self.control_rectangles(rect)
+            guidance=self.session.farm.update(self.session,display,now) if foreground and not self.overlay_error and not self.region_loading else None
             pins=outside_controls(pins,controls)
             exclusion_key=(rect.width,rect.height,tuple(controls))
             if self.overlay_hwnd and rect.width>0 and rect.height>0 and exclusion_key!=self.overlay_exclusions:
@@ -663,10 +672,12 @@ class DesktopApp(CompactPanel):
             self.visible_pins=pins
             self.displayed_at=now
             self.displayed_observation=display
-            if pins and self.overlay_hwnd:
+            if (pins or guidance) and self.overlay_hwnd:
                 self.native.place(self.overlay_hwnd,rect)
                 self.canvas.configure(width=rect.width,height=rect.height)
                 self.renderer.render(pins,self.session.is_collected)
+                self.target_highlight.render(guidance,pins,display,self.session.marker_dpi,controls)
+                self.compass.render(guidance,rect.width,rect.height,self.session.marker_dpi,controls)
             elif self.overlay_hwnd:
                 self.native.hide(self.overlay_hwnd)
                 self.renderer.clear()
@@ -684,8 +695,16 @@ class DesktopApp(CompactPanel):
             elif foreground and self.session.observation.surface!="hidden" and not self.session.observation.fresh(time.monotonic()):
                 status="Localização atrasada · ícones ocultos"
             if self.package_id!='legacy-mondstadt': status+=" · cobertura em validação"
+            farm=self.session.farm
+            if farm.enabled and farm.status:status+=' · '+farm.status
             if self.status.get()!=status:self.status.set(status)
             if self.notice.get()!=self.session.notice:self.notice.set(self.session.notice)
+            farm_text='Parar farm' if farm.enabled else 'Farmar baús'
+            farm_hint=farm.status if farm.enabled else ''
+            if self.farm_hint.get()!=farm_hint:self.farm_hint.set(farm_hint)
+            if self.farm_button.cget('text')!=farm_text:
+                self.farm_button.configure(text=farm_text)
+                self.farm_next.configure(state='normal' if farm.enabled else 'disabled')
             if self.listener and self.listener.registration_errors:
                 self.notice.set("Um atalho está em uso por outro programa. Escolha outra tecla e salve.")
             if time.monotonic()-self.counts_at>=1:

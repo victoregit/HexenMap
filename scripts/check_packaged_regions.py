@@ -10,11 +10,11 @@ ROOT=Path(__file__).resolve().parents[1]
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--exe',type=Path,default=ROOT/'GenshinOverlay.exe')
+    parser.add_argument('--exe',type=Path,default=ROOT/'HexenMap.exe')
     args=parser.parse_args()
     work=ROOT/'build/regional-package-check'
     (work/'userData').mkdir(parents=True,exist_ok=True)
-    executable=work/'GenshinOverlay.exe'
+    executable=work/'HexenMap.exe'
     shutil.copy2(args.exe,executable)
     inventory=json.loads((ROOT/'data/community/kongying/inventory.json').read_text(encoding='utf-8'))
     rows=[]

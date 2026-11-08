@@ -1,0 +1,64 @@
+{
+  "source": "HoYoLAB Teyvat Interactive Map public label tree",
+  "catalog_url": "https://sg-public-api.hoyolab.com/common/map_user/ys_obc/v1/map/label/tree?map_id=2&app_sn=ys_obc&lang=en-us",
+  "checked_at": "2026-11-07",
+  "usage": "Personal local installation only; original HoYoverse artwork; redistribution permission not established",
+  "icons": {
+    "anemoculus": {
+      "file": "anemoculus.png",
+      "url": "https://act.hoyoverse.com/map_manage/20221111/ae38e52b6e4af57a84a6cbce325973e2_7240507367130463540.png",
+      "label_id": 5,
+      "name": "Anemoculus",
+      "sha256": "9ad72476aa84bcc41062cec4a32ab77e77c97076a7603a64bbef46621c65f1d0"
+    },
+    "geoculus": {
+      "file": "geoculus.png",
+      "url": "https://act.hoyoverse.com/map_manage/20221111/a0ca06e4af5eb460808483178f75584c_7553470639306949602.png",
+      "label_id": 6,
+      "name": "Geoculus",
+      "sha256": "bc1dc196d1627718aeaa4726f1c734b46d1a5f91e517147d31104d09851d001b"
+    },
+    "electroculus": {
+      "file": "electroculus.png",
+      "url": "https://act.hoyoverse.com/map_manage/20221111/efa4a3c382a2d54e53bc2cfd3882467e_7341343507830423476.png",
+      "label_id": 194,
+      "name": "Electroculus",
+      "sha256": "e2ea9cfaaf3e3e6b129fdbd13ebb57f996d668b8ab4f9d8a3c195a9d2664b6a8"
+    },
+    "dendroculus": {
+      "file": "dendroculus.png",
+      "url": "https://act.hoyoverse.com/map_manage/20221111/7e761ba6198b2122a4b893d2b43fa640_8741811685531417448.png",
+      "label_id": 403,
+      "name": "Dendroculus",
+      "sha256": "270e33614169b2725bcee79b1b47750f68f900a5a119819f15328f05a2956a58"
+    },
+    "hydroculus": {
+      "file": "hydroculus.png",
+      "url": "https://act.hoyoverse.com/map_manage/20230712/4a485e26d82e5eed5f8129e4cff72e7b_270527679071922724.png",
+      "label_id": 508,
+      "name": "Hydroculus",
+      "sha256": "a89a257c3a8189d7044cd1d4140af8652f456c202a79afd9878f5014494502e0"
+    },
+    "pyroculus": {
+      "file": "pyroculus.png",
+      "url": "https://act-webstatic.hoyoverse.com/map_manage/20250616/7af7b0cfabbb1a17943c38d1828a6ca2_387748344426025916.png",
+      "label_id": 626,
+      "name": "Pyroculus",
+      "sha256": "8df8070486316029f39a52138f71073b9f1be7945c8cbd42b57b95f8044415e1"
+    },
+    "lunoculus": {
+      "file": "lunoculus.png",
+      "url": "https://act-webstatic.hoyoverse.com/map_manage/20250902/615b1848d66edfe6c18563d22320888c_8476754995427683670.png",
+      "label_id": 694,
+      "name": "Lunoculus",
+      "sha256": "138f38bd6cb92e27dee6ac0dc0cba2ddcb5f2c73bcebf4d9d322ffbe650ea410"
+    },
+    "cryoculus": {
+      "file": "cryoculus.png",
+      "url": "https://act-webstatic.hoyoverse.com/map_manage/20260715/365c30cd1b0d7d4f4af90aba63fefa5e_6592700272999708900.png",
+      "label_id": 833,
+      "name": "Cryoculus",
+      "sha256": "426de9929190e3d035cec73f811ed40b63748948b759464560c79c5fdc1c5a84"
+    }
+  }
+}

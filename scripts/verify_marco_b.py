@@ -25,7 +25,7 @@ from src.map.minimap_projector import MinimapCircle, MinimapProjector
 def verify_marco_b() -> int:
     """Run Marco B minimap circle detection, relative projection, stencil masking, and verification."""
     print("=" * 70)
-    print("GENSHIN GEM WISH - MARCO B: CIRCULAR GAMEPLAY MINIMAP OVERLAY VERIFICATION")
+    print("HEXEN MAP - MARCO B: CIRCULAR GAMEPLAY MINIMAP OVERLAY VERIFICATION")
     print("=" * 70)
 
     ref_dir = os.path.join(PROJECT_ROOT, "data", "reference")
@@ -111,7 +111,7 @@ def verify_marco_b() -> int:
     # Title text
     cv2.putText(
         comparison,
-        "GENSHIN GEM WISH - MARCO B: CIRCULAR GAMEPLAY MINIMAP OVERLAY",
+        "HEXEN MAP - MARCO B: CIRCULAR GAMEPLAY MINIMAP OVERLAY",
         (16, 24),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.55,

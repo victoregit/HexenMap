@@ -29,7 +29,7 @@ MANIFEST
 # PyInstaller
 *.manifest
 *.spec
-!GenshinOverlay.spec
+!HexenMap.spec
 *.exe
 
 # Installer logs

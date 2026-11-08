@@ -1,8 +1,8 @@
-# Genshin Gem Wish
+# Hexen Map
 
-Overlay externo de exploração para os mapas nativos do Genshin Impact, em reconstrução e validação real no Windows.
+**Hexen Map** é um overlay externo de exploração para os mapas nativos do Genshin Impact, em reconstrução e validação real no Windows.
 
-Abra **GenshinOverlay.exe** ou **Iniciar_Overlay.bat**, selecione o que procurar no painel e volte ao jogo. O aplicativo desenha somente ícones sobre o minimapa e o mapa M; não abre outro mapa nem simula o personagem. Use o jogo em janela ou sem bordas.
+Abra **HexenMap.exe** ou **Iniciar_HexenMap.bat**, selecione o que procurar no painel e volte ao jogo. O aplicativo desenha somente ícones sobre o minimapa e o mapa M; não abre outro mapa nem simula o personagem. Use o jogo em janela ou sem bordas.
 
 - **F8:** mostrar/minimizar o painel independente ou abrir/recolher o painel fixado (configurável).
 - **Ctrl+Alt+F12:** mostrar/ocultar overlay.
@@ -21,6 +21,7 @@ O painel abre como janela independente, movível para fora do jogo. “Fixar ao 
 ```powershell
 python -m pip install -r requirements.txt
 python src/app.py
+# Após instalar o pacote: hexenmap
 python -m pytest -q
 python -m pip install pyinstaller
 python scripts/build_exe.py

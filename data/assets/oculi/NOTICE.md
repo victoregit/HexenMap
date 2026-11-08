@@ -1,0 +1,1 @@
+Original oculus artwork: HoYoverse, obtained from the public HoYoLAB Teyvat Interactive Map label tree. PNGs are stored only in userData/assets/oculi for personal local use. Only provenance metadata is bundled; no general redistribution permission is assumed. See SOURCE.json for URLs and hashes.

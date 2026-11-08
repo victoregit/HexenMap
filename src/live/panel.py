@@ -7,12 +7,13 @@ from src.live.icons import draw_marker
 from src.live.storage import HOTKEY_OPTIONS
 from src.live.category_browser import CategoryBrowser, CategoryModel
 from src.live.nation_selector import NationSelector
+from src.live.identity import DISPLAY_NAME
 
-BG = '#141e2d'
-ROW = '#1c2a3b'
-TEXT = '#eee9df'
-GOLD = '#cbb88a'
-MUTED = '#a0adbd'
+BG = '#111923'
+ROW = '#1b2734'
+TEXT = '#edf1f5'
+GOLD = '#dfc48d'
+MUTED = '#91a0b2'
 
 
 class CompactPanel:
@@ -34,119 +35,163 @@ class CompactPanel:
         self.root.minsize(40, 40)
         style = ttk.Style(self.root)
         style.theme_use('clam')
-        style.configure('TFrame', background=BG)
-        style.configure('TLabel', background=BG, foreground=TEXT, font=('Segoe UI', 9))
-        style.configure('TButton', background=ROW, foreground=TEXT, padding=(7, 4), borderwidth=0)
-        style.map('TButton', background=[('active', '#2b3d54')])
-        style.configure('TCheckbutton', background=ROW, foreground=TEXT, padding=2)
-        style.map('TCheckbutton', background=[('active', '#2b3d54')])
-        style.configure('TCombobox', fieldbackground=ROW, background=ROW, foreground=TEXT, arrowcolor=GOLD, padding=4)
-        style.map('TCombobox', fieldbackground=[('readonly', ROW)], foreground=[('readonly', TEXT)])
-        style.configure('TEntry', fieldbackground=ROW, foreground=TEXT, insertcolor=TEXT, padding=4)
-        style.configure('TNotebook', background=BG, borderwidth=0)
-        style.configure('TNotebook.Tab', background=ROW, foreground=TEXT, padding=(8, 3))
-        self.shell = tk.Frame(self.root, bg=BG)
-        self.shell.pack(fill='both', expand=True)
-        header = tk.Frame(self.shell, bg=BG)
-        header.pack(fill='x', padx=10, pady=(7, 4))
-        title = tk.Label(header, text='Exploração', bg=BG, fg=TEXT, font=('Segoe UI', 10, 'bold'))
-        title.pack(side='left')
-        for widget in (header, title):
-            widget.bind('<Button-1>', self.start_panel_drag)
-            widget.bind('<B1-Motion>', self.drag_panel)
-            widget.bind('<ButtonRelease-1>', self.finish_panel_drag)
-        ttk.Button(header, text='—', width=3, command=self.collapse_to_game).pack(side='right')
-        ttk.Button(header, text='⚙', width=3, command=self.show_settings).pack(side='right', padx=3)
-        self.panel_mode_button=ttk.Button(header,text='Fixar ao jogo' if self.panel_detached else 'Destacar',command=self.toggle_panel_mode)
-        self.panel_mode_button.pack(side='right',padx=3)
-        self.tabs = ttk.Notebook(self.shell)
-        self.tabs.pack(fill='both', expand=True, padx=9)
-        self.explore = ttk.Frame(self.tabs)
-        self.prefs = ttk.Frame(self.tabs)
-        self.tabs.add(self.explore, text='Itens')
-        self.tabs.add(self.prefs, text='Ajustes')
-        # Tabs are switched by the gear/back button to keep the main view quiet.
-        style.layout('Compact.TNotebook.Tab', [])
-        self.tabs.configure(style='Compact.TNotebook')
-        scope = ttk.Frame(self.explore)
+        style.configure('TFrame',background=BG)
+        style.configure('TLabel',background=BG,foreground=TEXT,font=('Segoe UI',9))
+        style.configure('TButton',background=ROW,foreground=TEXT,padding=(10,7),borderwidth=0,font=('Segoe UI',9))
+        style.map('TButton',background=[('active','#283747')],foreground=[('disabled','#586474')])
+        style.configure('Quiet.TButton',background=BG,padding=(6,5),foreground=MUTED)
+        style.map('Quiet.TButton',background=[('active',ROW)],foreground=[('active',TEXT)])
+        style.configure('Primary.TButton',background=GOLD,foreground='#17202a',font=('Segoe UI',9,'bold'))
+        style.map('Primary.TButton',background=[('active','#f0dca9')],foreground=[('active','#17202a')])
+        style.configure('TCombobox',fieldbackground=ROW,background=ROW,foreground=TEXT,arrowcolor=MUTED,padding=6,borderwidth=0)
+        style.map('TCombobox',fieldbackground=[('readonly',ROW)],foreground=[('readonly',TEXT)])
+        style.configure('TEntry',fieldbackground=ROW,foreground=TEXT,insertcolor=TEXT,padding=7,borderwidth=0,bordercolor=ROW,lightcolor=ROW,darkcolor=ROW)
+        style.configure('Compact.TNotebook',borderwidth=0,bordercolor=BG,lightcolor=BG,darkcolor=BG)
+        style.configure('TScrollbar',background='#344152',troughcolor=BG,borderwidth=0,arrowsize=10)
+        style.configure('TNotebook',background=BG,borderwidth=0)
+        style.layout('Compact.TNotebook.Tab',[])
+        style.layout('Compact.TNotebook',[('Notebook.client',{'sticky':'nswe'})])
+        self.shell=tk.Frame(self.root,bg=BG);self.shell.pack(fill='both',expand=True)
+        header=tk.Frame(self.shell,bg=BG);header.pack(fill='x',padx=16,pady=(10,6))
+        title=tk.Label(header,text=DISPLAY_NAME,bg=BG,fg=TEXT,font=('Segoe UI',15,'bold'));title.pack(side='left')
+        for widget in (header,title):
+            widget.bind('<Button-1>',self.start_panel_drag)
+            widget.bind('<B1-Motion>',self.drag_panel)
+            widget.bind('<ButtonRelease-1>',self.finish_panel_drag)
+        ttk.Button(header,text='—',width=3,style='Quiet.TButton',command=self.collapse_to_game).pack(side='right')
+        ttk.Button(header,text='⚙',width=3,style='Quiet.TButton',command=self.show_settings).pack(side='right',padx=3)
+        self.capture_eye=tk.Canvas(header,width=28,height=28,bg=BG,highlightthickness=0,cursor='hand2',takefocus=1)
+        self.capture_eye.pack(side='right',padx=3)
+        self.capture_eye.bind('<Button-1>',lambda e:self.toggle_capture_visibility())
+        self.capture_eye.bind('<Return>',lambda e:self.toggle_capture_visibility())
+        self.capture_eye.bind('<space>',lambda e:self.toggle_capture_visibility())
+        self.paint_capture_eye()
+        self.tabs=ttk.Notebook(self.shell,style='Compact.TNotebook');self.tabs.pack(fill='both',expand=True,padx=16)
+        self.explore=ttk.Frame(self.tabs);self.prefs=ttk.Frame(self.tabs)
+        self.tabs.add(self.explore,text='Itens');self.tabs.add(self.prefs,text='Ajustes')
         if self.catalogs.appsample_available:
-            source_row=ttk.Frame(self.explore);source_row.pack(fill='x',pady=(3,0))
-            ttk.Label(source_row,text='Fonte').pack(side='left')
             self.source_var=tk.StringVar(value='AppSample' if self.package_id=='appsample' else 'Kongying')
-            source_box=ttk.Combobox(source_row,textvariable=self.source_var,values=['Kongying','AppSample'],state='readonly',width=15)
-            source_box.pack(side='right');source_box.bind('<<ComboboxSelected>>',self.change_source)
-        scope.pack(fill='x', pady=(5, 3))
-        self.region_names = {r['name']: r['id'] for r in self.catalogs.regions.values()}
-        if self.package_id == 'legacy-mondstadt' or (self.package_id=='appsample' and self.settings.get('last_kongying_package')=='legacy-mondstadt'):
-            self.region_names['Mondstadt · compatibilidade'] = 'legacy-mondstadt'
+        scope=ttk.Frame(self.explore);scope.pack(fill='x',pady=(0,2))
+        self.region_names={r['name']:r['id'] for r in self.catalogs.regions.values()}
+        if self.package_id=='legacy-mondstadt' or (self.package_id=='appsample' and self.settings.get('last_kongying_package')=='legacy-mondstadt'):
+            self.region_names['Mondstadt · compatibilidade']='legacy-mondstadt'
         active_region=self.settings.get('last_kongying_package','mondstadt') if self.package_id=='appsample' else self.package_id
-        self.region_var = tk.StringVar(value=next((k for k,v in self.region_names.items() if v==active_region),next(iter(self.region_names))))
-        box = NationSelector(scope,self.region_var,self.region_names,self.change_region,self.close_layers)
-        self.region_box=box
-        box.pack(side='left', fill='x', expand=True)
-        self.source_caption=tk.Label(scope,text='AppSample · seleção por mapa',bg=BG,fg=GOLD,font=('Segoe UI',9),anchor='w')
+        self.region_var=tk.StringVar(value=next((k for k,v in self.region_names.items() if v==active_region),next(iter(self.region_names))))
+        self.region_box=NationSelector(scope,self.region_var,self.region_names,self.change_region,self.close_layers)
+        self.region_box.pack(side='left',fill='x',expand=True)
+        self.source_caption=tk.Label(scope,text='APPSAMPLE',bg=BG,fg=MUTED,font=('Segoe UI',8,'bold'),anchor='w',pady=7)
         if hasattr(self,'source_var'):self.sync_source_controls()
-        self.layer_var = tk.StringVar()
-        button = tk.Canvas(scope, width=32, height=28, bg=ROW, highlightthickness=0, cursor='hand2')
-        button.pack(side='right', padx=(5, 0))
-        for cy in (19, 14, 9):
-            button.create_polygon(7, cy, 16, cy-4, 25, cy, 16, cy+4, fill=ROW, outline=GOLD)
-        button.bind('<Button-1>', self.open_layers)
-        self.territory_path = tk.StringVar()
-        tk.Label(self.explore, textvariable=self.territory_path, bg=BG, fg=MUTED,
-                 font=('Segoe UI', 8), anchor='w', wraplength=330).pack(fill='x', pady=(0, 5))
-        controls = ttk.Frame(self.explore)
-        controls.pack(fill='x')
-        self.category_query = tk.StringVar()
-        ttk.Entry(controls, textvariable=self.category_query).pack(side='left', fill='x', expand=True)
-        ttk.Button(controls, text='Todos', command=lambda: self.set_categories(True)).pack(side='left', padx=(4, 2))
-        ttk.Button(controls, text='Limpar', command=lambda: self.set_categories(False)).pack(side='left')
-        self.category_query.trace_add('write', lambda *a: self.filter_categories())
-        tk.Label(self.explore, text='Buscar item ou categoria', bg=BG, fg=MUTED, font=('Segoe UI', 8)).pack(anchor='w')
-        listing = ttk.Frame(self.explore)
-        listing.pack(fill='both', expand=True, pady=4)
-        canvas = CategoryBrowser(listing,self.choose_categories)
-        scroll = ttk.Scrollbar(listing, orient='vertical', command=canvas.yview)
-        scroll.pack(side='right', fill='y')
-        canvas.pack(side='left', fill='both', expand=True)
-        canvas.connect_scrollbar(scroll)
-        self.category_browser=canvas
-        self.category_canvas = canvas
-        self.category_vars = {}; self.category_labels = {}; self.category_widgets = []
+        self.layer_var=tk.StringVar()
+        button=tk.Canvas(scope,width=30,height=30,bg=BG,highlightthickness=0,cursor='hand2');button.pack(side='right',padx=(8,0))
+        for cy in (20,15,10):button.create_polygon(7,cy,15,cy-4,23,cy,15,cy+4,fill=BG,outline=GOLD)
+        button.bind('<Button-1>',self.open_layers)
+        self.territory_path=tk.StringVar()
+        territory_label=tk.Label(self.explore,textvariable=self.territory_path,bg=BG,fg=MUTED,font=('Segoe UI',8),anchor='w',wraplength=320)
+        def show_territory(*args):
+            if self.package_id=='appsample':
+                if not territory_label.winfo_manager():territory_label.pack(fill='x',pady=(0,5),after=scope)
+            else:
+                territory_label.pack_forget()
+                layer=self.territory_path.get().split(' · ')[-1].replace('Todos os mapas','Automático')
+                self.region_box.detail=layer
+                self.region_box.draw()
+        self.territory_path.trace_add('write',show_territory)
+        search=ttk.Frame(self.explore);search.pack(fill='x')
+        self.category_query=tk.StringVar()
+        search_entry=ttk.Entry(search,textvariable=self.category_query)
+        search_entry.pack(side='left',fill='x',expand=True)
+        placeholder=tk.Label(search,text='Buscar itens…',bg=ROW,fg=MUTED,font=('Segoe UI',9),cursor='xterm')
+        def search_hint(*args):
+            if not self.category_query.get() and self.root.focus_get()!=search_entry:placeholder.place(in_=search_entry,x=7,y=5)
+            else:placeholder.place_forget()
+        placeholder.bind('<Button-1>',lambda e:search_entry.focus_set())
+        search_entry.bind('<FocusIn>',search_hint);search_entry.bind('<FocusOut>',search_hint)
+        self.category_query.trace_add('write',search_hint);search_hint()
+        ttk.Button(search,text='Limpar',style='Quiet.TButton',command=lambda:self.set_categories(False)).pack(side='right',padx=(5,0))
+        self.category_query.trace_add('write',lambda *a:self.filter_categories())
+        hints=ttk.Frame(self.explore);hints.pack(fill='x',pady=(5,3))
+        ttk.Label(hints,text='ITENS',foreground=MUTED,font=('Segoe UI',8)).pack(side='left')
+        ttk.Button(hints,text='Selecionar todos',style='Quiet.TButton',command=lambda:self.set_categories(True)).pack(side='right')
+        farm=tk.Frame(self.explore,bg=ROW,padx=6,pady=6)
+        farm.pack(side='bottom',fill='x',pady=(8,0))
+        farm_actions=tk.Frame(farm,bg=ROW);farm_actions.pack(fill='x')
+        self.farm_button=ttk.Button(farm_actions,text='Farmar baús',style='Primary.TButton',command=self.toggle_farm)
+        self.farm_button.pack(side='left',fill='x',expand=True)
+        self.farm_next=ttk.Button(farm_actions,text='Próximo',command=self.next_farm_target,state='disabled');self.farm_next.pack(side='right',padx=(6,0))
+        self.farm_hint=tk.StringVar()
+        farm_hint_label=tk.Label(farm,textvariable=self.farm_hint,bg=ROW,fg=MUTED,font=('Segoe UI',8),wraplength=300,anchor='w')
+        def show_farm_hint(*args):
+            if self.farm_hint.get():farm_hint_label.pack(fill='x',pady=(5,0))
+            else:farm_hint_label.pack_forget()
+        self.farm_hint.trace_add('write',show_farm_hint)
+        listing=ttk.Frame(self.explore);listing.pack(fill='both',expand=True,pady=(1,0))
+        canvas=CategoryBrowser(listing,self.choose_categories,height=150)
+        scroll=ttk.Scrollbar(listing,orient='vertical',command=canvas.yview);scroll.pack(side='right',fill='y')
+        canvas.pack(side='left',fill='both',expand=True);canvas.connect_scrollbar(scroll)
+        self.category_browser=canvas;self.category_canvas=canvas
+        self.category_vars={};self.category_labels={};self.category_widgets=[]
         self.populate_region_controls()
-        self.candidates = ttk.Combobox(self.explore, state='readonly')
-        self.confirm_button = ttk.Button(self.explore, text='Confirmar selecionado', command=self.confirm_candidate)
-        self.progress_text = tk.StringVar()
-        self.progress_value = tk.DoubleVar()
-        tk.Label(self.shell, textvariable=self.progress_text, bg=BG, fg=TEXT,
-                 font=('Segoe UI', 8), wraplength=335, anchor='w').pack(fill='x', padx=10)
-        self.status = tk.StringVar(value='Procurando o Genshin…')
-        tk.Label(self.shell, textvariable=self.status, bg=BG, fg=MUTED,
-                 font=('Segoe UI', 8), wraplength=335, anchor='w').pack(fill='x', padx=10, pady=(2, 0))
-        self.notice = tk.StringVar()
-        tk.Label(self.shell, textvariable=self.notice, bg=BG, fg=GOLD,
-                 font=('Segoe UI', 8), wraplength=335, anchor='w').pack(fill='x', padx=10)
-        footer = ttk.Frame(self.shell)
-        footer.pack(fill='x', padx=9, pady=6)
-        self.visibility_button = ttk.Button(footer, text='Ocultar ícones', command=self.toggle_visibility)
-        self.visibility_button.pack(side='left')
-        ttk.Button(footer, text='Desfazer', command=self.panel_undo).pack(side='left', padx=4)
-        ttk.Button(footer, text='Jogar', command=self.collapse_to_game).pack(side='right')
-        ttk.Button(self.prefs, text='‹ Voltar aos itens', command=lambda: self.tabs.select(self.explore)).pack(fill='x', pady=5)
-        ttk.Label(self.prefs, text='Atalhos globais').pack(anchor='w', pady=5)
+        self.candidates=ttk.Combobox(self.explore,state='readonly')
+        self.confirm_button=ttk.Button(self.explore,text='Confirmar selecionado',command=self.confirm_candidate)
+        self.progress_text=tk.StringVar();self.progress_value=tk.DoubleVar()
+        information=tk.Frame(self.shell,bg=BG);information.pack(side='bottom',fill='x',before=self.tabs,padx=16,pady=(7,10))
+        tk.Frame(information,bg='#2a3543',height=1).pack(fill='x',pady=(0,5))
+        tk.Label(information,textvariable=self.progress_text,bg=BG,fg=MUTED,font=('Segoe UI',8),wraplength=325,anchor='w').pack(fill='x')
+        self.status=tk.StringVar(value='Procurando o Genshin…');summary=tk.StringVar()
+        def summarize_status(*args):summary.set(self.status.get().split(' · ')[0])
+        self.status.trace_add('write',summarize_status);summarize_status()
+        tk.Label(information,textvariable=summary,bg=BG,fg=MUTED,font=('Segoe UI',8),wraplength=325,anchor='w').pack(fill='x',pady=(2,0))
+        self.notice=tk.StringVar()
+        notice_label=tk.Label(information,textvariable=self.notice,bg=BG,fg=GOLD,font=('Segoe UI',8),wraplength=325,anchor='w')
+        footer=ttk.Frame(information);footer.pack(fill='x',pady=(7,0))
+        self.visibility_button=ttk.Button(footer,text='Ocultar ícones',style='Quiet.TButton',command=self.toggle_visibility);self.visibility_button.pack(side='left')
+        ttk.Button(footer,text='Desfazer',style='Quiet.TButton',command=self.panel_undo).pack(side='left')
+        ttk.Button(footer,text='Jogar',style='Primary.TButton',width=9,command=self.collapse_to_game).pack(side='right')
+        def show_notice(*args):
+            if self.notice.get():notice_label.pack(fill='x',before=footer)
+            else:notice_label.pack_forget()
+        self.notice.trace_add('write',show_notice)
+        prefs_canvas=tk.Canvas(self.prefs,bg=BG,highlightthickness=0)
+        prefs_scroll=ttk.Scrollbar(self.prefs,orient='vertical',command=prefs_canvas.yview)
+        prefs_scroll.pack(side='right',fill='y');prefs_canvas.pack(side='left',fill='both',expand=True)
+        prefs_canvas.configure(yscrollcommand=prefs_scroll.set)
+        prefs_body=ttk.Frame(prefs_canvas)
+        prefs_window=prefs_canvas.create_window(0,0,window=prefs_body,anchor='nw')
+        prefs_body.bind('<Configure>',lambda e:prefs_canvas.configure(scrollregion=prefs_canvas.bbox('all')))
+        prefs_canvas.bind('<Configure>',lambda e:prefs_canvas.itemconfigure(prefs_window,width=e.width))
+        ttk.Button(prefs_body, text='‹ Voltar aos itens', command=lambda: self.tabs.select(self.explore)).pack(fill='x', pady=5)
+        self.panel_mode_button=ttk.Button(prefs_body,text='Fixar ao jogo' if self.panel_detached else 'Destacar',command=self.toggle_panel_mode)
+        self.panel_mode_button.pack(fill='x',pady=5)
+        self.capture_button=ttk.Button(prefs_body,text=self.capture_label(),command=self.toggle_capture_visibility)
+        self.capture_button.pack(fill='x',pady=5)
+        ttk.Label(prefs_body,text='Para transmitir os pins, compartilhe a tela inteira. Capturar só a janela do jogo pode não incluir o overlay.',wraplength=295,foreground=MUTED).pack(fill='x',pady=(0,6))
+        if self.catalogs.appsample_available:
+            source_row=ttk.Frame(prefs_body);source_row.pack(fill='x',pady=6)
+            ttk.Label(source_row,text='Fonte de dados').pack(side='left')
+            source_box=ttk.Combobox(source_row,textvariable=self.source_var,values=['Kongying','AppSample'],state='readonly',width=13)
+            source_box.pack(side='right');source_box.bind('<<ComboboxSelected>>',self.change_source)
+        ttk.Label(prefs_body, text='Atalhos globais').pack(anchor='w', pady=5)
         self.key_vars = {}
         for action, label in (('panel', 'Abrir / recolher painel'), ('visibility', 'Mostrar / ocultar ícones'),
-                              ('collect', 'Coletar próximo'), ('undo', 'Desfazer coleta')):
-            row = ttk.Frame(self.prefs); row.pack(fill='x', pady=4)
+                              ('collect', 'Coletar próximo'), ('undo', 'Desfazer coleta'),
+                              ('farm','Iniciar / parar farm'),('farm_next','Pular baú-alvo')):
+            row = ttk.Frame(prefs_body); row.pack(fill='x', pady=4)
             ttk.Label(row, text=label).pack(side='left')
             var = tk.StringVar(value=self.settings['hotkeys'][action]); self.key_vars[action] = var
             ttk.Combobox(row, textvariable=var, values=HOTKEY_OPTIONS, state='readonly', width=15).pack(side='right')
-        ttk.Button(self.prefs, text='Salvar atalhos', command=self.save_keys).pack(fill='x', pady=7)
-        ttk.Label(self.prefs, text='Ctrl + clique: marcar ou desmarcar.\nSegure Ctrl para revelar os itens pegos.\nServidor de reposição: América.').pack(anchor='w', pady=5)
-        ttk.Button(self.prefs, text='Verificar referências', command=self.reload_reference).pack(fill='x', pady=5)
-        ttk.Button(self.prefs, text='Encerrar overlay', command=self.close).pack(fill='x', pady=5)
+        ttk.Button(prefs_body, text='Salvar atalhos', command=self.save_keys).pack(fill='x', pady=7)
+        ttk.Label(prefs_body, text='Ctrl + clique: marcar ou desmarcar.\nSegure Ctrl para revelar os itens pegos.\nServidor de reposição: América.').pack(anchor='w', pady=5)
+        ttk.Button(prefs_body, text='Verificar referências', command=self.reload_reference).pack(fill='x', pady=5)
+        ttk.Button(prefs_body, text='Encerrar overlay', command=self.close).pack(fill='x', pady=5)
         if self.catalogs.appsample_available:
-            ttk.Button(self.prefs,text='Importar coletados do AppSample…',command=self.import_appsample_progress).pack(fill='x',pady=3)
+            ttk.Button(prefs_body,text='Importar coletados do AppSample…',command=self.import_appsample_progress).pack(fill='x',pady=3)
+        ttk.Label(prefs_body,textvariable=self.status,wraplength=300,foreground=MUTED).pack(fill='x',pady=8)
+        def scroll_preferences(event):
+            prefs_canvas.yview_scroll(-int(event.delta/120),'units');return 'break'
+        def bind_preferences(widget):
+            widget.bind('<MouseWheel>',scroll_preferences)
+            for child in widget.winfo_children():bind_preferences(child)
+        bind_preferences(prefs_canvas)
         self.compact = tk.Canvas(self.root, width=38, height=38, bg=BG, highlightthickness=0, cursor='hand2')
         draw_marker(self.compact, 'anemoculus', 19, 19, scale=1.2)
         self.compact.bind('<Button-1>', self.start_panel_drag)
@@ -159,6 +204,39 @@ class CompactPanel:
 
     def show_settings(self):
         self.tabs.select(self.prefs)
+
+    def capture_label(self):
+        return 'Captura: visível' if self.settings.get('capture_visible',False) else 'Captura: oculta'
+
+    def paint_capture_eye(self):
+        c=self.capture_eye;c.delete('all');visible=self.settings.get('capture_visible',False)
+        color=GOLD if visible else MUTED
+        c.create_line(3,14,8,9,14,7,20,9,25,14,20,19,14,21,8,19,3,14,fill=color,smooth=True,width=1.5)
+        c.create_oval(11,11,17,17,fill=color,outline='')
+        if not visible:c.create_line(5,24,24,5,fill=color,width=2)
+
+    def toggle_capture_visibility(self):
+        value=not self.settings.get('capture_visible',False)
+        try:self.native.set_capture_visible(value)
+        except OSError as exc:
+            self.session.notice=str(exc);return
+        self.settings['capture_visible']=value
+        self.paint_capture_eye();self.capture_button.configure(text=self.capture_label())
+        self.session.notice='Overlay visível no compartilhamento de tela.' if value else 'Overlay oculto no compartilhamento de tela.'
+        try:self.persist_settings()
+        except OSError as exc:self.session.notice=f'Visibilidade alterada; preferência não salva: {exc}'
+
+    def toggle_farm(self):
+        if getattr(self,'region_loading',False):return
+        farm=self.session.farm
+        if farm.enabled:farm.stop()
+        else:farm.start(self.session)
+        self.farm_button.configure(text='Parar farm' if farm.enabled else 'Farmar baús')
+        self.farm_next.configure(state='normal' if farm.enabled else 'disabled')
+        self.session.notice='' if farm.enabled else 'Farm encerrado.'
+
+    def next_farm_target(self):
+        if self.session.farm.enabled:self.session.farm.skip()
 
     def panel_undo(self):
         if getattr(self,'region_loading',False):return

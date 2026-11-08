@@ -12,7 +12,8 @@ import queue
 import threading
 
 
-DEFAULT_KEYS = {"visibility": "Ctrl+Alt+F12", "collect": "F9", "undo": "F10", "panel": "F8"}
+DEFAULT_KEYS = {"visibility": "Ctrl+Alt+F12", "collect": "F9", "undo": "F10", "panel": "F8",
+                "farm":"Ctrl+Alt+F9","farm_next":"Ctrl+Alt+F10"}
 HOTKEY_OPTIONS=tuple([f"F{i}" for i in range(6,13)]+[f"Ctrl+Alt+F{i}" for i in range(6,13)])
 
 
@@ -89,15 +90,21 @@ def read_settings(path: Path) -> dict:
         if not isinstance(data, dict) or not isinstance(data.get("categories"), list):
             return defaults
         keys = data.get("hotkeys", {})
-        if isinstance(keys,dict) and set(keys)=={"visibility","collect","undo"}:
+        if (isinstance(keys,dict) and set(keys) in ({"visibility","collect","undo"},{"visibility","collect","undo","panel"})
+                and all(isinstance(v,str) and v in HOTKEY_OPTIONS for v in keys.values())
+                and len(set(keys.values()))==len(keys)):
             keys=dict(keys)
-            keys["panel"]=next((k for k in ("F8","F7","F6","Ctrl+Alt+F8") if k not in keys.values()),"F8")
+            for action in ('panel','farm','farm_next'):
+                if action not in keys:
+                    candidates=('F8','F7','F6','Ctrl+Alt+F8',*HOTKEY_OPTIONS) if action=='panel' else (DEFAULT_KEYS[action],*HOTKEY_OPTIONS)
+                    keys[action]=next(k for k in candidates if k not in keys.values())
         if not isinstance(keys, dict) or set(keys) != set(DEFAULT_KEYS):
             keys = dict(DEFAULT_KEYS)
         allowed = set(HOTKEY_OPTIONS)
         if not all(isinstance(value,str) and value in allowed for value in keys.values()) or len(set(keys.values())) != len(DEFAULT_KEYS):
             keys = dict(DEFAULT_KEYS)
         result={"categories": [v for v in data["categories"] if isinstance(v, str)], "hotkeys": keys}
+        result['capture_visible']=data.get('capture_visible') is True
         if isinstance(data.get("regional"),dict):
             result["regional"]={}
             for key,pref in data['regional'].items():

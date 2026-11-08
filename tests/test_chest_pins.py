@@ -117,3 +117,25 @@ def test_batched_native_mask_unions_overlaps_and_transfers_handle(apply_success)
     actual=[(x,y) for a,b,c,d in payload for x in range(a,c) for y in range(b,d)]
     assert set(actual)==expected and len(actual)==len(expected)
     assert deleted==([] if apply_success else [42])
+
+
+@pytest.mark.parametrize('surface,size',[('minimap',24),('map',28)])
+def test_category_marker_uses_the_same_art_and_exact_alpha_for_clicks(monkeypatch,surface,size):
+    from PIL import ImageDraw
+    source=Image.new('RGBA',(64,64));draw=ImageDraw.Draw(source)
+    draw.ellipse((2,2,61,61),fill=(60,180,230,255));draw.ellipse((25,25,38,38),fill=(0,0,0,0))
+    monkeypatch.setattr(art,'map_art',lambda category:source if category=='test:resource' else None)
+    art.pin_image.cache_clear();art.icon_geometry.cache_clear()
+    try:
+        geometry=art.marker_geometry('test:resource',surface)
+        assert geometry.size==(size,size) and geometry.left==geometry.top==-(size//2)
+        image=art.pin_image('test:resource',size,size);collected=art.pin_image('test:resource',size,size,True)
+        assert image is art.pin_image('test:resource',size,size)
+        assert image.getchannel('A').tobytes()==collected.getchannel('A').tobytes()
+        for y in range(size):
+            for x in range(size):
+                assert geometry.contains(100,100,100+geometry.left+x,100+geometry.top+y)==bool(image.getpixel((x,y))[3])
+        assert not geometry.contains(100,100,100,100) # Transparent hole passes clicks.
+        assert art.marker_geometry('test:absent',surface)==art.LEGACY
+    finally:
+        art.pin_image.cache_clear();art.icon_geometry.cache_clear()

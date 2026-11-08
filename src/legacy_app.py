@@ -1,4 +1,4 @@
-"""Main application entry point for Genshin Gem Wish Overlay."""
+"""Main application entry point for Hexen Map Overlay."""
 
 from __future__ import annotations
 import argparse
@@ -44,7 +44,7 @@ from src.tracking.smooth_tracker import ConfidenceGatedTracker, SmoothedPosition
 from src.tracking.state_detector import GameState
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-logger = logging.getLogger("GenshinGemWish")
+logger = logging.getLogger("HexenMap")
 
 
 def degrees_to_cardinal(deg: float) -> str:
@@ -54,7 +54,7 @@ def degrees_to_cardinal(deg: float) -> str:
     return directions[idx]
 
 
-class GenshinOverlayApp:
+class HexenMapApp:
     """Full-featured Genshin Impact interactive map overlay application."""
 
     def __init__(
@@ -488,7 +488,7 @@ class GenshinOverlayApp:
             self.headless = True
             return
 
-        self.root.title("Genshin Gem Wish - Overlay")
+        self.root.title("Hexen Map - Overlay")
         self.root.geometry("1000x700")
         self.root.configure(bg="#1a1c23")
 
@@ -530,7 +530,7 @@ class GenshinOverlayApp:
         self.top_bar = tk.Frame(self.root, bg="#21252f", height=38)
         self.top_bar.pack(side=tk.TOP, fill=tk.X)
 
-        title_lbl = tk.Label(self.top_bar, text="✦ GENSHIN GEM WISH", font=("Segoe UI", 10, "bold"), fg="#e0e6ed", bg="#21252f")
+        title_lbl = tk.Label(self.top_bar, text="✦ HEXEN MAP", font=("Segoe UI", 10, "bold"), fg="#e0e6ed", bg="#21252f")
         title_lbl.pack(side=tk.LEFT, padx=(10, 6), pady=6)
 
         mode_btn = tk.Button(self.top_bar, text="HUD (F11)", font=("Segoe UI", 8), bg="#3b4252", fg="#eceff4", command=self.overlay_mgr.toggle_mode)
@@ -1039,7 +1039,7 @@ class GenshinOverlayApp:
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Genshin Gem Wish - Interactive Map Overlay")
+    parser = argparse.ArgumentParser(description="Hexen Map - Interactive Map Overlay")
     parser.add_argument("--demo", action="store_true", default=True, help="Run in demo mode with simulated player tracking")
     parser.add_argument("--tracking", choices=["manual", "simulated", "live_cv"], default=None, help="Player position tracking source")
     parser.add_argument("--mode", choices=["compact", "expanded"], default="expanded", help="Initial overlay window mode")
@@ -1061,7 +1061,7 @@ def main() -> int:
     if tracking is None:
         tracking = "simulated" if args.demo else "manual"
 
-    app = GenshinOverlayApp(
+    app = HexenMapApp(
         data_path=args.data,
         progress_path=args.progress,
         initial_mode=mode,

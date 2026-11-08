@@ -1,4 +1,4 @@
-# Overlay de exploração — referência única
+# Hexen Map — referência única
 
 Atualizado em 7 de novembro de 2026. **Versão integrada para revisão; expansão completa ainda não aprovada.**
 
@@ -224,3 +224,123 @@ Uma falha curta de fluxo pode ser recuperada por nova comparação contra a últ
 Na reprodução da gravação, usando o mesmo reconhecedor absoluto otimizado nos dois casos para isolar a mudança do pipeline de movimento, houve 313 quadros classificados como partida: 39 sem alinhamento com o pipeline anterior e 31 com o novo. O restante inclui mapa M e transições; essas telas não entram no denominador. O custo p95 da etapa principal foi 24,57 ms antes e 24,21 ms depois. O resultado não mede FPS nem latência ponta a ponta, e não equivale a sessão prolongada do executável instalado. Relatório pessoal: `build/minimap-continuity-comparison.json`. A revisão passou na regressão de 249 testes e depois nos 14 testes de movimento, incluindo um caso adicional com reconhecimento pendente.
 
 Revisão instalada com backup `backups/minimap-continuity-20261107-063346Z`. O executável passou no diagnóstico isolado, teve o módulo de movimento conferido contra o código final e conservou os hashes das preferências e do progresso. Nenhum item foi importado novamente ou remarcado nesta atualização. O teste durante a sessão do usuário com este executável ainda não foi registrado.
+
+## Farm de baús e bússola 2D
+
+O botão “Farmar baús” arma uma sessão local. A primeira posição válida de minimapa é registrada como origem; dessa posição escolhe o baú disponível mais próximo entre os tipos selecionados, no mapa e na camada reconhecidos. O alvo permanece fixo durante o deslocamento, para evitar alternância entre pontos próximos. Depois de confirmar sua coleta pelo fluxo existente, o próximo alvo é escolhido a partir da posição atual. “Próximo” pula o alvo somente nesta sessão, sem alterar seu progresso. Parar e iniciar novamente limpa os pulos. A aproximação nunca confirma uma coleta automaticamente.
+
+Uma pequena bússola 2D é desenhada aproximadamente junto aos pés, na posição padrão de câmera/personagem: centro a 50% da largura e 78% da altura da janela. Ela acompanha a orientação do minimapa e mostra norte. É uma indicação planar; não estima direção da câmera 3D, relevo, caminho transitável, altura do baú ou distância em metros. Não está ancorada ao chão do cenário. O deslocamento/rotação da câmera pode mudar a posição visual dos pés. A bússola não controla o personagem e não recebe cliques.
+
+A sessão respeita seleção de categorias, fonte, mapa, camada, progresso importado e ocultação global. Sem alinhamento fresco, durante M, menus ou perda de foco, a seta fica oculta. Trocar a fonte ou o recorte territorial encerra o farm; trocar mapa/camada reconhecidos também encerra a sessão. O farm não é retomado automaticamente ao abrir o aplicativo. Nenhum ID, coordenada ou regra de reposição foi alterado.
+
+O desenho conserva quatro primitivas entre quadros e usa a superfície de overlay existente; a região de entrada com Ctrl continua pertencendo apenas aos pins. A bússola é ocultada quando sua área coincidir com controles. O painel reserva espaço aos avisos e botões inferiores, mantendo-os acessíveis no tamanho compacto.
+
+Validação: 262 testes passaram, incluindo seleção do mais próximo, alvo fixo, avanço após coleta, pulos sem gravação, coletas importadas, seleção vazia, rotação/norte, mapa/camada incorretos, prazo vencido e troca de fonte. A prévia em Tk verificou retenção dos elementos e exclusão sobre controles. A experiência em jogo desta função ainda não foi aprovada; a prévia não comprova ancoragem aos pés nem orientação relativa à câmera 3D.
+
+Instalação da primeira versão de farm concluída após o usuário encerrar o overlay, com backup `backups/chest-farm-20261107-072009Z`. SHA-256 do executável conferido contra dist e hashes de progresso/preferências preservados. O diagnóstico empacotado passou, e os módulos de farm, sessão, painel e desktop foram conferidos contra o código final. A captura real de Snezhnaya encontrou um alvo não coletado e manteve sua identidade nas atualizações seguintes; isso é teste em imagem, não aprovação da experiência no jogo.
+
+### Identificação do alvo e atalhos do farm
+
+O baú-alvo recebe um contorno dourado quando seu pin está visível no minimapa. O contorno é apenas visual: não amplia a região de clique, não revela itens coletados, não ultrapassa o círculo do minimapa e se oculta ao coincidir com controles. O desenho reutiliza o mesmo elemento entre quadros.
+
+A bússola mostra o tipo em português e três faixas de proximidade: Próximo (até o limiar já usado para coleta próxima), Na vizinhança (até o raio do minimapa) e Mais distante. São indicações baseadas na escala atual do minimapa, sem converter unidades em metros nem inferir diferença de altura. Nenhuma dessas indicações confirma coleta automaticamente.
+
+Atalhos padrão: Ctrl+Alt+F9 inicia/para o farm e Ctrl+Alt+F10 pula o alvo, com o jogo em foco. Ambos são configuráveis em Ajustes. A leitura de preferências antigas conserva os atalhos existentes e escolhe combinações livres para as ações adicionadas; a preferência antiga do painel também é preservada. Atalhos duplicados/ inválidos continuam rejeitados. Ajustes ganhou rolagem para manter acessíveis os seis seletores, o salvamento e os comandos secundários no painel compacto.
+
+Validação: 265 testes passaram, incluindo migração com colisões, persistência dos atalhos, faixas de proximidade, retenção do contorno e exclusão fora do círculo/sobre controles. As prévias reais de Tk conferiram os seis seletores, tipo/proximidade e contorno dourado. Esta etapa não altera o rastreamento nem amplia os mapas habilitados; continuidade adicional e referências de outros mapas/cavernas permanecem etapas seguintes. A operação dos novos atalhos durante a partida ainda aguarda conferência do usuário.
+
+Atualização instalada após encerramento do overlay, com backup `backups/farm-target-shortcuts-20261107-154701Z`. O diagnóstico empacotado passou, os módulos alterados foram comparados ao código final, o executável instalado corresponde ao dist por SHA-256 e os hashes de preferências/progresso foram preservados. Os novos atalhos são acrescentados em memória ao carregar as preferências antigas e persistem pelo fluxo normal de salvamento.
+
+## Reconstrução visual do painel compacto
+
+A apresentação principal foi reorganizada, mantendo 360×540 px, persistência da posição e modos independente/fixado. Cabeçalho curto, emblemas de nações, camada ativa e busca ficam no topo. A lista virtual ocupa a área central e mostra caixa de seleção explícita, arte do item e contador em colunas. O farm ocupa uma faixa inferior própria; seu aviso aparece somente quando ativo. Progresso e estado resumido ficam separados dos comandos Ocultar, Desfazer e Jogar. Avisos vazios deixam de reservar uma linha.
+
+A fonte de dados e o controle Fixar/Destacar foram movidos para Ajustes, junto dos seis atalhos, importação, diagnóstico completo e encerramento. O estado principal mostra a mensagem essencial; o diagnóstico completo permanece disponível em Ajustes. Busca tem indicação no campo, os controles usam a mesma tipografia/paleta e foram retiradas as bordas claras herdadas do tema Tk. A camada escolhida aparece junto ao nome da nação; no AppSample o mapa/camada permanece como linha própria. O painel de Ajustes conserva a rolagem.
+
+Validação: a regressão de 265 testes passou. Prévias reais de Tk foram conferidas com Kongying, AppSample e Ajustes, incluindo seleção de nação por teclado, troca da apresentação da fonte, camadas, recolhimento e janela independente. A prévia foi atualizada para conferir a legenda composta de nação/camada. Não foram alterados catálogo, coordenadas, regras de coleta, temporizadores nem rastreamento por esta revisão visual. Arquivos locais: `build/panel-preview.png`, `build/appsample-panel-preview.png`, `build/farm-settings-preview.png`.
+
+Revisão visual instalada com backup `backups/panel-visual-rebuild-20261107-155624Z`. Executável conferido por SHA-256 contra dist e hashes de preferências/progresso preservados. O diagnóstico empacotado de AppSample passou; um smoke test do painel nativo isolado verificou abertura, superfícies, atualização, recolhimento/restauração e encerramento, sem captura de jogo nem registro de atalhos. As referências ausentes nessa pasta isolada foram tratadas como indisponíveis. A aprovação visual do usuário desta nova composição ainda está pendente.
+
+## Destaques em grade com oculi oficiais
+
+Os oculi disponíveis na seleção aparecem em caixas de quatro colunas, nesta ordem: Anemoculi, Geoculi, Electroculi, Dendroculi; Hydroculi, Pyroculi, Lunoculi, Cryoculi. Cada caixa mostra arte oficial, nome, contador e seleção. Catálogos com menos tipos mostram apenas os disponíveis, sem inventar cobertura. A busca, seleção de grupo, Limpar e contadores conservam os mesmos IDs e comportamento. Outros destaques não classificados entre esses oito recursos conservam a linha convencional.
+
+As oito imagens foram obtidas da árvore pública do mapa HoYoLAB, identificadas pelo nome exato e conferidas visualmente. Origem, URLs e SHA-256 ficam em `data/assets/oculi/SOURCE.json`; PNGs ficam somente em `userData/assets/oculi`. A inspeção do executável confirmou apenas SOURCE e NOTICE nesse diretório de assets. `scripts/prepare_oculus_assets.py --check` verifica a instalação sem rede. Arte ausente ou alterada conserva o símbolo anterior. As imagens redimensionadas são mantidas em memória e não há downloads no desenho. Esta mudança aplica as imagens ao seletor, preservando os ícones de oculi sobre os mapas.
+
+Os 265 testes da base passaram; dois testes adicionais conferiram a identidade dos recursos e a rejeição de arte ausente/alterada. Uma janela Tk isolada verificou os oito cliques, incluindo metade inferior das caixas, navegação por teclado, pesquisa, células vazias e reutilização das oito imagens. O diagnóstico empacotado passou. Instalação com backup `backups/official-oculi-grid-20261107-164504Z`, SHA-256 do executável conferido contra dist e hashes de preferências/progresso preservados.
+
+## Controle de visibilidade em capturas
+
+O olho no cabeçalho alterna a preferência de compartilhamento: aberto permite captura do painel, pins, bússola e cartões; riscado pede ao Windows sua exclusão, mantendo o comportamento anterior por padrão. O mesmo comando aparece em Ajustes como “Captura: visível/oculta”. A preferência `capture_visible` é salva e reaplicada ao iniciar e criar novas janelas. Ocultar os ícones localmente continua sendo uma ação independente.
+
+A implementação alterna SetWindowDisplayAffinity entre WDA_NONE (0) e WDA_EXCLUDEFROMCAPTURE (17) nas janelas deste processo. Janelas encerradas ou de outros processos são descartadas do registro; uma falha interrompe a alteração, restaura as janelas já modificadas e apresenta o erro. Não altera foco, coleta ou geometria de entrada. A captura apenas da janela do Genshin pode deixar de fora as janelas externas do overlay; a interface orienta compartilhar a tela inteira para transmitir os pins. A integração com cada aplicativo de transmissão não foi testada.
+
+Validação: 270 testes passaram. Uma janela própria do Windows confirmou a sequência de afinidade 17 → 0 → 17, inclusive numa janela criada depois de habilitar a captura. A prévia Tk verificou os dois estados do olho e o comando de Ajustes. O rastreador continua com os mesmos limites de validade; a continuidade durante transmissão com os ícones visíveis ainda precisa de observação em jogo.
+
+Versão instalada após o usuário encerrar o overlay, com backup `backups/capture-visibility-eye-20261107-165031Z`. Diagnóstico empacotado aprovado, executável conferido por SHA-256 contra dist e hashes de preferências/progresso preservados. A validação em aplicativo de compartilhamento real ainda não foi registrada.
+
+### Correção da regressão de captura e redetecção do minimapa
+
+O modo de compartilhamento expôs os próprios desenhos ao caminho anterior de captura da área de trabalho. Um teste local, com pequena janela própria em camada e sem foco sobre o Genshin, confirmou: a captura da tela incluiu os 900 pixels vermelhos da janela de teste; a captura do DC cliente do jogo incluiu zero. PrintWindow foi avaliado, retornou falha/imagem preta e não foi adotado.
+
+Com o olho aberto, o reconhecimento agora captura o DC cliente do jogo em coordenadas locais, sem os desenhos das janelas separadas do overlay. Com a exclusão de captura ativa, conserva o caminho anterior da área de trabalho. Os DCs são liberados com o mesmo proprietário usado ao adquirir. A troca do modo reinicia o acompanhamento entre quadros, para não encadear imagens de origens diferentes. Não esconde nem alterna temporariamente os desenhos durante a transmissão.
+
+A geometria de tela do minimapa também passou a ser reutilizada quando a seta ciano nativa do jogador confirma, na imagem atual, o centro esperado. Sem essa evidência, retorna à detecção completa do círculo. O cache é apenas da geometria do HUD: não conserva a posição no mundo nem prolonga sua validade, e o alinhamento geométrico ainda é exigido a cada registro absoluto.
+
+Na captura real de Snezhnaya, a localização passou com confiança 1,0 e erro p95 de ajuste de 0,33 px. A primeira busca levou 630 ms e as três seguintes entre 18 e 21 ms. Isso mede processamento de uma imagem, não atraso ponta a ponta ou estabilidade durante transmissão prolongada. Os 272 testes passaram, incluindo origem/limpeza do DC cliente e rejeição de geometria sem evidência atual do jogador. A verificação do compartilhamento no aplicativo usado pelo usuário ainda está pendente.
+
+Correção instalada com backup `backups/clean-sharing-minimap-20261107-170553Z`, diagnóstico empacotado aprovado, SHA-256 do executável conferido contra dist e hashes de progresso/preferências preservados. Ainda falta a conferência do usuário com minimapa, farm e compartilhamento simultâneos.
+
+## Bússola relativa à orientação do personagem
+
+A seta de farm passou a indicar o alvo em relação à direção atual do personagem, lida da seta ciano nativa do minimapa. Apontar para o alvo faz a bússola apontar para cima; mudar a orientação faz a direção relativa girar, mantendo o mesmo baú selecionado. A indicação de norte também gira nessa referência. O cálculo usa o vetor do alvo projetado no minimapa e desconta o ângulo da seta nativa; portanto funciona com minimapa rotacionado sem confundir norte fixo com frente do personagem.
+
+A leitura isola o componente ciano central, exige forma/área compatíveis e usa o recorte traseiro do símbolo para distinguir frente e trás. Glifos simétricos/ambíguos são rejeitados. A orientação é calculada novamente em cada quadro atual, incluindo os quadros acompanhados por fluxo, sem transportar um ângulo antigo junto do resultado absoluto atrasado. Sem orientação confiável, a guia aguarda nova leitura, conserva o alvo e não altera os pins nem o progresso.
+
+Esta orientação é do personagem indicado no minimapa. Ainda não estima yaw/pitch da câmera, não é uma seta ancorada ao chão e não acrescenta direção vertical/altura. Girar apenas a câmera e mudar a orientação do personagem são movimentos distintos.
+
+Validação: 287 testes passaram, incluindo oito direções sintéticas do símbolo, quatro direções relativas, cancelamento da rotação do mapa e preservação do alvo com orientação desconhecida. Na gravação anterior de Snezhnaya, a leitura encontrou orientação em 308 dos 313 quadros classificados como partida. Esse número mede disponibilidade da leitura, não erro angular independente. Duas capturas reais foram conferidas visualmente quanto à direção do símbolo; o aceite durante partida da bússola relativa ainda está pendente.
+
+Versão relativa instalada com backup `backups/player-relative-compass-20261107-171233Z`, diagnóstico empacotado aprovado e executável conferido por SHA-256 contra dist. Preferências e progresso preservaram os hashes anteriores. Ainda falta conferir a experiência desta orientação durante a partida.
+
+### Estabilização da bússola relativa
+
+A orientação agora passa por um acompanhamento temporal separado da localização. Pequenas oscilações são suavizadas pelo arco angular mais curto, inclusive em 359°/0°. Mudanças maiores que 70° exigem uma segunda leitura compatível em até 180 ms, evitando que uma leitura isolada inverta a seta. Mudanças reais confirmadas são aceitas prontamente. Ambiguidade breve pode conservar a orientação por no máximo 180 ms somente quando o componente central do jogador continua visível e a localização atual permanece válida. Ausência do símbolo, perda de localização, menu, foco ou lacuna de quadros reinicia esse acompanhamento; não amplia o prazo do alinhamento no mundo.
+
+Ao chegar a até seis pixels de minimapa do alvo, a indicação muda para um losango e “No local”, evitando uma seta girando em cima do ponto. Volta à direção ao afastar-se além de nove pixels; a faixa evita alternâncias junto ao limite. São pixels da escala atual do minimapa, sem alegação de metros, altura ou coleta confirmada. O progresso só muda pelo comando de coleta existente. O log passou a registrar transições do estado do farm e seu alvo, distinguindo espera por localização de espera por orientação.
+
+A gravação pessoal contém 450 recortes em 30,45 segundos. Na comparação pareada, entre os 422 quadros reconhecidos como partida, houve cinco leituras brutas sem direção e uma sem direção após o filtro; os passos maiores que 70° passaram de 14 para sete. Esses passos incluem giros legítimos, portanto a redução não é uma medição independente de erro angular. Os 291 testes passaram, incluindo inversão isolada, giro verdadeiro, passagem por norte, limite de ambiguidade, reinício do filtro e chegada com histerese sem coleta automática. O teste na sessão do usuário com esta revisão ainda está pendente.
+
+Revisão instalada com backup `backups/compass-stability-20261107-172410Z`. Diagnóstico empacotado aprovado, executável conferido contra dist por SHA-256 e hashes de progresso/preferências preservados. Ainda falta a conferência em partida da estabilidade percebida pelo usuário.
+
+## Ícones de categorias restantes do AppSample
+
+O importador `scripts/prepare_appsample_icons.py` preparou 744 imagens correspondentes aos `source_type` do catálogo pessoal, preservando as 13 artes oficiais já instaladas para baús e oculi. Isso cobre as 757 categorias do snapshot adotado; não afirma cobertura de versões posteriores do site. As 744 respostas foram validadas como imagens de 64×64 px. São 737 hashes SHA-256 distintos; alguns tipos da própria fonte compartilham a mesma imagem, sem unir seus IDs ou contadores.
+
+URLs observadas no seletor são preferidas; tipos ausentes dos rótulos arquivados usam o esquema público confirmado `/gim/markers/o<ID>.png?v=3`, com o ID exato do catálogo e validação da resposta. Não há associação por proximidade ou semelhança de nomes. `userData/assets/appsample/SOURCE.json` conserva URL, tipo, hash, nome da fonte, data e limite de uso pessoal; as imagens e o manifesto pessoal ficam fora do Git e do executável. Não são apresentadas como arte oficial da HoYoverse sem confirmação; a origem desta importação é o AppSample.
+
+A lista e o cartão de coleta carregam a imagem correspondente à categoria AppSample e conservam a arte anterior quando faltar um arquivo ou seu hash divergir. As imagens preparadas são mantidas em cache, sem downloads ou redimensionamento repetido ao redesenhar a mesma imagem. O cartão mantém o estado apagado de itens coletados. As artes oficiais existentes conservam prioridade. Outras fontes não recebem associação por números iguais. Os pins desenhados sobre o jogo e o rastreamento permanecem com o comportamento anterior; esta etapa trata da identificação visual no painel/cartão.
+
+Categorias cujo nome ainda não foi traduzido continuam na seção correspondente, mesmo com uma imagem disponível. A importação não altera nomes, seleção, IDs, contadores, posições nem coletas. `--check` verificou todos os 744 hashes sem rede; não houve imagens indisponíveis nesta importação. Os 295 testes passaram, incluindo cache, categoria exata, estado coletado, arquivo alterado e rejeição de caminhos fora da pasta pessoal. A prévia real do painel e uma amostra de imagens da fonte foram conferidas visualmente.
+
+Instalação concluída com backup `backups/appsample-category-icons-20261108-030640Z`, diagnóstico empacotado aprovado e SHA-256 conferido contra dist. Preferências e progresso conservaram os hashes anteriores. A inspeção do executável confirmou o novo carregador e a exclusão da coleção pessoal AppSample do pacote. Das 744 URLs, 652 foram observadas no seletor arquivado e 92 foram resolvidas pelo esquema exato de tipos, com todas as respostas validadas.
+
+## Correspondência entre seletor e marcadores dos mapas
+
+Os marcadores do minimapa e do mapa M agora usam a mesma arte da categoria selecionada no painel. Baús conservam os pins anteriores, ancorados pela ponta. Oculi usam a arte oficial já conferida; demais categorias AppSample usam a imagem pessoal exata importada por tipo. Ícones não relacionados a baús são centralizados na coordenada do ponto, em 24 px no minimapa e 28 px em M, com ajuste de DPI. Não foi adicionada uma segunda moldura ao redor de imagens da fonte que já contêm um pin.
+
+A geometria de entrada e o recorte são derivados do alfa binário da própria imagem desenhada, inclusive segmentos separados e vazios internos. Áreas transparentes deixam os cliques passarem. O mesmo formato controla Ctrl+clique, recorte circular e exclusão sobre controles. Coletados continuam ocultos normalmente e aparecem dessaturados ao revelar com Ctrl, conservando a mesma área visível. Sem arte válida, permanece o símbolo anterior. Não há downloads no desenho; imagem e geometria são preparadas e mantidas em cache.
+
+Validação: 297 testes passaram. Os casos novos verificam em cada pixel a correspondência do clique ao alfa, preservação de transparência no estado coletado, cache e fallback nos dois tamanhos. O teste específico de sobreposição de símbolos legados foi isolado das artes pessoais para continuar verificando seu contrato original. A prévia local `build/selector-map-icons-preview.png` foi conferida com baú, oculi, seelie, desafio, santuário e outros tipos da fonte. A mudança preserva coordenadas, IDs, filtros e progresso; a conferência visual destes novos marcadores na partida ainda não foi registrada.
+
+Atualização instalada após o usuário encerrar o overlay, com backup `backups/matching-selector-map-icons-20261108-040411Z`. SHA-256 conferido contra dist e hashes de preferências/progresso preservados. A validação visual dos novos marcadores em partida permanece pendente.
+
+## Identidade Hexen Map / HexenMap
+
+O produto passou a se chamar **Hexen Map**. Executável e identificadores técnicos usam **HexenMap**: `HexenMap.exe`, `HexenMap.spec`, pacote/comando `hexenmap` e lançador `Iniciar_HexenMap.bat`. Cabeçalho, título de janela, mensagens, metadados do Windows, ferramentas de build e a implementação legada de testes foram atualizados. O lançador genérico `Iniciar_Overlay.bat` encaminha para o novo nome.
+
+A instalação continua usando a mesma pasta `userData` ao lado do executável; não muda IDs de marcadores, nomes de catálogos, coordenadas, coletas ou referências. Registros históricos de entregas e caminhos antigos permanecem como evidência das versões anteriores. Duas constantes com a identidade antiga ficam restritas à compatibilidade de instância: a versão nova reconhece a janela anterior e mantém também seu mutex, impedindo execução duplicada ao abrir um binário antigo.
+
+Os 299 testes passaram, incluindo o caso de uma versão anterior já aberta e a liberação dos dois mutexes. A prévia real do painel confirmou o cabeçalho Hexen Map. O build gera propriedades de arquivo com ProductName/FileDescription Hexen Map e OriginalFilename HexenMap.exe. A troca do executável será registrada com backup e preservação dos hashes de progresso e preferências.
+
+Migração instalada com backup `backups/hexenmap-brand-20261108-041934Z`. O binário novo é `HexenMap.exe`; os executáveis antigos da raiz e de dist foram preservados no backup e retirados desses locais. SHA-256 conferido contra o novo dist e hashes de progresso/preferências preservados. O diagnóstico empacotado passou; as propriedades PE confirmaram CompanyName, FileDescription, ProductName e OriginalFilename. Um smoke test nativo confirmou o título Hexen Map, rejeição de segunda instância e liberação dos mutexes ao encerrar, com dados isolados.
