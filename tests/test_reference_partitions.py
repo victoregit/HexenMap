@@ -1,6 +1,6 @@
 import pytest
 
-from scripts.prepare_regional_reference import partition_bounds
+from src.live.tile_grid import partition_bounds
 
 
 def test_partition_covers_negative_tile_coordinates_without_gaps():
