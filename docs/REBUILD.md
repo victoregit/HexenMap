@@ -1,4 +1,4 @@
-# Overlay de exploração — referência única
+# Hexen Map — referência única
 
 Atualizado em 7 de novembro de 2026. **Versão integrada para revisão; expansão completa ainda não aprovada.**
 
@@ -334,3 +334,13 @@ A geometria de entrada e o recorte são derivados do alfa binário da própria i
 Validação: 297 testes passaram. Os casos novos verificam em cada pixel a correspondência do clique ao alfa, preservação de transparência no estado coletado, cache e fallback nos dois tamanhos. O teste específico de sobreposição de símbolos legados foi isolado das artes pessoais para continuar verificando seu contrato original. A prévia local `build/selector-map-icons-preview.png` foi conferida com baú, oculi, seelie, desafio, santuário e outros tipos da fonte. A mudança preserva coordenadas, IDs, filtros e progresso; a conferência visual destes novos marcadores na partida ainda não foi registrada.
 
 Atualização instalada após o usuário encerrar o overlay, com backup `backups/matching-selector-map-icons-20261108-040411Z`. SHA-256 conferido contra dist e hashes de preferências/progresso preservados. A validação visual dos novos marcadores em partida permanece pendente.
+
+## Identidade Hexen Map / HexenMap
+
+O produto passou a se chamar **Hexen Map**. Executável e identificadores técnicos usam **HexenMap**: `HexenMap.exe`, `HexenMap.spec`, pacote/comando `hexenmap` e lançador `Iniciar_HexenMap.bat`. Cabeçalho, título de janela, mensagens, metadados do Windows, ferramentas de build e a implementação legada de testes foram atualizados. O lançador genérico `Iniciar_Overlay.bat` encaminha para o novo nome.
+
+A instalação continua usando a mesma pasta `userData` ao lado do executável; não muda IDs de marcadores, nomes de catálogos, coordenadas, coletas ou referências. Registros históricos de entregas e caminhos antigos permanecem como evidência das versões anteriores. Duas constantes com a identidade antiga ficam restritas à compatibilidade de instância: a versão nova reconhece a janela anterior e mantém também seu mutex, impedindo execução duplicada ao abrir um binário antigo.
+
+Os 299 testes passaram, incluindo o caso de uma versão anterior já aberta e a liberação dos dois mutexes. A prévia real do painel confirmou o cabeçalho Hexen Map. O build gera propriedades de arquivo com ProductName/FileDescription Hexen Map e OriginalFilename HexenMap.exe. A troca do executável será registrada com backup e preservação dos hashes de progresso e preferências.
+
+Migração instalada com backup `backups/hexenmap-brand-20261108-041934Z`. O binário novo é `HexenMap.exe`; os executáveis antigos da raiz e de dist foram preservados no backup e retirados desses locais. SHA-256 conferido contra o novo dist e hashes de progresso/preferências preservados. O diagnóstico empacotado passou; as propriedades PE confirmaram CompanyName, FileDescription, ProductName e OriginalFilename. Um smoke test nativo confirmou o título Hexen Map, rejeição de segunda instância e liberação dos mutexes ao encerrar, com dados isolados.
