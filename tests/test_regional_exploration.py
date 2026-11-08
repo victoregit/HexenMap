@@ -119,30 +119,20 @@ def test_migration_keeps_original_backup_and_unmapped_ids(tmp_path):
     assert ProgressManager(str(path)).is_collected('legacy:unmapped')
 
 
-def test_settings_preserve_per_region_filters(tmp_path):
-    path=tmp_path/'settings.json'
-    data=read_settings(path)
-    data.update(package='liyue',regional={'liyue':{'area':'locality','layer':'chasm / surface','categories':['ore']}})
-    write_json(path,data)
-    loaded=read_settings(path)
-    assert loaded['regional']=={'liyue':{**data['regional']['liyue'],'area':None}}
-    assert loaded['package']=='liyue' and loaded['server']=='America'
+def test_settings_archive_retired_provider_presets_without_cross_source_transfer(tmp_path):
+    path=tmp_path/'settings.json';data={'package':'liyue','categories':['ore'],'regional':{'liyue':{'layer':'chasm / surface','categories':['ore']}}}
+    write_json(path,data);original=path.read_bytes();loaded=read_settings(path)
+    assert loaded['package']=='appsample' and loaded['regional']=={} and loaded['categories']==[]
+    assert path.with_name('settings.json.pre-appsample-only.bak').read_bytes()==original
 
 
-def test_all_imported_catalogs_validate_ids_maps_and_rule_references():
-    catalogs=RegionalCatalog(Path(__file__).resolve().parents[1]/'data/community')
-    seen=set()
-    for region in catalogs.regions:
-        items,_,_=catalogs.load(region)
-        assert len(items)==catalogs.regions[region]['item_count']
-        assert len({i.id for i in items})==len(items)
-        maps={m['id'] for m in catalogs.inventory['maps'] if m['region_id']==region}
-        assert all(i.map_id in maps or i.map_id=='unclassified-map' for i in items)
-        assert all(i.rule_id in catalogs.rules for i in items)
-        assert not seen.intersection(i.source_marker_id for i in items)
-        seen.update(i.source_marker_id for i in items)
-        assert all(not i.area_ids or i.area_ids==('unclassified',) for i in items if i.area_id=='unclassified')
-    assert catalogs.inventory['coverage_complete'] is False
+def test_only_appsample_catalog_defines_inventory_maps_and_rules(tmp_path):
+    from tests.appsample_fixture import make_catalog
+    catalogs=make_catalog(tmp_path);items,_,_=catalogs.load('appsample')
+    assert len({i.id for i in items})==len(items)
+    assert {m['id'] for m in catalogs.inventory['maps']}=={'as-map-2','as-map-3'}
+    assert all(i.rule_id in catalogs.rules for i in items)
+    assert set(catalogs.rules)=={'permanent','unknown'} and catalogs.inventory['coverage_complete'] is False
 
 
 def test_undo_respects_selected_region_and_area(tmp_path):
@@ -156,29 +146,20 @@ def test_undo_respects_selected_region_and_area(tmp_path):
     assert s.undo() and not s.is_collected('other')
 
 
-def test_legacy_aliases_are_exact_source_ids_not_nearby_coordinates():
-    root=Path(__file__).resolve().parents[1]/'data/community'
-    aliases={}
-    for file in (root/'mondstadt').glob('*.json'):
-        for row in json.loads(file.read_text(encoding='utf-8')).get('data',[]):
-            for stamp in row.get('importIds',{}).get('yuanshen',[]):
-                aliases[stamp]=f'teyvat.moe:mondstadt:{file.stem}:{row["id"]}'
-    items,_,_=RegionalCatalog(root).load('mondstadt')
-    matched=[i for i in items if i.id.startswith('teyvat.moe:')]
-    assert matched
-    assert all(aliases[i.source_stamp]==i.id for i in matched)
+def test_retired_package_ids_are_rejected_instead_of_falling_back(tmp_path):
+    from tests.appsample_fixture import make_catalog
+    catalogs=make_catalog(tmp_path)
+    for provider in ('mondstadt','liyue','sumeru','legacy-mondstadt'):
+        assert not catalogs.accepts(provider)
+        with pytest.raises(ValueError):catalogs.load_package(provider)
 
 
-def test_explicit_cave_localities_keep_source_hierarchy_and_layers():
-    catalogs=RegionalCatalog(Path(__file__).resolve().parents[1]/'data/community')
-    items,_,_=catalogs.load('sumeru')
-    classified=[i for i in items if i.layer_ids]
-    assert classified
-    for item in classified:
-        for layer in item.layer_ids:
-            node=catalogs.territories.nodes[layer]
-            assert node.region_id==item.region_id and node.map_id==item.map_id
-            assert layer in item.area_ids
+def test_appsample_native_layers_are_preserved_without_borrowed_territories(tmp_path):
+    from tests.appsample_fixture import make_catalog
+    catalogs=make_catalog(tmp_path);items,_,_=catalogs.load('appsample')
+    cave=next(i for i in items if i.layer_id!='surface')
+    assert cave.map_id=='as-map-3' and cave.layer_ids==('as-layer-1-1',)
+    assert not catalogs.territories.nodes
 
 
 def test_automatic_layers_use_visual_evidence_and_reject_ambiguous_artwork():
@@ -226,22 +207,12 @@ def test_automatic_map_selection_never_projects_a_different_map(tmp_path):
     assert [i.id for i in s.candidates(10)]==['chasm']
 
 
-def test_source_duration_alone_never_qualifies_an_automatic_resource_timer():
-    catalogs=RegionalCatalog(Path(__file__).resolve().parents[1]/'data/community')
-    timed=0
-    for region in catalogs.regions:
-        items,_,_=catalogs.load(region)
-        metadata=json.loads((catalogs.community/catalogs.regions[region]['catalog']/'SOURCE.json').read_text(encoding='utf-8'))['categories']
-        for item in items:
-            rule=catalogs.rules[item.rule_id]
-            if rule.kind=='elapsed':
-                timed+=1
-                assert '圣遗物调查点' in {metadata[c]['source_name'] for c in item.category_ids}
-                assert item.source_refresh_value in {43200000,86400000}
-                assert 'keqingmains.com' in rule.source
-            if item.source_refresh_value==165600000:
-                assert rule.kind in {'unknown','conditional','permanent'}
-    assert timed>0
+def test_appsample_unknown_resources_never_inherit_another_provider_timer(tmp_path):
+    from tests.appsample_fixture import make_catalog
+    catalogs=make_catalog(tmp_path);items,_,_=catalogs.load('appsample')
+    resource=next(i for i in items if i.category=='flower')
+    assert catalogs.rules[resource.rule_id].kind=='unknown'
+    assert catalogs.rules[resource.rule_id].deadline(NOW) is None
 
 
 def test_permanent_and_unconfirmed_rules_ignore_old_predicted_deadlines(tmp_path):
@@ -252,15 +223,9 @@ def test_permanent_and_unconfirmed_rules_ignore_old_predicted_deadlines(tmp_path
     assert s.respawn_text(s.items[2])=='Reposição não confirmada'
 
 
-def test_broad_areas_do_not_inherit_caves_repeated_in_other_source_menus(tmp_path):
-    catalogs=RegionalCatalog(Path(__file__).resolve().parents[1]/'data/community')
-    assert catalogs.inventory['territorial_audit']
-    for region in catalogs.regions:
-        items,_,_=catalogs.load(region)
-        s=Session(items,ProgressManager(str(tmp_path/f'{region}.json')))
-        s.region_id=region;s.territories=catalogs.territories
-        for node in catalogs.territories.search(region):
-            if not node.id.startswith('ky-area-'): continue
-            s.area_id=node.id
-            expected={i.id for i in items if i.source_area_ids==(node.id,)}
-            assert {i.id for i in s.scoped_items()}==expected
+def test_catalog_has_no_runtime_dependency_on_community_files(tmp_path):
+    from tests.appsample_fixture import make_catalog
+    catalogs=make_catalog(tmp_path)
+    assert not catalogs.community.exists()
+    assert catalogs.load_package('appsample').items
+    assert catalogs.default_package(tmp_path/'references')=='appsample'

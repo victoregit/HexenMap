@@ -257,6 +257,9 @@ class Windows:
         return hwnd
 
     def place(self, hwnd: int, rect: GameWindowRect) -> None:
+        key=(hwnd,rect.x,rect.y,rect.width,rect.height)
+        if getattr(self,'_placed',None)==key and self.u.IsWindowVisible(hwnd):return
+        self._placed=key
         # SWP_NOACTIVATE | SWP_SHOWWINDOW. This never brings the game to foreground.
         if not self.u.SetWindowPos(hwnd,ct.c_void_p(-1),rect.x,rect.y,rect.width,rect.height,0x10|0x40):
             raise ct.WinError(ct.get_last_error())
@@ -327,38 +330,49 @@ class Windows:
             if ct.get_last_error():
                 raise ct.WinError(ct.get_last_error())
 
-    def capture(self, rect: GameWindowRect) -> np.ndarray | None:
-        if not self.foreground(rect):
-            return None
-        # Reuse only the bitmap header definition, never the untyped legacy calls.
+    def close_capture(self):
+        for slot in getattr(self,'_capture_slots',{}).values():
+            self.g.SelectObject(slot['mem'],slot['old'])
+            self.g.DeleteObject(slot['bitmap']);self.g.DeleteDC(slot['mem'])
+        self._capture_slots={}
+
+    def capture(self, rect: GameWindowRect, fraction=1., region=None) -> np.ndarray | None:
+        """Reusable output; synchronous consumer must copy before handing it to a future."""
+        if not self.foreground(rect):return None
         from src.capture.win32_capture import BITMAPINFO, BITMAPINFOHEADER
-        # Visible broadcast surfaces must never be fed back into localization.
-        # A client DC excludes the separate layered overlay windows; desktop DC
-        # remains the previously validated path when capture exclusion is active.
-        source=rect.hwnd if getattr(self,'capture_visible',False) else None
+        source=rect.hwnd if region is not None or getattr(self,'capture_visible',False) else None
         sx,sy=(0,0) if source else (rect.x,rect.y)
-        dc=mem=bitmap=old=None
+        width=rect.width;height=max(1,min(rect.height,round(rect.height*fraction)))
+        output_height=rect.height
+        if region is not None:
+            rx,ry,width,height=map(int,region)
+            if min(rx,ry)<0 or min(width,height)<1 or rx+width>rect.width or ry+height>rect.height:return None
+            sx,sy=rx,ry;output_height=height
+        key=(width,height,rect.height,source,output_height)
+        if not hasattr(self,'_capture_slots'):self._capture_slots={}
+        dc=self.u.GetDC(source)
+        if not dc:return None
         try:
-            dc=self.u.GetDC(source)
-            if not dc: return None
-            mem=self.g.CreateCompatibleDC(dc)
-            if not mem: return None
-            bitmap=self.g.CreateCompatibleBitmap(dc,rect.width,rect.height)
-            if not bitmap: return None
-            old=self.g.SelectObject(mem,bitmap)
-            if not old: return None
-            if not self.g.BitBlt(mem,0,0,rect.width,rect.height,dc,sx,sy,0x00cc0020):
-                return None
-            self.g.SelectObject(mem,old); old=None
-            info=BITMAPINFO(); info.bmiHeader.biSize=ct.sizeof(BITMAPINFOHEADER)
-            info.bmiHeader.biWidth=rect.width; info.bmiHeader.biHeight=-rect.height
-            info.bmiHeader.biPlanes=1; info.bmiHeader.biBitCount=32
-            buffer=(ct.c_ubyte*(rect.width*rect.height*4))()
-            if self.g.GetDIBits(dc,bitmap,0,rect.height,buffer,ct.byref(info),0)!=rect.height:
-                return None
-            return np.frombuffer(buffer,np.uint8).reshape(rect.height,rect.width,4)[:,:,:3].copy()
-        finally:
-            if old and mem: self.g.SelectObject(mem,old)
-            if bitmap: self.g.DeleteObject(bitmap)
-            if mem: self.g.DeleteDC(mem)
-            if dc: self.u.ReleaseDC(source,dc)
+            slot=self._capture_slots.get(key)
+            if slot is None:
+                if len(self._capture_slots)>=(4 if region is not None else 2):self.close_capture()
+                mem=self.g.CreateCompatibleDC(dc)
+                if not mem:return None
+                bitmap=self.g.CreateCompatibleBitmap(dc,width,height)
+                if not bitmap:self.g.DeleteDC(mem);return None
+                old=self.g.SelectObject(mem,bitmap)
+                if not old:self.g.DeleteObject(bitmap);self.g.DeleteDC(mem);return None
+                info=BITMAPINFO();info.bmiHeader.biSize=ct.sizeof(BITMAPINFOHEADER)
+                info.bmiHeader.biWidth=width;info.bmiHeader.biHeight=-height
+                info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32
+                slot=dict(mem=mem,bitmap=bitmap,old=old,info=info,buffer=(ct.c_ubyte*(width*height*4))(),
+                            output=np.zeros((output_height,width,3),np.uint8))
+                self._capture_slots[key]=slot
+            if not self.g.BitBlt(slot['mem'],0,0,width,height,dc,sx,sy,0x00cc0020):return None
+            self.g.SelectObject(slot['mem'],slot['old'])
+            try:
+                if self.g.GetDIBits(dc,slot['bitmap'],0,height,slot['buffer'],ct.byref(slot['info']),0)!=height:return None
+            finally:self.g.SelectObject(slot['mem'],slot['bitmap'])
+            slot['output'][:height]=np.frombuffer(slot['buffer'],np.uint8).reshape(height,width,4)[:,:,:3]
+            return slot['output']
+        finally:self.u.ReleaseDC(source,dc)

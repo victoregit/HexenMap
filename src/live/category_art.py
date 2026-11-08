@@ -5,6 +5,7 @@ import io
 import json
 from PIL import Image,ImageOps,ImageTk
 from src.live.storage import install_dir
+from src.live.image_cache import image_lru,cached_photo
 
 @lru_cache(maxsize=1)
 def manifest():
@@ -13,7 +14,7 @@ def manifest():
         return source['icons'] if isinstance(source.get('icons'),dict) else {}
     except (OSError,ValueError,KeyError):return {}
 
-@lru_cache(maxsize=160)
+@image_lru(4*1024**2,160)
 def category_image(category,size=22,collected=False):
     entry=manifest().get(category)
     if not isinstance(entry,dict):return None
@@ -34,11 +35,7 @@ def category_image(category,size=22,collected=False):
     except (OSError,ValueError,KeyError):return None
 
 def draw_category_art(canvas,category,x,y,size=22,collected=False):
-    root=canvas._root();key=(category,size,collected)
-    if not hasattr(root,'_category_art'):root._category_art={}
-    if key not in root._category_art:
-        image=category_image(category,size,collected)
-        root._category_art[key]=ImageTk.PhotoImage(image,master=canvas) if image is not None else None
-    photo=root._category_art[key]
-    if photo is None:return False
+    image=category_image(category,size,collected)
+    if image is None:return False
+    photo=cached_photo(canvas,('category',category,size,collected),image)
     canvas.create_image(x,y,image=photo);return True

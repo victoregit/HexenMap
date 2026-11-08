@@ -31,12 +31,12 @@ def session(tmp_path):
     return obj
 
 
-def test_catalog_is_real_pinned_and_uses_simple_projection():
-    items=load_catalog(Path(__file__).resolve().parents[1]/"data/community/mondstadt")
-    assert len(items)==561
-    assert all(i.id.startswith("teyvat.moe:mondstadt:") for i in items)
-    assert map_pixel(-20,40)==(5120,2560)
-    assert all(math.isfinite(i.x+i.y) for i in items)
+def test_catalog_preserves_appsample_namespace_and_projection(tmp_path):
+    from tests.appsample_fixture import make_catalog
+    from src.live.appsample_catalog import project
+    items,region,space=make_catalog(tmp_path).load('appsample')
+    assert len(items)==3 and region=='appsample' and all(i.id.startswith('appsample:marker:') for i in items)
+    assert project(0,0)==(0.,0.) and all(math.isfinite(i.x+i.y) for i in items)
 
 
 def test_empty_selection_both_surfaces(session):

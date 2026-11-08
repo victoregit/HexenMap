@@ -7,7 +7,7 @@ from src.live.storage import read_settings,write_json,DEFAULT_KEYS
 
 def test_control_bounds_use_windows_physical_frame_including_titlebar():
     panel=CompactPanel()
-    panel.panel_detached=True
+    panel.panel_detached=True;panel.panel_collapsed=False
     panel.root=SimpleNamespace(winfo_id=lambda:1)
     panel.layer_popup=SimpleNamespace(winfo_id=lambda:2)
     calls=[]
@@ -21,7 +21,7 @@ def test_control_bounds_use_windows_physical_frame_including_titlebar():
 
 
 def test_detached_panel_does_not_follow_game_focus_or_hide_on_alt_tab():
-    panel=CompactPanel();panel.panel_detached=True;panel.panel_suspended=False
+    panel=CompactPanel();panel.panel_detached=True;panel.panel_collapsed=False;panel.panel_suspended=False
     panel.sync_panel_visibility(SimpleNamespace())  # No game-focus queries needed.
     assert panel.panel_suspended is False
 
@@ -54,3 +54,25 @@ def test_clip_region_subtracts_controls_without_deleting_windows_owned_handle():
     assert ('subtract',(1,1,2,4)) in calls
     assert ('delete',2) in calls and ('delete',1) not in calls
     assert ('apply',(99,1,True)) in calls
+
+
+def test_collapsed_animated_button_hides_over_other_apps_and_returns_without_focus():
+    panel=CompactPanel();panel.panel_detached=True;panel.panel_collapsed=True;panel.panel_suspended=False
+    calls=[]
+    panel.root=SimpleNamespace(winfo_id=lambda:10,withdraw=lambda:calls.append('hide'))
+    panel.close_layers=lambda:calls.append('close')
+    panel.native=SimpleNamespace(menu_foreground=lambda rect:rect.foreground,show_panel=lambda hwnd:calls.append('show'))
+    panel.sync_panel_visibility(SimpleNamespace(is_found=True,foreground=False))
+    assert panel.panel_suspended and calls==['close','hide']
+    panel.sync_panel_visibility(SimpleNamespace(is_found=True,foreground=True))
+    assert not panel.panel_suspended and calls==['close','hide','show']
+
+
+def test_collapsed_button_is_excluded_from_markers_without_game_occlusion():
+    panel=CompactPanel();panel.panel_detached=True;panel.panel_collapsed=True;panel.layer_popup=None
+    panel.root=SimpleNamespace(winfo_id=lambda:10)
+    calls=[]
+    def bounds(hwnd,occluder=None):calls.append(occluder);return (10,20,74,84)
+    panel.native=SimpleNamespace(control_bounds=bounds)
+    assert panel.control_rectangles(SimpleNamespace(hwnd=99,x=0,y=0))==[(8,18,76,86)]
+    assert calls==[None]

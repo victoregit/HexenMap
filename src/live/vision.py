@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 import math
 import time
 
@@ -54,10 +55,11 @@ class TerrainMatcher:
         self.matcher = cv2.FlannBasedMatcher(dict(algorithm=1,trees=4),dict(checks=96))
         self.matcher.add([self.descriptors])
         self.matcher.train()
+        self.points=np.float32([key.pt for key in self.keys])
 
     def query(self, frame: np.ndarray, mask: np.ndarray | None = None):
         """Extract screen features once, shared by all blocks of this surface."""
-        image=gray(frame)
+        image=frame
         ox=oy=0
         local_mask=mask
         if mask is not None:
@@ -69,7 +71,13 @@ class TerrainMatcher:
             x2=min(image.shape[1],x+w+12); y2=min(image.shape[0],y+h+12)
             image=image[oy:y2,ox:x2]
             local_mask=mask[oy:y2,ox:x2]
-        keys, descriptors = self.sift.detectAndCompute(image, local_mask)
+        factor=getattr(self,'query_scale',1.)
+        if factor!=1.:
+            image=cv2.resize(image,None,fx=factor,fy=factor,interpolation=cv2.INTER_CUBIC)
+            if local_mask is not None:local_mask=cv2.resize(local_mask,None,fx=factor,fy=factor,interpolation=cv2.INTER_NEAREST)
+        keys, descriptors = self.sift.detectAndCompute(gray(image), local_mask)
+        if factor!=1.:
+            for key in keys:key.pt=(key.pt[0]/factor,key.pt[1]/factor)
         if descriptors is None or len(keys) < 14:
             return None
         return keys,descriptors,ox,oy
@@ -87,7 +95,7 @@ class TerrainMatcher:
         matches = list(unique.values())
         if len(matches) < 14:
             return None
-        src = np.float32([self.keys[m.trainIdx].pt for m in matches])
+        src = self.points[[m.trainIdx for m in matches]]
         dst = np.float32([keys[m.queryIdx].pt for m in matches])+np.float32([ox,oy])
         matrix, inliers = cv2.estimateAffinePartial2D(src, dst, method=cv2.RANSAC,
                                                     ransacReprojThreshold=3.0, maxIters=3000)
@@ -114,37 +122,42 @@ class TerrainMatcher:
         return (matrix @ world, ratio, error)
 
 
+@lru_cache(maxsize=16)
+def template_variants(shape,dtype,raw):
+    template=np.frombuffer(raw,dtype=np.dtype(dtype)).reshape(shape)
+    source=gray(template)
+    silhouettes=[];grays=[]
+    for factor in (.65,.8,1.,1.25,1.5,2.):
+        resized=cv2.resize(template,None,fx=factor,fy=factor)
+        grays.append(cv2.resize(source,None,fx=factor,fy=factor))
+        if template.ndim==3:
+            silhouettes.append(cv2.inRange(cv2.cvtColor(resized,cv2.COLOR_BGR2HSV),(0,0,205),(180,70,255)))
+    return source.std()>=8,tuple(grays),tuple(silhouettes)
+
+
 def template_visible(frame: np.ndarray, template: np.ndarray, roi: tuple) -> bool:
-    h, w = frame.shape[:2]
-    x, y, rw, rh = roi
-    crop = gray(frame[int(y*h):int((y+rh)*h), int(x*w):int((x+rw)*w)])
-    # UI changes with resolution/DPI, so search a limited scale pyramid.
-    if crop.size == 0 or gray(template).std() < 8:
-        return False
-    for factor in (0.65, 0.8, 1.0, 1.25, 1.5, 2.0):
-        t = cv2.resize(gray(template), None, fx=factor, fy=factor)
-        if t.shape[0] > crop.shape[0] or t.shape[1] > crop.shape[1]:
-            continue
-        if cv2.minMaxLoc(cv2.matchTemplate(crop, t, cv2.TM_CCOEFF_NORMED))[1] >= 0.88:
-            return True
+    h,w=frame.shape[:2];x,y,rw,rh=roi
+    crop=gray(frame[int(y*h):int((y+rh)*h),int(x*w):int((x+rw)*w)])
+    if crop.size==0:return False
+    textured,variants,_=template_variants(template.shape,template.dtype.str,template.tobytes())
+    if not textured:return False
+    for t in variants:
+        if t.shape[0]<=crop.shape[0] and t.shape[1]<=crop.shape[1]:
+            if cv2.minMaxLoc(cv2.matchTemplate(crop,t,cv2.TM_CCOEFF_NORMED))[1]>=.88:return True
     return False
 
 
 def foreground_ui_visible(frame: np.ndarray, template: np.ndarray, roi: tuple) -> bool:
-    """Confirm the white HUD glyph despite changes in terrain behind it."""
     if not isinstance(template,np.ndarray) or template.ndim!=3 or frame.ndim!=3:return False
     h,w=frame.shape[:2];x,y,rw,rh=roi
     crop=frame[int(y*h):int((y+rh)*h),int(x*w):int((x+rw)*w)]
     if crop.size==0:return False
-    def silhouette(image):
-        return cv2.inRange(cv2.cvtColor(image,cv2.COLOR_BGR2HSV),(0,0,205),(180,70,255))
-    crop=silhouette(crop)
-    for factor in (.65,.8,1.,1.25,1.5,2.):
-        t=silhouette(cv2.resize(template,None,fx=factor,fy=factor))
+    crop=cv2.inRange(cv2.cvtColor(crop,cv2.COLOR_BGR2HSV),(0,0,205),(180,70,255))
+    _,_,variants=template_variants(template.shape,template.dtype.str,template.tobytes())
+    for t in variants:
         if t.shape[0]>crop.shape[0] or t.shape[1]>crop.shape[1]:continue
         fraction=cv2.countNonZero(t)/t.size
-        if .1<fraction<.85 and cv2.minMaxLoc(cv2.matchTemplate(crop,t,cv2.TM_CCOEFF_NORMED))[1]>=.82:
-            return True
+        if .1<fraction<.85 and cv2.minMaxLoc(cv2.matchTemplate(crop,t,cv2.TM_CCOEFF_NORMED))[1]>=.82:return True
     return False
 
 

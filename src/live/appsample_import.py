@@ -51,34 +51,8 @@ def parse_marker_ids(payload):
 
 
 def explicit_aliases(community: Path):
-    """Use only pinned importIds and the already-proven yuanshen stamp bridge."""
-    legacy=community/'mondstadt'
-    old={item.id:item for item in load_catalog(legacy,register=False)}
-    current=load_catalog(community/'kongying/mondstadt',register=False)
-    by_stamp=defaultdict(list)
-    for item in current:
-        if item.source_stamp:by_stamp[item.source_stamp].append(item)
-    source=json.loads((legacy/'SOURCE.json').read_text(encoding='utf-8'))
-    aliases=defaultdict(dict)
-    for entry in source['files']:
-        path=legacy/entry['file']
-        raw=path.read_bytes()
-        if hashlib.sha256(raw).hexdigest()!=entry['sha256']:raise ValueError('Catálogo alterado durante a conferência')
-        category=entry.get('category',path.stem)
-        for row in json.loads(raw)['data']:
-            identifier=f"teyvat.moe:mondstadt:{category}:{row['id']}"
-            item=old[identifier]
-            imports=row.get('importIds',{})
-            targets={target.id:target for stamp in imports.get('yuanshen',[]) for target in by_stamp.get(stamp,[])
-                     if category in (target.category_ids or (target.category,))}
-            if not targets:targets={identifier:item}
-            for external in imports.get('appsample',[]):
-                for target in targets.values():
-                    aliases[str(external)][target.id]={
-                        'id':target.id,'region':target.region_id,'category':category,
-                        'evidence':'Pinned Teyvat.moe importIds.appsample; exact yuanshen markerStamp where available',
-                        'source_commit':source['commit']}
-    return dict(aliases)
+    """Retired cross-provider bridge. Personal historical records are never reassigned."""
+    return {}
 
 
 def audit(marker_ids,aliases,duplicates=0):
@@ -92,7 +66,7 @@ def audit(marker_ids,aliases,duplicates=0):
     return {'source':'appsample','applied':False,'total_unique':len(marker_ids),'duplicates_removed':duplicates,
             'matched_explicitly':len(matches),'ambiguous':len(ambiguous),'unmatched':len(unmatched),
             'matches':matches,'ambiguous_ids':ambiguous,'unmatched_ids':unmatched,
-            'note':'External numeric IDs are not Kongying IDs. No nearest-position or same-number transfer is applied.'}
+            'note':'No cross-provider, nearest-position or same-number transfer is applied.'}
 
 
 def archive_progress(marker_ids,report,directory: Path):
@@ -127,7 +101,7 @@ def parse_catalog(payload):
     """Decode the observed public v5 column table without executing site code.
 
     Its signed ID deltas continue across category changes. Coordinates retain
-    the source's normalized CRS; they must never be projected as Kongying pixels.
+    the source's normalized CRS; they must retain their own projected coordinate system.
     Encoded coordinates require a separately reviewed decoder, not a guess.
     """
     if not isinstance(payload,dict):raise ValueError('Catálogo AppSample inválido')

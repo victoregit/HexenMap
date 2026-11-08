@@ -9,6 +9,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageOps, ImageTk
 
 from src.live.storage import bundle_dir, install_dir
+from src.live.image_cache import image_lru,cached_photo
 
 LOG=logging.getLogger(__name__)
 CHESTS=frozenset(('common-chest','exquisite-chest','precious-chest','luxurious-chest','remarkable-chest'))
@@ -145,7 +146,7 @@ def icon_geometry(category,size):
     return MarkerGeometry(left,top,left+size,top+size,tuple(rows),(size,size)) if rows else LEGACY
 
 
-@lru_cache(maxsize=1536)
+@image_lru(16*1024**2,1536)
 def pin_image(category,width,height,collected=False):
     source=map_art(category)
     if source is None:return None
@@ -167,11 +168,8 @@ def pin_image(category,width,height,collected=False):
 
 
 def tk_image(canvas,key,image):
-    root=canvas._root()
-    if not hasattr(root,'_chest_images'):root._chest_images={}
-    if key not in root._chest_images:
-        root._chest_images[key]=ImageTk.PhotoImage(image,master=canvas)
-    return root._chest_images[key]
+    return cached_photo(canvas,('marker',*key),image)
+
 
 
 def draw_pin(canvas,category,x,y,collected=False,geometry=None):
@@ -185,16 +183,19 @@ def draw_pin(canvas,category,x,y,collected=False,geometry=None):
     canvas.create_image(round(x)+geometry.left,round(y)+geometry.top,image=photo,anchor='nw')
 
 
-def draw_chest_legend(canvas,category,x,y,scale=1.,collected=False):
+@image_lru(1024**2,64)
+def legend_image(category,size,collected):
     source=chest_art(category)
-    if source is None:return False
-    size=max(12,round(22*scale))
-    key=('legend',category,size,collected)
-    root=canvas._root()
-    if key not in getattr(root,'_chest_images',{}):
-        image=ImageOps.contain(source,(size,size),Image.Resampling.LANCZOS)
-        if collected:
-            alpha=image.getchannel('A');image=ImageOps.grayscale(image).convert('RGBA');image.putalpha(alpha)
-        tk_image(canvas,key,image)
-    canvas.create_image(x,y,image=root._chest_images[key])
+    if source is None:return None
+    image=ImageOps.contain(source,(size,size),Image.Resampling.LANCZOS)
+    if collected:
+        alpha=image.getchannel('A');image=ImageOps.grayscale(image).convert('RGBA');image.putalpha(alpha)
+    return image
+
+
+def draw_chest_legend(canvas,category,x,y,scale=1.,collected=False):
+    size=max(12,round(22*scale));image=legend_image(category,size,collected)
+    if image is None:return False
+    photo=tk_image(canvas,('legend',category,size,collected),image)
+    canvas.create_image(x,y,image=photo)
     return True

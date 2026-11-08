@@ -53,13 +53,13 @@ def test_prediction_limits_stop_reverse_zoom_layer_and_minimap():
 
 def test_area_migration_preserves_bytes_progress_preferences_and_old_hotkeys(tmp_path):
     path=tmp_path/'settings.json'
-    old={'categories':['anemoculus'],'package':'mondstadt','regional':{'mondstadt':{
-        'area':'old-hidden-area','categories':['anemoculus'],'layer':'teyvat / surface'}},
+    old={'categories':['anemoculus'],'package':'appsample','regional':{'appsample':{
+        'area':'old-hidden-area','categories':['anemoculus'],'layer':'as-map-2 / surface'}},
         'hotkeys':{'visibility':'F8','collect':'F9','undo':'F10'}}
     write_json(path,old); original=path.read_bytes()
     settings=read_settings(path)
-    assert settings['regional']['mondstadt']['area'] is None
-    assert settings['regional']['mondstadt']['categories']==['anemoculus']
+    assert settings['regional']['appsample']['area'] is None
+    assert settings['regional']['appsample']['categories']==['anemoculus']
     assert settings['hotkeys']['visibility']=='F8' and settings['hotkeys']['panel']=='F7'
     backup=path.with_name(path.name+'.pre-nation-layer.bak')
     assert backup.read_bytes()==original

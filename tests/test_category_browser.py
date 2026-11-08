@@ -43,12 +43,11 @@ def test_unreviewed_labels_and_internal_tags_remain_explicit_and_available():
     assert normalized('MINÉRIO')=='minerio'
 
 
-def test_background_package_load_never_registers_or_overwrites_presentation_metadata():
-    catalogs=RegionalCatalog(Path(__file__).resolve().parents[1]/'data/community')
-    before=dict(CATEGORIES)
-    package=catalogs.load_package('liyue')
-    assert CATEGORIES==before
-    assert len(package.items)==20692
+def test_background_package_load_never_registers_or_overwrites_presentation_metadata(tmp_path):
+    from tests.appsample_fixture import make_catalog
+    catalogs=make_catalog(tmp_path);before=dict(CATEGORIES)
+    package=catalogs.load_package('appsample')
+    assert CATEGORIES==before and len(package.items)==3
     assert portuguese_label('清水玉','清水玉')=='Jade de Água Pura'
 
 

@@ -1,6 +1,7 @@
 """Bounded display prediction. Never changes localization or collection coordinates."""
 from dataclasses import replace
 import csv
+import math
 import time
 import numpy as np
 from src.live.marker_art import LEGACY
@@ -75,7 +76,7 @@ class MarkerCanvas:
         self.entries = {}
 
     def clear(self):
-        self.canvas.delete('all')
+        if self.entries:self.canvas.delete('all')
         self.entries.clear()
 
     def render(self, pins, collected):
@@ -89,7 +90,7 @@ class MarkerCanvas:
             state = (pin.item.category, collected(identifier),geometry)
             old = self.entries.get(identifier)
             if old and old[3] == state:
-                self.canvas.move(old[0], x-old[1], y-old[2])
+                if (x,y)!=(old[1],old[2]):self.canvas.move(old[0], x-old[1], y-old[2])
                 self.entries[identifier] = (old[0], x,y, state)
                 continue
             if old:
@@ -112,10 +113,13 @@ class DisplayTelemetry:
         if self.handle.tell()==0:
             self.writer.writerow(['monotonic_s','region','map','layer','surface','pins',
                                   'capture_to_submit_ms','draw_ms','prediction_px'])
-        self.flushed=time.monotonic()
+        self.flushed=time.monotonic();self.last_record=-math.inf;self.last_state=None
 
     def record(self, region, observation, displayed, pins, started):
         now=time.monotonic()
+        state=(region,observation.surface,len(pins))
+        if state==self.last_state and now-self.last_record<.25:return
+        self.last_state=state;self.last_record=now
         prediction=0
         if pins and observation.world_to_screen is not None and displayed.world_to_screen is not None:
             prediction=float(np.linalg.norm(displayed.world_to_screen[:,2]-observation.world_to_screen[:,2]))
