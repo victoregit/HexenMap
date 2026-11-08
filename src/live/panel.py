@@ -1,13 +1,12 @@
-"""Compact exploration controls. No game assets and no game input automation."""
+"""Compact exploration controls with user-supplied branding."""
 import tkinter as tk
 from tkinter import ttk
 
 from src.live.catalog import CATEGORIES, CATEGORY_GROUPS
-from src.live.icons import draw_marker
 from src.live.storage import HOTKEY_OPTIONS
 from src.live.category_browser import CategoryBrowser, CategoryModel
-from src.live.nation_selector import NationSelector
 from src.live.identity import DISPLAY_NAME
+from src.live.brand import AnimatedBadge, apply_app_icon, TRANSPARENT
 
 BG = '#111923'
 ROW = '#1b2734'
@@ -18,6 +17,7 @@ MUTED = '#91a0b2'
 
 class CompactPanel:
     def _panel(self):
+        apply_app_icon(self.root)
         self.panel_collapsed = False
         self.layer_popup = None
         self.panel_suspended = False
@@ -69,18 +69,11 @@ class CompactPanel:
         self.tabs=ttk.Notebook(self.shell,style='Compact.TNotebook');self.tabs.pack(fill='both',expand=True,padx=16)
         self.explore=ttk.Frame(self.tabs);self.prefs=ttk.Frame(self.tabs)
         self.tabs.add(self.explore,text='Itens');self.tabs.add(self.prefs,text='Ajustes')
-        if self.catalogs.appsample_available:
-            self.source_var=tk.StringVar(value='AppSample' if self.package_id=='appsample' else 'Kongying')
         scope=ttk.Frame(self.explore);scope.pack(fill='x',pady=(0,2))
-        self.region_names={r['name']:r['id'] for r in self.catalogs.regions.values()}
-        if self.package_id=='legacy-mondstadt' or (self.package_id=='appsample' and self.settings.get('last_kongying_package')=='legacy-mondstadt'):
-            self.region_names['Mondstadt · compatibilidade']='legacy-mondstadt'
-        active_region=self.settings.get('last_kongying_package','mondstadt') if self.package_id=='appsample' else self.package_id
-        self.region_var=tk.StringVar(value=next((k for k,v in self.region_names.items() if v==active_region),next(iter(self.region_names))))
-        self.region_box=NationSelector(scope,self.region_var,self.region_names,self.change_region,self.close_layers)
-        self.region_box.pack(side='left',fill='x',expand=True)
+        self.region_names={'AppSample':'appsample'}
+        self.region_var=tk.StringVar(value='AppSample')
         self.source_caption=tk.Label(scope,text='APPSAMPLE',bg=BG,fg=MUTED,font=('Segoe UI',8,'bold'),anchor='w',pady=7)
-        if hasattr(self,'source_var'):self.sync_source_controls()
+        self.source_caption.pack(side='left',fill='x',expand=True)
         self.layer_var=tk.StringVar()
         button=tk.Canvas(scope,width=30,height=30,bg=BG,highlightthickness=0,cursor='hand2');button.pack(side='right',padx=(8,0))
         for cy in (20,15,10):button.create_polygon(7,cy,15,cy-4,23,cy,15,cy+4,fill=BG,outline=GOLD)
@@ -88,13 +81,7 @@ class CompactPanel:
         self.territory_path=tk.StringVar()
         territory_label=tk.Label(self.explore,textvariable=self.territory_path,bg=BG,fg=MUTED,font=('Segoe UI',8),anchor='w',wraplength=320)
         def show_territory(*args):
-            if self.package_id=='appsample':
-                if not territory_label.winfo_manager():territory_label.pack(fill='x',pady=(0,5),after=scope)
-            else:
-                territory_label.pack_forget()
-                layer=self.territory_path.get().split(' · ')[-1].replace('Todos os mapas','Automático')
-                self.region_box.detail=layer
-                self.region_box.draw()
+            if not territory_label.winfo_manager():territory_label.pack(fill='x',pady=(0,5),after=scope)
         self.territory_path.trace_add('write',show_territory)
         search=ttk.Frame(self.explore);search.pack(fill='x')
         self.category_query=tk.StringVar()
@@ -115,7 +102,7 @@ class CompactPanel:
         farm=tk.Frame(self.explore,bg=ROW,padx=6,pady=6)
         farm.pack(side='bottom',fill='x',pady=(8,0))
         farm_actions=tk.Frame(farm,bg=ROW);farm_actions.pack(fill='x')
-        self.farm_button=ttk.Button(farm_actions,text='Farmar baús',style='Primary.TButton',command=self.toggle_farm)
+        self.farm_button=ttk.Button(farm_actions,text='Buscar itens',style='Primary.TButton',command=self.toggle_farm)
         self.farm_button.pack(side='left',fill='x',expand=True)
         self.farm_next=ttk.Button(farm_actions,text='Próximo',command=self.next_farm_target,state='disabled');self.farm_next.pack(side='right',padx=(6,0))
         self.farm_hint=tk.StringVar()
@@ -165,16 +152,23 @@ class CompactPanel:
         self.capture_button=ttk.Button(prefs_body,text=self.capture_label(),command=self.toggle_capture_visibility)
         self.capture_button.pack(fill='x',pady=5)
         ttk.Label(prefs_body,text='Para transmitir os pins, compartilhe a tela inteira. Capturar só a janela do jogo pode não incluir o overlay.',wraplength=295,foreground=MUTED).pack(fill='x',pady=(0,6))
-        if self.catalogs.appsample_available:
-            source_row=ttk.Frame(prefs_body);source_row.pack(fill='x',pady=6)
-            ttk.Label(source_row,text='Fonte de dados').pack(side='left')
-            source_box=ttk.Combobox(source_row,textvariable=self.source_var,values=['Kongying','AppSample'],state='readonly',width=13)
-            source_box.pack(side='right');source_box.bind('<<ComboboxSelected>>',self.change_source)
+        ttk.Label(prefs_body,text='Exploração · BETA',font=('Segoe UI',10,'bold')).pack(anchor='w',pady=(6,4))
+        self.automark_var=tk.BooleanVar(value=self.settings.get('automark',False))
+        self.automark_toggle=ttk.Checkbutton(prefs_body,text='Marcar baús automaticamente',variable=self.automark_var,command=self.change_automark)
+        self.automark_toggle.pack(anchor='w',pady=3)
+        if not self.chest_signals.ready:self.automark_toggle.state(['disabled'])
+        ttk.Label(prefs_body,text=self.chest_signals.reason,wraplength=295,foreground=MUTED).pack(fill='x',pady=(0,6))
+        ttk.Label(prefs_body,text='Desempenho',font=('Segoe UI',10,'bold')).pack(anchor='w',pady=(10,4))
+        self.performance_var=tk.StringVar(value='Global' if self.settings.get('performance_mode')=='global' else 'Leve')
+        performance_box=ttk.Combobox(prefs_body,textvariable=self.performance_var,values=['Leve','Global'],state='readonly')
+        performance_box.pack(fill='x',pady=3)
+        performance_box.bind('<<ComboboxSelected>>',self.change_performance_mode)
+        ttk.Label(prefs_body,text='Leve: carrega o entorno conforme necessário. Viagens longas podem exigir breve recuperação.\nGlobal: mantém prontas as referências do mapa e das camadas selecionadas. Consome mais memória e pode aumentar o uso de CPU e o tempo de carregamento.',wraplength=295,foreground=MUTED).pack(fill='x',pady=(0,8))
         ttk.Label(prefs_body, text='Atalhos globais').pack(anchor='w', pady=5)
         self.key_vars = {}
         for action, label in (('panel', 'Abrir / recolher painel'), ('visibility', 'Mostrar / ocultar ícones'),
                               ('collect', 'Coletar próximo'), ('undo', 'Desfazer coleta'),
-                              ('farm','Iniciar / parar farm'),('farm_next','Pular baú-alvo')):
+                              ('farm','Iniciar / parar busca'),('farm_next','Pular item-alvo')):
             row = ttk.Frame(prefs_body); row.pack(fill='x', pady=4)
             ttk.Label(row, text=label).pack(side='left')
             var = tk.StringVar(value=self.settings['hotkeys'][action]); self.key_vars[action] = var
@@ -192,15 +186,32 @@ class CompactPanel:
             widget.bind('<MouseWheel>',scroll_preferences)
             for child in widget.winfo_children():bind_preferences(child)
         bind_preferences(prefs_canvas)
-        self.compact = tk.Canvas(self.root, width=38, height=38, bg=BG, highlightthickness=0, cursor='hand2')
-        draw_marker(self.compact, 'anemoculus', 19, 19, scale=1.2)
+        scale=self.native.dpi_scale(self.root.winfo_id()) if hasattr(self.native,'dpi_scale') else 1.
+        self.compact_size=max(76,round(76*scale))
+        self.compact=AnimatedBadge(self.root,self.compact_size)
+        self.compact.bind('<Return>',lambda event:self.toggle_panel())
+        self.compact.bind('<space>',lambda event:self.toggle_panel())
         self.compact.bind('<Button-1>', self.start_panel_drag)
         self.compact.bind('<B1-Motion>', self.drag_panel)
         self.compact.bind('<ButtonRelease-1>', self.expand_or_drag)
         self.root.update_idletasks()
         self.native.panel(self.root.winfo_id())
         self.move_panel_to(x,y)
-        if pref.get('collapsed') and not self.panel_detached:self.toggle_panel(save=False)
+        if pref.get('collapsed'):self.toggle_panel(save=False)
+
+    def change_automark(self):
+        self.settings['automark']=self.automark_var.get() and self.chest_signals.ready
+        self.automark.reset();self.automark_generation+=1
+        self.persist_settings()
+
+    def change_performance_mode(self,event=None):
+        mode='global' if self.performance_var.get()=='Global' else 'light'
+        if mode==self.settings.get('performance_mode','light'):return
+        self.settings['performance_mode']=mode
+        self.session.notice='Preparando cobertura global…' if mode=='global' else 'Modo Leve: carregando o entorno sob demanda.'
+        self.reload_reference()
+        try:self.persist_settings()
+        except OSError as exc:self.session.notice=str(exc)
 
     def show_settings(self):
         self.tabs.select(self.prefs)
@@ -231,9 +242,9 @@ class CompactPanel:
         farm=self.session.farm
         if farm.enabled:farm.stop()
         else:farm.start(self.session)
-        self.farm_button.configure(text='Parar farm' if farm.enabled else 'Farmar baús')
+        self.farm_button.configure(text='Parar busca' if farm.enabled else 'Buscar itens')
         self.farm_next.configure(state='normal' if farm.enabled else 'disabled')
-        self.session.notice='' if farm.enabled else 'Farm encerrado.'
+        self.session.notice='' if farm.enabled else 'Busca encerrada.'
 
     def next_farm_target(self):
         if self.session.farm.enabled:self.session.farm.skip()
@@ -252,7 +263,7 @@ class CompactPanel:
         sx, sy, x, y = self.panel_drag
         dx, dy = event.x_root-sx, event.y_root-sy
         self.panel_dragged |= abs(dx)+abs(dy) > 4
-        width, height = (40, 40) if self.panel_collapsed else (360, 540)
+        width, height = (self.compact_size, self.compact_size) if self.panel_collapsed else (360, 540)
         rect = self.native.game()
         if not self.panel_detached and rect.is_found and not rect.is_minimized:
             left,top,right,bottom=rect.x,rect.y,rect.x+rect.width,rect.y+rect.height
@@ -299,34 +310,37 @@ class CompactPanel:
         else: self.finish_panel_drag()
 
     def toggle_panel(self, save=True):
-        if self.panel_detached:
-            self.close_layers();self.panel_position()
-            if self.root.state()=='iconic' or not self.root.winfo_viewable():
-                self.root.deiconify();self.root.lift();self.root.focus_force()
-            else:
-                self.root.iconify();self.native.restore_game_focus(self.native.game())
-            if save:self.finish_panel_drag()
+        if self.panel_detached and not self.panel_collapsed and self.root.state()=='iconic':
+            self.root.deiconify();self.root.lift();self.root.focus_force()
             return
-        self.panel_collapsed = not self.panel_collapsed
+        self.panel_position();self.close_layers()
+        self.panel_collapsed=not self.panel_collapsed
         if self.panel_collapsed:
-            self.close_layers()
-            self.shell.pack_forget(); self.compact.pack()
-            self.root.geometry('40x40')
+            self.root.overrideredirect(True)
+            self.root.attributes('-topmost',True)
+            self.root.attributes('-transparentcolor',TRANSPARENT)
+            self.root.configure(bg=TRANSPARENT,highlightthickness=0)
+            self.shell.pack_forget();self.compact.pack()
+            self.root.geometry(f'{self.compact_size}x{self.compact_size}')
         else:
-            self.compact.pack_forget(); self.shell.pack(fill='both', expand=True)
+            self.compact.pack_forget();self.shell.pack(fill='both',expand=True)
+            self.root.attributes('-transparentcolor','')
+            self.root.configure(bg=BG,highlightthickness=1)
+            self.root.overrideredirect(not self.panel_detached)
+            self.root.attributes('-topmost',not self.panel_detached)
             self.root.geometry('360x540')
-        if save: self.finish_panel_drag()
+            self.root.deiconify();self.root.lift()
+            if self.panel_detached:self.root.focus_force()
+        self.root.update_idletasks();self.native.panel(self.root.winfo_id())
+        self.panel_suspended=False
+        if save:self.finish_panel_drag()
 
     def collapse_to_game(self):
-        if self.panel_detached:
-            self.panel_position();self.root.iconify()
-            self.finish_panel_drag()
-            self.native.restore_game_focus(self.native.game());return
-        if not self.panel_collapsed: self.toggle_panel()
+        if not self.panel_collapsed:self.toggle_panel()
         self.native.restore_game_focus(self.native.game())
 
     def sync_panel_visibility(self, rect):
-        if self.panel_detached:
+        if self.panel_detached and not self.panel_collapsed:
             if self.panel_suspended:
                 self.native.show_panel(self.root.winfo_id());self.panel_suspended=False
             return
@@ -345,7 +359,7 @@ class CompactPanel:
         rectangles=[]
         for window in (self.root,self.layer_popup):
             if window is None:continue
-            occluder=game.hwnd if window is self.root and self.panel_detached else None
+            occluder=game.hwnd if window is self.root and self.panel_detached and not self.panel_collapsed else None
             bounds=self.native.control_bounds(window.winfo_id(),occluder=occluder)
             if bounds:
                 left,top,right,bottom=bounds
@@ -353,14 +367,13 @@ class CompactPanel:
         return rectangles
 
     def raise_attached_controls(self):
-        if not self.panel_detached:self.native.above_icons(self.root.winfo_id())
+        if not self.panel_detached or self.panel_collapsed:self.native.above_icons(self.root.winfo_id())
         if self.layer_popup:self.native.above_icons(self.layer_popup.winfo_id())
 
     def panel_shortcut(self):
         self.toggle_panel()
-        if self.panel_detached:return
         if self.panel_collapsed:self.native.restore_game_focus(self.native.game())
-        else:self.root.deiconify();self.root.lift();self.root.focus_force()
+        elif not self.panel_detached:self.root.deiconify();self.root.lift();self.root.focus_force()
 
     def open_layers(self, event=None):
         if getattr(self,'region_loading',False):return

@@ -7,8 +7,9 @@ import sys
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
-from src.live.appsample_import import (parse_marker_ids,explicit_aliases,audit,archive_progress,
+from src.live.appsample_import import (parse_marker_ids,audit,archive_progress,
     parse_catalog,resolve_catalog_progress,archive_catalog_progress)
+from src.live.regions import RegionalCatalog
 
 
 def main():
@@ -28,7 +29,9 @@ def main():
         directory=archive_catalog_progress(ids,report,args.catalog,ROOT/'userData/imports/appsample',args.catalog_url)
         fields=('applied','total_unique','catalog_points','resolved','missing','resolved_chests','runtime_ready')
     else:
-        aliases=explicit_aliases(ROOT/'data/community')
+        package=RegionalCatalog(ROOT/'data/community',ROOT/'userData/catalogs').load_package('appsample')
+        aliases={item.id.removeprefix('appsample:marker:'):{item.id:{'local_id':item.id,'category':item.category}}
+                 for item in package.items}
         report=audit(ids,aliases,duplicates)
         directory=archive_progress(ids,report,ROOT/'userData/imports/appsample')
         fields=('applied','total_unique','matched_explicitly','ambiguous','unmatched')

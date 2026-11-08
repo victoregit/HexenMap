@@ -26,9 +26,14 @@ from src.live.motion import MotionRecognizer
 from src.live.reference import load_pack, ReferenceUnavailable, ReferenceCancelled
 from src.live.session import Session, CollectionCount
 from src.live.storage import bundle_dir, install_dir, read_settings, write_json, HOTKEY_OPTIONS, parse_hotkey, PreferenceWriter
-from src.live.vision import Observation, ScreenRecognizer, LayerRecognizer
+from src.live.vision import Observation, ScreenRecognizer, LayerRecognizer, template_visible
+from src.live.reference_store import read_spec
+from src.live.budget_vision import BudgetRecognizer
+from src.live.performance import PerformanceTelemetry
 from src.live.chest_farm import CompassCanvas, TargetHighlight
 from src.live.identity import WINDOW_TITLE
+from src.live.automark import AutoMark,ChestSignals
+from src.live.automark_service import AutoMarkService
 from src.overlay.global_hotkeys import GlobalHotkeyListener, MOD_NOREPEAT
 from src.overlay.control_key import ControlKeyListener
 from src.progress.progress_manager import ProgressManager
@@ -49,7 +54,7 @@ class DesktopApp(CompactPanel):
         self.preference_writer=PreferenceWriter(self.settings_path)
         self.catalogs=RegionalCatalog(bundle_dir()/"data/community",self.user_dir/'catalogs')
         self.package_id=self.settings.get("package",self.catalogs.default_package(self.user_dir/'references'))
-        if not self.catalogs.accepts(self.package_id): self.package_id="legacy-mondstadt"
+        if not self.catalogs.accepts(self.package_id): self.package_id="appsample"
         package=self.catalogs.load_package(self.package_id)
         self.category_metadata=package.categories
         self.map_names=getattr(package,'map_names',{}) or {}
@@ -66,19 +71,23 @@ class DesktopApp(CompactPanel):
         self.counts_at=0.0
         self.session=Session(items,
                              ProgressManager(str(self.user_dir/"progress.json")))
+        self.automark=AutoMark()
+        self.chest_signals=ChestSignals(self.user_dir/'automark')
+        self.automark_generation=0;self.automark_snapshot=None
         self.session.selected=set(self.settings["categories"]) & CATEGORIES.keys()
         self.session.region_id=region
-        self.session.map_id="teyvat"
+        self.session.map_id="as-map-2"
         self.session.layer_id="surface"
         self.session.territories=self.catalogs.territories
         self.session.rules=self.catalogs.rules
         self.reference_override=reference_dir
         self.reference_root=self.user_dir/'references'
-        self.reference_dir=reference_dir or self.user_dir/"references/mondstadt"
+        self.reference_dir=reference_dir or self.user_dir/"references/appsample/as-map-2/surface"
         self.recognizer=None
         self.reference_error=""
         self.reference_lock=threading.Lock()
         self.reference_build_lock=threading.Lock()
+        self.reference_released=threading.Event();self.reference_released.set()
         self.events=queue.Queue()
         self.latest=queue.Queue(maxsize=1)
         self.stop_event=threading.Event()
@@ -138,6 +147,9 @@ class DesktopApp(CompactPanel):
         self.control_listener.start()
         self.worker=threading.Thread(target=self._worker,name="LiveRecognition",daemon=True)
         self.worker.start()
+        self.automark_service=AutoMarkService(self.chest_signals,Windows,self.automark_context,self.events.put,self.stop_event)
+        self.automark_worker=threading.Thread(target=self.automark_service.run,name='ChestHUD',daemon=True)
+        self.automark_worker.start()
         self.root.after(16,self._tick)
         self.root.after(10,self._poll_pointer)
 
@@ -154,7 +166,6 @@ class DesktopApp(CompactPanel):
                    'unclassified-map':'Mapa não confirmado'}
         map_names.update(getattr(self,'map_names',{}))
         self.layer_names={}
-        if self.package_id not in {'legacy-mondstadt','appsample'}: self.layer_names['Todos os mapas · camada automática']='* / automática'
         for value in layers:
             mapid,layer=value.split(' / ')
             node=self.catalogs.territories.nodes.get(layer)
@@ -164,7 +175,7 @@ class DesktopApp(CompactPanel):
             if mapid.startswith('as-map-') and mapid not in map_names:map_names[mapid]='Mapa '+mapid.removeprefix('as-map-')+' · sem referência'
             self.layer_names[f'{map_names.get(mapid,mapid)} · {name}']=value
         pref=self.settings.get("regional",{}).get(self.package_id,{})
-        default='as-map-2 / surface' if self.package_id=='appsample' else '* / automática' if self.package_id!='legacy-mondstadt' else 'teyvat / surface'
+        default='as-map-2 / surface'
         choice=pref.get("layer",default)
         choice=choice if choice in self.layer_names.values() else 'teyvat / surface' if 'teyvat / surface' in layers else layers[0]
         self.layer_var.set(next(k for k,v in self.layer_names.items() if v==choice))
@@ -190,15 +201,6 @@ class DesktopApp(CompactPanel):
         except OSError as exc: self.session.notice=f"Falha ao salvar preferências: {exc}"
         self.reload_reference()
 
-    def change_region(self,event=None):
-        identifier=self.region_names[self.region_var.get()]
-        self.request_package(identifier)
-
-    def change_source(self,event=None):
-        identifier='appsample' if self.source_var.get()=='AppSample' else self.settings.get('last_kongying_package','mondstadt')
-        if not self.catalogs.accepts(identifier):identifier='mondstadt'
-        self.request_package(identifier)
-
     def import_appsample_progress(self):
         if self.region_loading:return
         if self.package_id!='appsample':
@@ -222,14 +224,7 @@ class DesktopApp(CompactPanel):
             logger.exception('Importação AppSample não aplicada');self.session.notice=f'Falha na importação: {exc}'
 
     def sync_source_controls(self):
-        if not hasattr(self,'source_var'):return
-        appsample=self.package_id=='appsample'
-        self.source_var.set('AppSample' if appsample else 'Kongying')
-        if appsample:
-            self.region_box.pack_forget();self.source_caption.pack(side='left',fill='x',expand=True)
-        else:
-            self.source_caption.pack_forget();self.region_box.pack(side='left',fill='x',expand=True)
-            self.region_var.set(next(k for k,v in self.region_names.items() if v==self.package_id))
+        self.source_caption.configure(text='APPSAMPLE')
 
     def request_package(self,identifier):
         if identifier==self.package_id and not self.region_loading:return
@@ -243,6 +238,7 @@ class DesktopApp(CompactPanel):
         self.session.invalidate("Trocando nação…")
         with self.reference_lock:
             self.selection_epoch+=1
+            if self.recognizer is not None:self.reference_released.clear()
             self.recognizer=None
             self.reference_error="Carregando catálogo…"
         self.display_motion.reset();self.displayed_observation=None
@@ -299,7 +295,6 @@ class DesktopApp(CompactPanel):
     def persist_settings(self):
         self.settings["categories"]=sorted(self.session.selected)
         self.settings["package"]=self.package_id
-        if self.package_id!='appsample':self.settings['last_kongying_package']=self.package_id
         self.settings["server"]="America"
         self.settings.setdefault("regional",{})[self.package_id]={"categories":sorted(self.session.selected),"layer":self.layer_names[self.layer_var.get()]}
         x,y=self.panel_position()
@@ -337,6 +332,7 @@ class DesktopApp(CompactPanel):
     def reload_reference(self):
         with self.reference_lock:
             self.selection_epoch+=1
+            if self.recognizer is not None:self.reference_released.clear()
             self.recognizer=None
             self.reference_error="Carregando referência do mapa selecionado…"
             self.reference_context=(self.session.region_id,self.session.map_id or 'auto',self.session.layer_id or 'auto')
@@ -344,6 +340,7 @@ class DesktopApp(CompactPanel):
         self.display_motion.reset()
         self.displayed_observation=None
         self.renderer.clear()
+        if hasattr(self.root,'_hexen_photos'):self.root._hexen_photos.prune(force=True)
         self.visible_pins=[]
         if self.overlay_hwnd: self.native.hide(self.overlay_hwnd)
         if self.input_hwnd:
@@ -351,32 +348,41 @@ class DesktopApp(CompactPanel):
             self.native.hide(self.input_hwnd)
         epoch=self.selection_epoch
         region,mapid,layer,space=self.session.region_id,self.session.map_id,self.session.layer_id,self.coordinate_system
-        legacy=self.package_id=="legacy-mondstadt"
-        directory=self.reference_override or (self.reference_root/'mondstadt' if legacy else self.reference_root/'appsample' if self.package_id=='appsample' else self.reference_root/'kongying'/region)
-        if not self.reference_override and not legacy and mapid: directory=directory/mapid
-        if not self.reference_override and not legacy and layer: directory=directory/layer
+        directory=self.reference_override or self.reference_root/'appsample'
+        if not self.reference_override and mapid:directory=directory/mapid
+        if not self.reference_override and layer:directory=directory/layer
         allowed_layers={(item.map_id,value) for item in self.session.scoped_items() for value in (item.layer_ids or (item.layer_id,))}
         cancelled=lambda:self.stop_event.is_set() or epoch!=self.selection_epoch
         def build():
             # Serialize construction and discard superseded selections before doing work.
             with self.reference_build_lock:
+                while not self.reference_released.wait(.05):
+                    if cancelled():return
                 if self.stop_event.is_set() or epoch!=self.selection_epoch: return
+                # Do not overlap a retired JSON worker with cold SIFT workspace peaks.
+                self.catalog_source.retire_idle()
+                if cancelled():return
                 try:
-                    if self.reference_override and (directory/'manifest.json').is_file():
+                    candidates=[]
+                    if (directory/'manifest.json').is_file():candidates=[directory/'manifest.json']
+                    elif layer is None:
+                        candidates=[candidate for candidate in sorted(directory.glob('*/manifest.json' if mapid else '*/*/manifest.json'))
+                                    if (mapid or candidate.parent.parent.name,candidate.parent.name) in allowed_layers]
+                    specs=[]
+                    for candidate in candidates:
+                        if cancelled():raise ReferenceCancelled('Seleção substituída')
                         import json
-                        manifest=json.loads((directory/'manifest.json').read_text(encoding='utf-8'))
-                        recognizer=ScreenRecognizer(load_pack(directory,region_id=region,map_id=mapid or manifest.get('map_id','teyvat'),
-                                                  layer_id=layer,coordinate_system=space,cancelled=cancelled))
-                    elif layer is None and not legacy:
-                        factories=[]
-                        for candidate in sorted(directory.glob("*/manifest.json" if mapid else '*/*/manifest.json')):
-                            candidate_map=mapid or candidate.parent.parent.name
-                            if (candidate_map,candidate.parent.name) not in allowed_layers: continue
-                            factories.append(lambda path=candidate.parent,mid=candidate_map:load_pack(path,region_id=region,map_id=mid,
-                                             layer_id=path.name,coordinate_system=space,cancelled=cancelled))
-                        recognizer=LayerRecognizer(factories,cancelled=cancelled)
-                    else:
-                        recognizer=ScreenRecognizer(load_pack(directory,region_id=region,map_id=mapid,layer_id=layer,coordinate_system=space,cancelled=cancelled))
+                        metadata=json.loads(candidate.read_text(encoding='utf-8'))
+                        specs.append(read_spec(candidate.parent,region,mapid or metadata.get('map_id','teyvat'),
+                                               layer,space,len(specs)))
+                    mode=self.settings.get('performance_mode','light')
+                    try:
+                        recognizer=BudgetRecognizer(specs,self.user_dir/'cache/references',mode,cancelled)
+                    except (MemoryError, __import__('cv2').error) as exc:
+                        if mode!='global' or not isinstance(exc,MemoryError) and 'memory' not in str(exc).lower():raise
+                        logger.warning('Cobertura global indisponível; retornando ao modo Leve: %s',exc)
+                        recognizer=BudgetRecognizer(specs,self.user_dir/'cache/references','light',cancelled)
+                        self.events.put(('performance_fallback',epoch))
                     error=""
                 except ReferenceCancelled:
                     return
@@ -402,6 +408,7 @@ class DesktopApp(CompactPanel):
     def _poll_pointer(self):
         if self.stop_event.is_set():
             return
+        pointer_active=False
         try:
             control,x,y=self.native.pointer()
             control=control or self.control_listener.is_down
@@ -416,8 +423,8 @@ class DesktopApp(CompactPanel):
                 if outside or self.native.key_down(0x1b):
                     self.close_marker_menu()
             if not self.menu_open and self.input_hwnd:
-                rect=self.native.game()
-                if (not control or not self.native.foreground(rect)
+                rect=self.native.game();pointer_active=rect.is_found and self.native.foreground(rect)
+                if (not control or not pointer_active
                         or self.rect_key(rect)!=self.geometry_key
                         or not self.session.observation.fresh(time.monotonic()) or self.session.hidden):
                     self.native.interactive(self.input_hwnd,False)
@@ -429,7 +436,7 @@ class DesktopApp(CompactPanel):
             if self.input_hwnd:
                 self.native.interactive(self.input_hwnd,False)
                 self.native.hide(self.input_hwnd)
-        self.root.after(10,self._poll_pointer)
+        self.root.after(10 if self.control_down or self.menu_open or pointer_active else 80,self._poll_pointer)
 
     def close_marker_menu(self, event=None, restore_focus=True):
         was_open=self.menu_open
@@ -478,6 +485,19 @@ class DesktopApp(CompactPanel):
             logger.exception("Falha ao salvar pelo menu do marcador")
         finally:
             self.close_marker_menu()
+
+    def collect_shortcut(self,rect):
+        choices=self.automark.choices(self.session,time.monotonic())
+        if not choices:
+            self.session.collect();return
+        self.automark.reset()
+        self.close_marker_menu(restore_focus=False)
+        self.menu_open=True;self.menu_geometry=self.rect_key(rect)
+        self.menu_deadline=time.monotonic()+30;self.menu_mouse_down=False
+        self.native.interactive(self.input_hwnd,False);self.native.hide(self.input_hwnd)
+        self.marker_menu=MarkerMenu(self.root,self.native,rect,choices,self.session,
+                                    self.change_marker_state,self.close_marker_menu,
+                                    rect.x+rect.width//2,rect.y+rect.height//2)
 
     def refresh_counts(self):
         if hasattr(self,'category_browser'):
@@ -561,28 +581,45 @@ class DesktopApp(CompactPanel):
         return rect.hwnd,rect.x,rect.y,rect.width,rect.height
 
     def _publish(self,value):
+        self.automark_snapshot=value
         try: self.latest.get_nowait()
         except queue.Empty: pass
         try: self.latest.put_nowait(value)
         except queue.Full: pass
 
+    def acknowledge_reference_release(self,active_recognizer):
+        with self.reference_lock:
+            if active_recognizer is None and self.recognizer is None:self.reference_released.set()
+
+    def automark_context(self):
+        with self.reference_lock:
+            pack=self.recognizer.pack if self.recognizer is not None else None
+            epoch=self.selection_epoch
+        enabled=self.settings.get('automark',False) and not self.session.hidden and not self.region_loading and not self.menu_open
+        return enabled,self.automark_generation,epoch,pack,self.automark_snapshot
+
     def _worker(self):
         motion=None
+        try:performance=PerformanceTelemetry(self.user_dir/'performance.jsonl')
+        except OSError:performance=None;logger.warning('Diagnóstico de desempenho indisponível')
         active_recognizer=None
         previous_key=None
         try:
             with (self.user_dir/"live-session-v2.csv").open("a",newline="",encoding="utf-8") as log:
                 writer=csv.writer(log)
                 if log.tell()==0: writer.writerow(["monotonic_s","surface","latency_ms","confidence","p95_px","reason","region","map","layer","selection_epoch"])
+                last_log=-math.inf;last_log_state=None
                 while not self.stop_event.is_set():
                     started=time.monotonic(); rect=self.native.game()
                     with self.reference_lock:
                         recognizer=self.recognizer; error=self.reference_error; epoch=self.selection_epoch
                         context=self.reference_context
                     if recognizer is not active_recognizer:
-                        if motion: motion.close()
+                        if motion: motion.close(wait=True)
+                        if active_recognizer is not None and hasattr(active_recognizer,'close'):active_recognizer.close()
                         motion=MotionRecognizer(recognizer) if recognizer else None
                         active_recognizer=recognizer
+                    self.acknowledge_reference_release(active_recognizer)
                     key=(self.rect_key(rect),getattr(self.native,'capture_visible',False))
                     if key!=previous_key:
                         if motion: motion.reset()
@@ -593,24 +630,56 @@ class DesktopApp(CompactPanel):
                         obs=Observation("hidden",started,reason="Volte ao Genshin para continuar")
                     elif rect.is_found and recognizer is None:
                         obs=Observation("hidden",started,reason=error)
+                    elif rect.is_found and ((not self.session.selected and not (self.settings.get('automark')
+                            and getattr(self,'chest_signals',None) is not None and self.chest_signals.ready)) or self.session.hidden):
+                        if motion:motion.reset()
+                        obs=Observation('hidden',started,reason='Overlay oculto' if self.session.hidden else 'Selecione o que procurar')
                     elif rect.is_found:
-                        try: obs=motion.observe(self.native.capture(rect),started)
+                        try:
+                            p=recognizer.pack
+                            fraction=min(1.,max(.35,p.map_ui_roi[1]+p.map_ui_roi[3],p.gameplay_ui_roi[1]+p.gameplay_ui_roi[3])+.01)
+                            if motion.previous_surface=='map':frame=self.native.capture(rect)
+                            else:
+                                frame=self.native.capture(rect,fraction)
+                                if frame is not None and template_visible(frame,p.map_ui,p.map_ui_roi):frame=self.native.capture(rect)
+                            obs=motion.observe(frame,started)
+                        except MemoryError:
+                            if self.settings.get('performance_mode')=='global':self.events.put(('performance_fallback',epoch,True))
+                            obs=Observation('hidden',started,reason='Memória insuficiente para a referência atual')
+                        except ReferenceCancelled:
+                            obs=Observation('hidden',started,reason='Seleção substituída')
                         except Exception:
                             logger.exception("Falha no reconhecimento")
                             obs=Observation("hidden",started,reason="Não foi possível reconhecer a tela")
                     elapsed=time.monotonic()-started
                     self._publish((self.rect_key(rect),obs,epoch))
                     current=epoch==self.selection_epoch
-                    writer.writerow([round(started,3),obs.surface if current else 'hidden',round(elapsed*1000,1),round(obs.confidence,3),obs.error_px,
-                                     obs.reason if current else 'Seleção substituída',context[0],obs.map_id or context[1],obs.layer_id or context[2],epoch]); log.flush()
-                    self.stop_event.wait(max(.005,.05-elapsed))
+                    state=(obs.surface,obs.reason,epoch)
+                    if state!=last_log_state or started-last_log>=1:
+                        writer.writerow([round(started,3),obs.surface if current else 'hidden',round(elapsed*1000,1),round(obs.confidence,3),obs.error_px,
+                                         obs.reason if current else 'Seleção substituída',context[0],obs.map_id or context[1],obs.layer_id or context[2],epoch])
+                        log.flush();last_log=started;last_log_state=state
+                    if performance is not None:
+                        try:performance.record(recognizer,self.settings.get('performance_mode','light'),obs.surface,rect.is_found and self.native.foreground(rect))
+                        except OSError:
+                            try:performance.close()
+                            except OSError:pass
+                            performance=None;logger.warning('Diagnóstico de desempenho interrompido')
+                    interval=.05 if rect.is_found and self.native.foreground(rect) and recognizer is not None and self.session.selected and not self.session.hidden else .25
+                    self.stop_event.wait(max(.005,interval-elapsed))
+
         except Exception as exc:
             logger.exception("Falha no serviço ao vivo"); self.events.put(("error",str(exc)))
         finally:
-            if motion: motion.close()
+            if motion: motion.close(wait=True)
+            if active_recognizer is not None and hasattr(active_recognizer,'close'):active_recognizer.close()
+            self.native.close_capture()
+            if performance is not None:performance.close()
+            self.reference_released.set()
 
     def _tick(self):
         if self.stop_event.is_set(): return
+        foreground=False
         try:
             self.poll_catalog()
             rect=self.native.game(); foreground=self.native.foreground(rect); key=self.rect_key(rect)
@@ -623,6 +692,8 @@ class DesktopApp(CompactPanel):
                     if action=="visibility": self.toggle_visibility()
                     elif action=="panel":
                         self.close_marker_menu(restore_focus=False);self.panel_shortcut()
+                    elif isinstance(action,tuple) and action[0]=='automark_event':
+                        logger.info('AutoMark result=ignored reason=marker_card_open event=%s',action[2].token)
                     elif isinstance(action,tuple): self.session.notice=action[1]
                 if (key!=self.menu_geometry or not rect.is_found or rect.is_minimized
                         or time.monotonic()>self.menu_deadline or self.session.hidden
@@ -644,6 +715,7 @@ class DesktopApp(CompactPanel):
                 if observation_key==key and epoch==self.selection_epoch: self.session.observation=obs
             except queue.Empty: pass
             if not foreground:
+                if hasattr(self,'automark'):self.automark.reset()
                 self.session.invalidate("Volte ao Genshin para continuar" if rect.is_found else "Aguardando o Genshin abrir…",
                                         clear_pending=not rect.is_found)
             while True:
@@ -651,8 +723,21 @@ class DesktopApp(CompactPanel):
                 except queue.Empty: break
                 if action=="panel" and (self.panel_detached or foreground or self.native.menu_foreground(rect) or not rect.is_found):
                     self.panel_shortcut()
+                elif isinstance(action,tuple) and action[0]=='performance_fallback':
+                    if action[1]==self.selection_epoch:
+                        self.settings['performance_mode']='light';self.performance_var.set('Leve')
+                        self.session.notice='Cobertura global indisponível por memória. Modo Leve ativado.'
+                        if len(action)>2 and action[2]:self.reload_reference()
+                        self.persist_settings()
                 elif action=="visibility": self.toggle_visibility()
-                elif action=="collect" and foreground and not self.region_loading: self.session.collect()
+                elif isinstance(action,tuple) and action[0]=='automark_event':
+                    if (foreground and action[1]==self.selection_epoch and self.settings.get('automark')
+                            and self.chest_signals.ready and not self.region_loading):
+                        outcome=self.automark.apply(action[2],self.session,time.monotonic())
+                        logger.info('AutoMark result=%s reason=%s event=%s candidates=%s',outcome,
+                                    self.automark.last_reason,action[2].token,self.automark.last_candidates)
+                        if outcome=='marked':self.refresh_counts()
+                elif action=="collect" and foreground and not self.region_loading: self.collect_shortcut(rect)
                 elif action=="undo" and foreground and not self.region_loading: self.session.undo()
                 elif action=="farm" and foreground and not self.region_loading:self.toggle_farm()
                 elif action=="farm_next" and foreground and not self.region_loading:self.next_farm_target()
@@ -674,7 +759,8 @@ class DesktopApp(CompactPanel):
             self.displayed_observation=display
             if (pins or guidance) and self.overlay_hwnd:
                 self.native.place(self.overlay_hwnd,rect)
-                self.canvas.configure(width=rect.width,height=rect.height)
+                if getattr(self,'canvas_size',None)!=(rect.width,rect.height):
+                    self.canvas.configure(width=rect.width,height=rect.height);self.canvas_size=(rect.width,rect.height)
                 self.renderer.render(pins,self.session.is_collected)
                 self.target_highlight.render(guidance,pins,display,self.session.marker_dpi,controls)
                 self.compass.render(guidance,rect.width,rect.height,self.session.marker_dpi,controls)
@@ -694,12 +780,13 @@ class DesktopApp(CompactPanel):
             elif not self.session.selected and not self.reference_error: status+=" · selecione o que procurar"
             elif foreground and self.session.observation.surface!="hidden" and not self.session.observation.fresh(time.monotonic()):
                 status="Localização atrasada · ícones ocultos"
-            if self.package_id!='legacy-mondstadt': status+=" · cobertura em validação"
+            status+=" · cobertura em validação"
             farm=self.session.farm
+            status+=' · '+('Global' if self.settings.get('performance_mode')=='global' else 'Leve')
             if farm.enabled and farm.status:status+=' · '+farm.status
             if self.status.get()!=status:self.status.set(status)
             if self.notice.get()!=self.session.notice:self.notice.set(self.session.notice)
-            farm_text='Parar farm' if farm.enabled else 'Farmar baús'
+            farm_text='Parar busca' if farm.enabled else 'Buscar itens'
             farm_hint=farm.status if farm.enabled else ''
             if self.farm_hint.get()!=farm_hint:self.farm_hint.set(farm_hint)
             if self.farm_button.cget('text')!=farm_text:
@@ -726,7 +813,7 @@ class DesktopApp(CompactPanel):
                 self.native.interactive(self.input_hwnd,False);self.native.hide(self.input_hwnd)
             if self.overlay_hwnd: self.native.hide(self.overlay_hwnd)
             self.session.invalidate("Overlay pausado após uma falha"); self.session.notice=str(exc)
-        self.root.after(16,self._tick)
+        self.root.after(16 if foreground else 100,self._tick)
 
     def close(self):
         try: self.persist_settings()
@@ -742,6 +829,7 @@ class DesktopApp(CompactPanel):
         self.control_listener.stop()
         if self.overlay_hwnd: self.native.hide(self.overlay_hwnd)
         self.worker.join(timeout=2)
+        self.automark_worker.join(timeout=2)
         if self.telemetry: self.telemetry.close()
         self.root.destroy()
         self.native.release_instance()

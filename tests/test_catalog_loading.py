@@ -22,10 +22,10 @@ def test_only_latest_request_runs_after_inflight_work_and_cache_is_bounded():
         assert calls==['first','last']
         generation=loader.request('first')
         assert loader.results.get(timeout=3)==(generation,'first','first-package',None)
-        assert calls==['first','last']
+        assert calls==['first','last','first']
         g=loader.request('third')
         assert loader.results.get(timeout=3)==(g,'third','third-package',None)
-        assert len(loader.cache)==2
+        assert len(loader.cache)==1
     finally:release.set();loader.close();loader.thread.join(3)
     assert not loader.thread.is_alive()
 

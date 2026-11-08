@@ -139,8 +139,8 @@ class MotionRecognizer:
         self.verified_observation=None
         self.facing.reset()
 
-    def close(self):
-        self.pool.shutdown(wait=False,cancel_futures=True)
+    def close(self,wait=False):
+        self.pool.shutdown(wait=wait,cancel_futures=True)
 
     def observe(self, frame: np.ndarray | None, stamp: float) -> Observation:
         if frame is None or frame.size==0:
@@ -232,7 +232,8 @@ class MotionRecognizer:
         self.previous=image
         self.previous_surface=surface
         if updated is not None and surface=='minimap':
-            heading,heading_confidence=self.facing.update(frame,updated.circle,stamp)
+            if discontinuity:self.facing.reset()
+            heading,heading_confidence=self.facing.update(frame,updated.circle,stamp,updated.world_to_screen)
             updated=replace(updated,heading_screen=heading,heading_confidence=heading_confidence)
         else:self.facing.reset()
         self.current=updated or Observation("hidden",stamp,reason="Localizando no mapa selecionado…")

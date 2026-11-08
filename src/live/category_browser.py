@@ -96,7 +96,7 @@ class CountIndices:
             self.future=self.pool.submit(build_count_index,items,model.membership,session.rules)
         if self.future.done():
             result=self.future.result();self.cache[key]=result
-            while len(self.cache)>2:self.cache.popitem(last=False)
+            while len(self.cache)>1:self.cache.popitem(last=False)
             return result
         return None
 

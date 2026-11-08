@@ -54,6 +54,7 @@ class Session:
         self.rules={"permanent":PERMANENT,"unknown":UNKNOWN}
         self.clock=lambda:datetime.now(timezone.utc)
         self.undo_records=[]
+        self.collection_epoch=0
         self._scope_key=None
         self._scope_items=[]
         self._lookup_key=None
@@ -191,6 +192,7 @@ class Session:
         return [p.item for p in hits]
 
     def set_collected(self, identifier: str, collected: bool) -> bool:
+        self.collection_epoch+=1
         """Explicit marker menu action; map selection doesn't require proximity."""
         if identifier not in {i.id for i in self.scoped_items()}:
             return False
@@ -264,6 +266,7 @@ class Session:
         return True
 
     def undo(self) -> bool:
+        self.collection_epoch+=1
         scoped={i.id for i in self.scoped_items()}
         index=next((n for n in range(len(self.undo_ids)-1,-1,-1) if self.undo_ids[n] in scoped),None)
         if index is None:

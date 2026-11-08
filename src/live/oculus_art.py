@@ -29,12 +29,16 @@ def oculus_art(category):
         return image.crop(bounds) if bounds else None
     except (OSError,ValueError,KeyError):return None
 
+@lru_cache(maxsize=8)
+def selector_image(category):
+    image=oculus_art(category)
+    return ImageOps.contain(image,(30,30),Image.Resampling.LANCZOS) if image is not None else None
+
+
 def draw_oculus(canvas,entry,x,y):
-    category=category_for(entry);image=oculus_art(category)
+    category=category_for(entry);image=selector_image(category)
     if image is None:
         from src.live.icons import draw_marker
         draw_marker(canvas,entry.icon,x,y,scale=1.2);return
-    root=canvas._root();key=('oculus-selector',category,30)
-    if key not in getattr(root,'_chest_images',{}):
-        tk_image(canvas,key,ImageOps.contain(image,(30,30),Image.Resampling.LANCZOS))
-    canvas.create_image(x,y,image=root._chest_images[key])
+    photo=tk_image(canvas,('oculus-selector',category,30),image)
+    canvas.create_image(x,y,image=photo)

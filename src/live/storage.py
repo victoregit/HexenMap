@@ -82,7 +82,7 @@ class PreferenceWriter:
 
 
 def read_settings(path: Path) -> dict:
-    defaults = {"categories": [], "hotkeys": dict(DEFAULT_KEYS)}
+    defaults = {"categories": [], "hotkeys": dict(DEFAULT_KEYS), "performance_mode": "light", "automark":False}
     if not path.exists():
         return defaults
     try:
@@ -104,7 +104,9 @@ def read_settings(path: Path) -> dict:
         if not all(isinstance(value,str) and value in allowed for value in keys.values()) or len(set(keys.values())) != len(DEFAULT_KEYS):
             keys = dict(DEFAULT_KEYS)
         result={"categories": [v for v in data["categories"] if isinstance(v, str)], "hotkeys": keys}
+        result['performance_mode']='global' if data.get('performance_mode')=='global' else 'light'
         result['capture_visible']=data.get('capture_visible') is True
+        result['automark']=data.get('automark') is True
         if isinstance(data.get("regional"),dict):
             result["regional"]={}
             for key,pref in data['regional'].items():
@@ -115,7 +117,6 @@ def read_settings(path: Path) -> dict:
                     'area':None,
                     'layer':pref.get('layer') if isinstance(pref.get('layer'),str) else 'teyvat / surface'}
         if isinstance(data.get("package"),str): result["package"]=data["package"]
-        if isinstance(data.get('last_kongying_package'),str):result['last_kongying_package']=data['last_kongying_package']
         result["server"]="America"
         panel=data.get("panel",{})
         if isinstance(panel,dict):
@@ -123,6 +124,16 @@ def read_settings(path: Path) -> dict:
                              "detached":panel.get('detached') is not False}
             for key in ("x","y"):
                 if isinstance(panel.get(key),int): result["panel"][key]=panel[key]
+        regional_data=data.get('regional',{})
+        retired=(data.get('package') not in (None,'appsample') or 'last_kongying_package' in data
+                 or (isinstance(regional_data,dict) and any(k!='appsample' for k in regional_data)))
+        if retired:
+            backup=path.with_name(path.name+'.pre-appsample-only.bak')
+            if not backup.exists():shutil.copy2(path,backup)
+            result['package']='appsample'
+            result['regional']={k:v for k,v in result.get('regional',{}).items() if k=='appsample'}
+            if data.get('package')!='appsample':result['categories']=result['regional'].get('appsample',{}).get('categories',[])
+            write_json(path,result)
         # Back up the original bytes once before retiring hidden area filters.
         regional=data.get("regional",{})
         if isinstance(regional,dict) and any(isinstance(v,dict) and v.get("area") for v in regional.values()):

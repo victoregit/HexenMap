@@ -40,13 +40,8 @@ def test_numeric_collision_and_ambiguous_matches_never_transfer():
     assert report['unmatched_ids']==['999'] and report['applied'] is False
 
 
-def test_reviewed_alias_bridge_preserves_canonical_mondstadt_ids():
-    aliases=explicit_aliases(Path(__file__).resolve().parents[1]/'data/community')
-    assert len(aliases)==69
-    assert len(aliases['307'])==1
-    match=next(iter(aliases['307'].values()))
-    assert match['category']=='anemoculus' and match['region']=='mondstadt'
-    assert match['id'].startswith('teyvat.moe:mondstadt:anemoculus:')
+def test_retired_provider_aliases_are_never_loaded_or_transferred():
+    assert explicit_aliases(Path('missing-community'))=={}
 
 
 def catalog():

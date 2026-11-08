@@ -59,7 +59,7 @@ def test_personal_catalog_is_opt_in_and_validates_source_hash(tmp_path):
     assert catalog.accepts('appsample')
     loaded=catalog.load_package('appsample')
     assert loaded.coordinate_system==SPACE and loaded.items[0].region_id=='appsample'
-    assert 'appsample' not in catalog.regions # It is a source, not a ninth nation.
+    assert set(catalog.regions)=={'appsample'} # Single operational package, no borrowed nations.
     (directory/'markers.json').write_text('{}')
     with pytest.raises(ValueError):catalog.load_package('appsample')
 

@@ -12,18 +12,20 @@ def setup(tmp_path):
            Item('resource','Planta','plant',1,0),Item('other-map','Baú','common-chest',1,0,map_id='chasm'),
            Item('other-layer','Baú','common-chest',2,0,layer_id='cave')]
     session=Session(items,ProgressManager(str(tmp_path/'progress.json')))
-    session.region_id='mondstadt';session.map_id='teyvat';session.layer_id='surface';session.selected={'common-chest','plant'}
+    session.region_id='mondstadt';session.map_id='teyvat';session.layer_id='surface';session.selected={'common-chest'}
     observation=Observation('minimap',100,np.array([[1.,0,100],[0,1.,100]]),.95,.2,
                             (100,100,70),(0,0),map_id='teyvat',layer_id='surface',heading_screen=0.,heading_confidence=1.)
     session.farm.start(session)
     return session,observation
 
 
-def test_nearest_selected_chest_is_locked_until_collected_and_origin_is_preserved(tmp_path):
+def test_nearest_item_updates_while_walking_without_collection_and_preserves_origin(tmp_path):
     s,o=setup(tmp_path);g=s.farm.update(s,o,100)
     assert g.target_id=='a' and g.direction==(1.,0.) and s.farm.origin==(0,0)
     moved=replace(o,player=(29,0),captured_at=100.1)
-    assert s.farm.update(s,moved,100.1).target_id=='a' # No oscillation between targets.
+    assert s.farm.update(s,moved,100.1).target_id=='b'
+    assert s.progress.collected_count==0
+    assert s.farm.update(s,o,100).target_id=='a'
     s.set_collected('a',True)
     assert s.farm.update(s,moved,100.1).target_id=='b'
     assert s.farm.origin==(0,0) and s.is_collected('a')
@@ -51,7 +53,7 @@ def test_hidden_overlay_and_empty_selection_suppress_compass(tmp_path):
     s,o=setup(tmp_path);s.hidden=True
     assert s.farm.update(s,o,100) is None and s.farm.origin is None
     s.hidden=False;s.selected=set();assert s.farm.update(s,o,100) is None
-    s.selected={'plant'};assert s.farm.update(s,o,100) is None
+    s.selected={'plant'};assert s.farm.update(s,o,100).target_id=='resource'
 
 
 def test_direction_and_north_follow_minimap_rotation_without_claiming_camera_yaw(tmp_path):
@@ -135,3 +137,57 @@ def test_arrival_has_hysteresis_and_never_marks_the_chest(tmp_path):
     assert s.farm.update(s,replace(o,player=(2,0)),100).arrived
     assert not s.farm.update(s,replace(o,player=(0,0)),100).arrived
     assert s.progress.collected_count==0
+
+
+def test_selected_resources_replace_chest_target_and_advance_after_collection(tmp_path):
+    s,o=setup(tmp_path)
+    assert s.farm.update(s,o,100).target_id=='a'
+    s.selected={'plant'}
+    guidance=s.farm.update(s,o,100)
+    assert guidance.target_id=='resource' and guidance.category=='plant' and guidance.label=='Planta'
+    s.set_collected('resource',True)
+    assert s.farm.update(s,o,100) is None
+    s.set_collected('resource',False)
+    assert s.farm.update(s,o,100).target_id=='resource'
+
+
+def test_mixed_filters_choose_nearest_item_and_skip_without_collecting(tmp_path):
+    s,o=setup(tmp_path);s.selected={'common-chest','plant'}
+    assert s.farm.update(s,o,100).target_id=='resource'
+    s.farm.skip()
+    assert s.farm.update(s,o,100).target_id=='a'
+    assert not s.is_collected('resource')
+
+
+def test_secondary_selected_category_is_used_for_guidance(tmp_path):
+    s,o=setup(tmp_path)
+    s.items=[replace(s.items[2],category='gathering',category_ids=('plant',))]
+    s.selected={'plant'};s.farm.start(s)
+    assert s.farm.update(s,o,100).category=='plant'
+
+
+def test_untranslated_catalog_label_still_has_a_renderable_caption(tmp_path,monkeypatch):
+    from src.live.catalog import CATEGORIES
+    s,o=setup(tmp_path);s.selected={'plant'}
+    monkeypatch.setitem(CATEGORIES,'plant',('未译资源','#fff'))
+    assert s.farm.update(s,o,100).label=='未译资源'
+
+
+def test_nearest_search_reuses_candidates_but_checks_current_availability(tmp_path):
+    s,o=setup(tmp_path);s.farm.update(s,o,100)
+    candidates=s.farm.candidates;points=s.farm.points
+    moved=replace(o,player=(29,0))
+    assert s.farm.update(s,moved,100).target_id=='b'
+    assert s.farm.candidates is candidates and s.farm.points is points
+    s.set_collected('b',True)
+    assert s.farm.update(s,moved,100).target_id=='a'
+    s.set_collected('b',False)
+    assert s.farm.update(s,moved,100).target_id=='b'
+
+
+def test_equal_distance_has_deterministic_target(tmp_path):
+    s,o=setup(tmp_path)
+    middle=replace(o,player=(20,0))
+    assert s.farm.update(s,middle,100).target_id=='a'
+    s.items.reverse()
+    assert s.farm.update(s,middle,100).target_id=='a'

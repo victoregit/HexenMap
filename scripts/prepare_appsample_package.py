@@ -22,7 +22,7 @@ TILE_BASE='https://game-cdn.appsample.com/gim/map-teyvat/v72-rc1'
 
 
 def prepare_reference(points,zoom,detailed=False):
-    points=[p for p in points if p.map_id==2 and (p.marker_type=='o833' if detailed else source_layer(p.layer_meta)=='surface')]
+    points=[p for p in points if p.map_id==2 and source_layer(p.layer_meta)=='surface']
     xy=[project(p.x,p.y,zoom) for p in points]
     bounds=[math.floor(min(v[a] for v in xy)/256) for a in (0,1)]+[math.floor(max(v[a] for v in xy)/256) for a in (0,1)]
     x0,y0,x1,y1=bounds
@@ -65,11 +65,12 @@ def prepare_reference(points,zoom,detailed=False):
         else:
             manifest['extra_terrain']=[{**entry,'world_to_image':matrix}]
     else:
-        ui=ROOT/'userData/references/mondstadt';templates=json.loads((ui/'manifest.json').read_text(encoding='utf-8'))
-        for key in ('map_ui','gameplay_ui'):shutil.copy2(ui/templates[key]['file'],output/templates[key]['file'])
+        ui=output
+        if not (output/'manifest.json').exists():raise ValueError('Instale templates do HUD obtidos do jogo antes de preparar referências')
+        existing=json.loads((output/'manifest.json').read_text(encoding='utf-8'))
         manifest={'region':'appsample','map_id':'as-map-2','layer':'surface','coordinate_system':SPACE,
             'source':TILE_BASE+'; default Leaflet EPSG3857; centered tile scheme from public source',
-            'world_to_image':matrix,'terrain':entry,'map_ui':templates['map_ui'],'gameplay_ui':templates['gameplay_ui'],
+            'world_to_image':matrix,'terrain':entry,'map_ui':existing['map_ui'],'gameplay_ui':existing['gameplay_ui'],
             'permission':{'usage':'Personal local use only; do not redistribute game artwork',
                           'evidence':'https://genshin-impact-map.appsample.com/help/embed/; original game artwork belongs to HoYoverse; no general redistribution license assumed'},
             'validation':'image_candidate_not_live_validated'}
@@ -97,7 +98,9 @@ def main():
     if args.references:
         prepare_reference(points,12)
         prepare_reference(points,13,True)
-        prepare_reference(points,14,True)
+        # Native minimap coverage is built tile-by-tile, never as a world bitmap.
+        from scripts.prepare_appsample_minimap import main as prepare_minimap
+        prepare_minimap([])
 
 
 if __name__=='__main__':main()

@@ -17,13 +17,40 @@ class ProcessCatalogSource:
     def __init__(self, community, personal_root=None):
         self.community=str(community)
         self.personal_root=str(personal_root) if personal_root else None
-        self.pool=ProcessPoolExecutor(max_workers=1,mp_context=multiprocessing.get_context('spawn'))
+        self.pool=None;self.timer=None;self.lock=threading.Lock();self.closed=False;self.generation=0;self.active=0
 
     def __call__(self, identifier):
-        return self.pool.submit(read_package,self.community,identifier,self.personal_root).result()
+        with self.lock:
+            if self.closed:raise RuntimeError('Carregador encerrado')
+            self.generation+=1;generation=self.generation
+            if self.timer:self.timer.cancel();self.timer=None
+            if self.pool is None:self.pool=ProcessPoolExecutor(max_workers=1,mp_context=multiprocessing.get_context('spawn'))
+            self.active+=1
+            future=self.pool.submit(read_package,self.community,identifier,self.personal_root)
+        try:return future.result()
+        finally:
+            with self.lock:
+                self.active-=1
+                if not self.closed and generation==self.generation:
+                    self.timer=threading.Timer(5.,self._idle,args=(generation,));self.timer.daemon=True;self.timer.start()
+
+    def _idle(self,generation=None,wait=False):
+        with self.lock:
+            if self.active:return
+            if generation is not None and generation!=self.generation:return
+            pool=self.pool;self.pool=None;self.timer=None
+        if pool:pool.shutdown(wait=wait,cancel_futures=True)
+
+    def retire_idle(self):
+        self._idle(wait=True)
 
     def close(self):
-        self.pool.shutdown(wait=False,cancel_futures=True)
+        with self.lock:
+            self.closed=True
+            if self.timer:self.timer.cancel();self.timer=None
+            pool=self.pool;self.pool=None
+        if pool:pool.shutdown(wait=False,cancel_futures=True)
+
 
 
 class CatalogLoader:
@@ -55,7 +82,7 @@ class CatalogLoader:
                 value=self.cache.pop(identifier,None)
                 if value is None: value=self.load(identifier)
                 self.cache[identifier]=value
-                while len(self.cache)>2: self.cache.popitem(last=False)
+                while len(self.cache)>1: self.cache.popitem(last=False)
                 error=None
             except Exception as exc:
                 value=None;error=str(exc)
