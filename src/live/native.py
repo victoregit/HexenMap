@@ -145,10 +145,32 @@ class Windows:
         return bool(self.u.GetAsyncKeyState(key)&0x8000)
 
     def panel(self, child_hwnd: int) -> None:
-        """Interactive controls must also stay out of recognition captures."""
+        """Apply the user's capture preference to interactive controls too."""
         hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
-        if not self.u.SetWindowDisplayAffinity(hwnd,0x11):
-            raise OSError("Não foi possível excluir o painel da captura")
+        self.capture_policy(hwnd)
+
+    def capture_policy(self,hwnd):
+        if not self.u.SetWindowDisplayAffinity(hwnd,0 if getattr(self,'capture_visible',False) else 0x11):
+            raise OSError('Não foi possível configurar a visibilidade na captura')
+        if not hasattr(self,'capture_windows'):self.capture_windows=set()
+        self.capture_windows.add(hwnd)
+
+    def set_capture_visible(self,visible):
+        previous=getattr(self,'capture_visible',False);applied=[];valid=set()
+        try:
+            for hwnd in getattr(self,'capture_windows',set()):
+                pid=wt.DWORD()
+                if not self.u.IsWindow(hwnd):continue
+                self.u.GetWindowThreadProcessId(hwnd,ct.byref(pid))
+                if pid.value!=os.getpid():continue
+                valid.add(hwnd)
+                if not self.u.SetWindowDisplayAffinity(hwnd,0 if visible else 0x11):
+                    raise OSError('O Windows não permitiu alterar a visibilidade na captura')
+                applied.append(hwnd)
+        except OSError:
+            for hwnd in applied:self.u.SetWindowDisplayAffinity(hwnd,0 if previous else 0x11)
+            raise
+        self.capture_windows=valid;self.capture_visible=bool(visible)
 
     def desktop_bounds(self):
         x,y=self.u.GetSystemMetrics(76),self.u.GetSystemMetrics(77)
@@ -223,8 +245,7 @@ class Windows:
         # Magenta color key; icons remain fully opaque, background fully clear.
         if not self.u.SetLayeredWindowAttributes(hwnd,0x00ff00ff,255,1):
             raise ct.WinError(ct.get_last_error())
-        if not self.u.SetWindowDisplayAffinity(hwnd,0x11):
-            raise OSError("Não foi possível excluir o overlay da captura")
+        self.capture_policy(hwnd)
         return hwnd
 
     def place(self, hwnd: int, rect: GameWindowRect) -> None:
@@ -303,9 +324,14 @@ class Windows:
             return None
         # Reuse only the bitmap header definition, never the untyped legacy calls.
         from src.capture.win32_capture import BITMAPINFO, BITMAPINFOHEADER
+        # Visible broadcast surfaces must never be fed back into localization.
+        # A client DC excludes the separate layered overlay windows; desktop DC
+        # remains the previously validated path when capture exclusion is active.
+        source=rect.hwnd if getattr(self,'capture_visible',False) else None
+        sx,sy=(0,0) if source else (rect.x,rect.y)
         dc=mem=bitmap=old=None
         try:
-            dc=self.u.GetDC(None)
+            dc=self.u.GetDC(source)
             if not dc: return None
             mem=self.g.CreateCompatibleDC(dc)
             if not mem: return None
@@ -313,7 +339,7 @@ class Windows:
             if not bitmap: return None
             old=self.g.SelectObject(mem,bitmap)
             if not old: return None
-            if not self.g.BitBlt(mem,0,0,rect.width,rect.height,dc,rect.x,rect.y,0x00cc0020):
+            if not self.g.BitBlt(mem,0,0,rect.width,rect.height,dc,sx,sy,0x00cc0020):
                 return None
             self.g.SelectObject(mem,old); old=None
             info=BITMAPINFO(); info.bmiHeader.biSize=ct.sizeof(BITMAPINFOHEADER)
@@ -327,4 +353,4 @@ class Windows:
             if old and mem: self.g.SelectObject(mem,old)
             if bitmap: self.g.DeleteObject(bitmap)
             if mem: self.g.DeleteDC(mem)
-            if dc: self.u.ReleaseDC(None,dc)
+            if dc: self.u.ReleaseDC(source,dc)

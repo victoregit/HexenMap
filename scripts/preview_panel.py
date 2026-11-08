@@ -60,7 +60,7 @@ def preview(output=ROOT/'build/panel-preview.png'):
     expected=app.region_box.names[app.region_box.index]
     app.region_box.choose(app.region_box.index)
     assert app.region_var.get()==expected
-    assert app.region_box.caption.cget('text')==expected
+    assert app.region_box.caption.cget('text')==expected+(' · '+app.region_box.detail if app.region_box.detail else '')
     print(f'Panel: {app.root.winfo_width()}x{app.root.winfo_height()}; preview: {output}')
     assert app.panel_detached and not app.root.overrideredirect()
     app.toggle_panel_mode()

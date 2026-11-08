@@ -8,8 +8,10 @@ import tkinter as tk
 from src.live.catalog import CATEGORIES, CATEGORY_GROUPS
 from src.live.icons import draw_marker
 from src.live.labels import SOURCE_PT, INTERNAL, GROUP_ORDER, normalized, portuguese_label
+from src.live.oculus_art import ORDER,category_for,draw_oculus
+from src.live.category_art import draw_category_art
 
-BG='#141e2d';ROW='#1c2a3b';TEXT='#eee9df';GOLD='#cbb88a';MUTED='#a0adbd'
+BG='#111923';ROW='#1b2734';TEXT='#edf1f5';GOLD='#dfc48d';MUTED='#91a0b2'
 
 
 @dataclass(frozen=True)
@@ -118,6 +120,9 @@ class CategoryBrowser(tk.Canvas):
         self.bind('<Up>',lambda e:self.move_focus(-1))
         self.configure(takefocus=1)
         self.focused=0
+        self.tile_column=0
+        self.bind('<Left>',lambda e:self.move_tile(-1))
+        self.bind('<Right>',lambda e:self.move_tile(1))
 
     def connect_scrollbar(self, scrollbar):
         def changed(first,last):
@@ -143,7 +148,11 @@ class CategoryBrowser(tk.Canvas):
                 self.rows.append(('group',group,entries))
                 # Existing selections remain discoverable even in secondary sections.
                 if group not in self.collapsed or self.query:
-                    self.rows.extend(('entry',e,None) for e in entries)
+                    tiles=sorted((e for e in entries if group=='Destaques' and category_for(e)),key=lambda e:ORDER.index(category_for(e)))
+                    for offset in range(0,len(tiles),4):
+                        chunk=tiles[offset:offset+4]
+                        self.rows.extend((('tiles',chunk,None),('tile-tail',chunk,None)))
+                    self.rows.extend(('entry',e,None) for e in entries if e not in tiles)
         self.configure(scrollregion=(0,0,max(1,self.winfo_width()),max(1,len(self.rows)*self.HEIGHT)))
         if reset:self.yview_moveto(0)
         self.schedule_paint()
@@ -159,42 +168,65 @@ class CategoryBrowser(tk.Canvas):
         end=min(len(self.rows),int((top+self.winfo_height())/self.HEIGHT)+2)
         for index in range(start,end):
             kind,value,entries=self.rows[index];y=index*self.HEIGHT
+            if kind=='tile-tail':continue
+            if kind=='tiles':
+                cell=width/4
+                for column,entry in enumerate(value):
+                    left=column*cell+2;right=(column+1)*cell-3;center=(left+right)/2
+                    chosen=bool(entry.members & self.selected)
+                    focused=index==self.focused and column==self.tile_column and self.focus_get()==self
+                    self.create_rectangle(left,y+2,right,y+69,fill='#243344' if chosen else ROW,outline=GOLD if chosen or focused else '#2a3949')
+                    draw_oculus(self,entry,center,y+22)
+                    self.create_text(center,y+44,text=entry.label,fill=TEXT,font=('Segoe UI',8))
+                    count=self.counts.get(entry.key);counter=f'{count[0]}/{count[1]}' if count is not None else '—'
+                    self.create_text(center,y+59,text=counter,fill=GOLD if chosen else MUTED,font=('Segoe UI',8))
+                    if chosen:self.create_text(right-7,y+10,text='✓',fill=GOLD,font=('Segoe UI',8,'bold'))
+                continue
             if kind=='group':
                 if value in self.collapsed and not self.query:
                     self.create_polygon(8,y+14,13,y+18,8,y+22,fill=GOLD,outline='')
                 else:self.create_polygon(7,y+15,15,y+15,11,y+21,fill=GOLD,outline='')
                 active=sum(bool(e.members & self.selected) for e in entries)
                 self.create_text(22,y+18,text=value+(f' · {active}' if active else ''),
-                                 anchor='w',fill=GOLD,font=('Segoe UI',9,'bold'))
+                                 anchor='w',fill=TEXT,font=('Segoe UI',9,'bold'))
                 self.create_text(width-53,y+18,text='Todos',fill=MUTED,font=('Segoe UI',8))
                 self.create_text(width-14,y+18,text='×',fill=MUTED,font=('Segoe UI',12))
                 continue
             entry=value;chosen=bool(entry.members & self.selected)
-            self.create_rectangle(1,y+1,width-2,y+34,fill='#293c51' if chosen else ROW,
+            self.create_rectangle(1,y+1,width-2,y+34,fill='#202f3e' if chosen else BG,
                                   outline=GOLD if index==self.focused and self.focus_get()==self else '')
-            draw_marker(self,entry.icon,17,y+18,scale=.95)
+            if not draw_category_art(self,entry.icon,17,y+18):draw_marker(self,entry.icon,17,y+18,scale=.95)
             label=entry.label
             # Ellipsis keeps counters in their own column; full label remains searchable.
-            max_chars=max(12,int((width-100)/6.3))
+            max_chars=max(12,int((width-126)/6.3))
             if len(label)>max_chars:label=label[:max_chars-1]+'…'
             self.create_text(36,y+17,text=label,anchor='w',fill=TEXT,font=('Segoe UI',9))
             count=self.counts.get(entry.key)
             counter=f'{count[0]}/{count[1]}' if count is not None else '—'
-            self.create_text(width-10,y+17,text=counter,anchor='e',
-                             fill=GOLD if chosen else MUTED,font=('Segoe UI',8))
-            if chosen:self.create_rectangle(1,y+4,3,y+31,fill=GOLD,outline='')
+            self.create_text(width-34,y+17,text=counter,anchor='e',
+                             fill=MUTED,font=('Segoe UI',8))
+            self.create_rectangle(width-23,y+11,width-11,y+23,fill=GOLD if chosen else BG,outline=GOLD if chosen else '#465669')
+            if chosen:self.create_text(width-17,y+17,text='✓',fill=BG,font=('Segoe UI',9,'bold'))
+
         if not self.rows:
             self.create_text(width/2,25,text='Carregando catálogo…' if self.model is None else 'Nenhum item encontrado',fill=MUTED,font=('Segoe UI',9))
 
     def click(self, event):
         self.focus_set()
         index=int(self.canvasy(event.y)/self.HEIGHT)
+        if 0<=index<len(self.rows) and self.rows[index][0]=='tile-tail':index-=1
         self.focused=index
+        self.tile_column=min(3,max(0,int(event.x*4/max(1,self.winfo_width()))))
         self.activate(index,event.x)
 
     def activate(self, index, x=0):
         if not 0<=index<len(self.rows):return
         kind,value,entries=self.rows[index]
+        if kind in {'tiles','tile-tail'}:
+            column=min(3,max(0,int(x*4/max(1,self.winfo_width()))))
+            if column<len(value):
+                entry=value[column];self.changed(entry.members,not bool(entry.members & self.selected))
+            return
         if kind=='group':
             if x>self.winfo_width()-32:
                 self.changed(set().union(*(e.members for e in entries)),False)
@@ -206,10 +238,20 @@ class CategoryBrowser(tk.Canvas):
                 self.rebuild()
         else:self.changed(value.members,not bool(value.members & self.selected))
 
-    def activate_focused(self,event=None):self.activate(self.focused)
+    def activate_focused(self,event=None):
+        tiled=0<=self.focused<len(self.rows) and self.rows[self.focused][0]=='tiles'
+        self.activate(self.focused,(self.tile_column+.5)*self.winfo_width()/4 if tiled else 0)
+
+    def move_tile(self,delta):
+        if 0<=self.focused<len(self.rows) and self.rows[self.focused][0]=='tiles':
+            self.tile_column=max(0,min(len(self.rows[self.focused][1])-1,self.tile_column+delta))
+            self.schedule_paint()
+        return 'break'
 
     def move_focus(self, delta):
         self.focused=max(0,min(len(self.rows)-1,self.focused+delta))
+        if self.rows and self.rows[self.focused][0]=='tile-tail':self.focused+=1 if delta>0 and self.focused+1<len(self.rows) else -1
+        if self.rows and self.rows[self.focused][0]=='tiles':self.tile_column=min(self.tile_column,len(self.rows[self.focused][1])-1)
         if self.rows:
             top=self.canvasy(0);y=self.focused*self.HEIGHT
             if y<top or y+self.HEIGHT>top+self.winfo_height():

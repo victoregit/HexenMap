@@ -35,16 +35,17 @@ def icon_image(region, size=24):
 class NationSelector(tk.Frame):
     """All nations visible in one row; click selects and exposes the name below."""
     def __init__(self, parent, variable, options, changed, on_select):
-        super().__init__(parent,bg='#141e2d')
+        super().__init__(parent,bg='#111923')
         self.variable=variable;self.options=options;self.changed=changed;self.on_select=on_select
         self.names=list(options)
         self.images={region:ImageTk.PhotoImage(icon_image(region,22),master=self)
                      for region in set(options.values())}
         self.index=self.names.index(variable.get()) if variable.get() in self.names else 0
         self.hovered=None
-        self.button=tk.Canvas(self,width=1,height=32,bg='#141e2d',highlightthickness=0,cursor='hand2',takefocus=1)
+        self.detail=''
+        self.button=tk.Canvas(self,width=1,height=32,bg='#111923',highlightthickness=0,cursor='hand2',takefocus=1)
         self.button.pack(fill='x',expand=True)
-        self.caption=tk.Label(self,bg='#141e2d',fg='#a0adbd',font=('Segoe UI',8),anchor='w')
+        self.caption=tk.Label(self,bg='#111923',fg='#91a0b2',font=('Segoe UI',8),anchor='w')
         self.caption.pack(fill='x',padx=4)
         self.button.bind('<Configure>',lambda e:self.draw())
         self.button.bind('<Button-1>',self.click)
@@ -68,13 +69,13 @@ class NationSelector(tk.Frame):
         for index,name in enumerate(self.names):
             x=index*cell;selected=name==self.variable.get()
             if selected or index==self.hovered:
-                c.create_rectangle(x+1,1,x+cell-1,30,fill='#293c51' if selected else '#1c2a3b',outline='')
+                c.create_rectangle(x+1,1,x+cell-1,30,fill='#243344' if selected else '#1b2734',outline='')
             c.create_image(x+cell/2,15,image=self.images[self.options[name]])
-            if selected:c.create_line(x+5,31,x+cell-5,31,fill=COLORS.get(self.options[name],'#cbb88a'),width=2)
+            if selected:c.create_line(x+5,31,x+cell-5,31,fill=COLORS.get(self.options[name],'#dfc48d'),width=2)
             if index==self.index and c.focus_get()==c:
-                c.create_rectangle(x+1,1,x+cell-1,30,outline='#cbb88a')
+                c.create_rectangle(x+1,1,x+cell-1,30,outline='#dfc48d')
         name=self.names[self.hovered] if self.hovered is not None else self.variable.get()
-        self.caption.configure(text=name)
+        self.caption.configure(text=name+(' · '+self.detail if self.detail and self.hovered is None else ''))
 
     def click(self,event):
         self.button.focus_set()
