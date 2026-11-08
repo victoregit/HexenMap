@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 
 from src.live.reference import ReferencePack, Terrain
+from src.live.facing import player_facing
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,8 @@ class Observation:
     reason: str = "Localizando…"
     map_id: str | None = None
     layer_id: str | None = None
+    heading_screen: float | None = None
+    heading_confidence: float = 0.
 
     def fresh(self, now: float, ttl: float = 0.65) -> bool:
         age = now - self.captured_at
@@ -182,6 +185,27 @@ def detect_circle(frame: np.ndarray) -> tuple[float, float, float] | None:
     return candidates[0] if len(candidates)==1 else None
 
 
+def confirmed_circle(frame,previous=None):
+    """Reuse HUD geometry only when the current native player glyph confirms it.
+
+    This caches the minimap's screen rectangle, never the player's world pose.
+    Ice, water and map decorations otherwise make Hough fluctuate each request.
+    """
+    if previous is not None:
+        x,y,r=previous;h,w=frame.shape[:2];scale=h/1080
+        if (w*.065<x<w*.18 and h*.04<y<h*.22 and 55*scale<=r<=130*scale
+                and x-r>=0 and y-r>=0 and x+r<w*.28 and y+r<h*.35):
+            margin=max(12,round(r*.25));left=max(0,round(x)-margin);top=max(0,round(y)-margin)
+            crop=frame[top:round(y)+margin,left:round(x)+margin]
+            cyan=cv2.inRange(cv2.cvtColor(crop,cv2.COLOR_BGR2HSV),(80,100,160),(110,255,255))
+            count,_,stats,centers=cv2.connectedComponentsWithStats(cyan)
+            for i in range(1,count):
+                _,_,aw,ah,area=stats[i];px,py=centers[i]+[left,top]
+                if .015*r*r<area<.07*r*r and .65<aw/max(ah,1)<1.5 and math.hypot(px-x,py-y)<r*.1:
+                    return previous
+    return detect_circle(frame)
+
+
 class LayerRecognizer:
     """One coarse index per selected map; refine only candidate layers.
 
@@ -193,6 +217,7 @@ recognizers are retained, rather than loading every floor into the hot loop.
         self.sift=cv2.SIFT_create(nfeatures=1800,contrastThreshold=.025)
         self.matcher=cv2.FlannBasedMatcher(dict(algorithm=1,trees=4),dict(checks=64))
         self.surface_index=None
+        self.circle_hint=None
         for factory in factories:
             if cancelled():
                 from src.live.reference import ReferenceCancelled
@@ -221,8 +246,9 @@ recognizers are retained, rather than loading every floor into the hot loop.
             crop=frame[int(.08*h):int(.90*h),int(.20*w):int(.80*w)]
         elif (template_visible(frame,self.pack.gameplay_ui,self.pack.gameplay_ui_roi) or
               foreground_ui_visible(frame,self.pack.gameplay_ui,self.pack.gameplay_ui_roi)):
-            circle=detect_circle(frame)
+            circle=confirmed_circle(frame,self.circle_hint)
             if circle is None: return Observation('hidden',stamp,reason='Minimapa não reconhecido')
+            self.circle_hint=circle
             x,y,r=circle
             crop=frame[max(0,int(y-r)):int(y+r),max(0,int(x-r)):int(x+r)]
         else: return Observation('hidden',stamp,reason='Menu, carregamento ou tela não reconhecida')
@@ -270,6 +296,7 @@ class ScreenRecognizer:
         self.last_minimap_matcher=None
         self.last_minimap_player=None
         self.raster_fallback=None
+        self.circle_hint=None
 
     def minimap_candidates(self):
         matchers=list(self.minimap_matchers)
@@ -301,9 +328,10 @@ class ScreenRecognizer:
             mask[int(.08*h):int(.90*h), int(.20*w):int(.80*w)] = 255
         elif (template_visible(frame, self.pack.gameplay_ui, self.pack.gameplay_ui_roi) or
               foreground_ui_visible(frame,self.pack.gameplay_ui,self.pack.gameplay_ui_roi)):
-            circle = detect_circle(frame)
+            circle = confirmed_circle(frame,self.circle_hint)
             if circle is None:
                 return Observation("hidden", stamp, reason="Minimapa não reconhecido")
+            self.circle_hint=circle
             surface = "minimap"
             cx, cy, r = circle
             mask = np.zeros((h,w), np.uint8)
@@ -359,5 +387,7 @@ class ScreenRecognizer:
             point = inverse @ np.array([circle[0], circle[1], 1])
             player = (float(point[0]), float(point[1]))
             self.last_minimap_player=player
+        heading,heading_confidence=player_facing(frame,circle)
         return Observation(surface, stamp, matrix, confidence, error, circle, player,
-                           "Explorando" if circle else "Mapa reconhecido",self.pack.map_id,self.pack.layer_id)
+                           "Explorando" if circle else "Mapa reconhecido",self.pack.map_id,self.pack.layer_id,
+                           heading,heading_confidence)

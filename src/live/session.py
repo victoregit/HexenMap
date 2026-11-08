@@ -14,6 +14,7 @@ from src.live.vision import Observation
 from src.progress.progress_manager import ProgressManager
 from src.live.respawn import PERMANENT,UNKNOWN,parse_utc
 from src.live.territory import TerritoryIndex
+from src.live.chest_farm import ChestFarm
 
 
 @dataclass(frozen=True)
@@ -61,6 +62,7 @@ class Session:
         self._projection_items=[]
         self._projection_points=np.empty((0,3))
         self.marker_dpi=1.
+        self.farm=ChestFarm()
 
     def item_by_id(self,identifier):
         key=(id(self.items),len(self.items))

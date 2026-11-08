@@ -10,6 +10,7 @@ import cv2
 import numpy as np
 
 from src.live.vision import Observation, ScreenRecognizer, gray, template_visible, detect_circle, foreground_ui_visible
+from src.live.facing import FacingTracker
 
 logger=logging.getLogger(__name__)
 
@@ -120,6 +121,7 @@ class MotionRecognizer:
         self.verified_frame=None
         self.verified_observation=None
         self.absolute_reason='pending'
+        self.facing=FacingTracker()
 
     def reset(self):
         self.previous=None
@@ -135,6 +137,7 @@ class MotionRecognizer:
         self.circle=None
         self.verified_frame=None
         self.verified_observation=None
+        self.facing.reset()
 
     def close(self):
         self.pool.shutdown(wait=False,cancel_futures=True)
@@ -228,6 +231,10 @@ class MotionRecognizer:
             self.anchor_motion=np.eye(3)
         self.previous=image
         self.previous_surface=surface
+        if updated is not None and surface=='minimap':
+            heading,heading_confidence=self.facing.update(frame,updated.circle,stamp)
+            updated=replace(updated,heading_screen=heading,heading_confidence=heading_confidence)
+        else:self.facing.reset()
         self.current=updated or Observation("hidden",stamp,reason="Localizando no mapa selecionado…")
         if updated is not None and surface=='minimap':
             self.verified_frame=image

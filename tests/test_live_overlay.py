@@ -221,8 +221,10 @@ def test_hit_testing_rejects_stale_hidden_and_unselected_markers(session):
     assert session.hit_test(600,400,105,100,100)==[]
 
 
-def test_overlapping_marker_hit_returns_each_id_without_changing_progress(session):
+def test_overlapping_marker_hit_returns_each_id_without_changing_progress(session,monkeypatch):
     # Two overlapping legacy symbols: independent of personal chest artwork.
+    from src.live.marker_art import LEGACY
+    monkeypatch.setattr('src.live.session.marker_geometry',lambda *args:LEGACY)
     session.items.append(Item('real:overlap','Overlap','anemoculus',110,100))
     session.selected={"anemoculus"}
     hits=session.hit_test(600,400,112,100,100)
@@ -304,3 +306,15 @@ def test_white_hud_confirmation_rejects_empty_or_unrelated_shapes():
     assert not foreground_ui_visible(np.full_like(frame,250),template,(0,0,1,1))
     other=np.zeros_like(frame);cv2.rectangle(other,(20,20),(60,60),(250,250,250),-1)
     assert not foreground_ui_visible(other,template,(0,0,1,1))
+
+
+def test_cached_minimap_geometry_requires_the_current_player_glyph(monkeypatch):
+    import src.live.vision as vision
+    frame=np.zeros((768,1366,3),np.uint8)
+    circle=(120.,90.,70.)
+    cv2.fillConvexPoly(frame,np.array([[120,80],[113,98],[127,98]],np.int32),(255,255,0))
+    calls=[]
+    monkeypatch.setattr(vision,'detect_circle',lambda frame:(calls.append(True) or None))
+    assert vision.confirmed_circle(frame,circle)==circle and calls==[]
+    assert vision.confirmed_circle(np.zeros_like(frame),circle) is None and len(calls)==1
+    assert vision.confirmed_circle(frame,(500,400,70)) is None and len(calls)==2
