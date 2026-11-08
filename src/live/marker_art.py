@@ -112,21 +112,53 @@ def shell_geometry(width,height):
 
 
 def marker_geometry(category,surface='map',dpi=1.):
+    if category not in CHESTS:
+        dpi=max(.75,min(3.,round(dpi*4)/4))
+        return icon_geometry(category,round((24 if surface=='minimap' else 28)*dpi))
     if chest_art(category) is None:return LEGACY
     w,h=(24,32) if surface=='minimap' else (28,36)
     dpi=max(.75,min(3.,round(dpi*4)/4))
     return shell_geometry(round(w*dpi),round(h*dpi))
 
 
-@lru_cache(maxsize=160)
+def map_art(category):
+    if category in CHESTS:return chest_art(category)
+    from src.live.oculus_art import oculus_art
+    official=oculus_art(category)
+    if official is not None:return official
+    from src.live.category_art import category_image
+    return category_image(category,64)
+
+
+@lru_cache(maxsize=768)
+def icon_geometry(category,size):
+    image=pin_image(category,size,size)
+    if image is None:return LEGACY
+    alpha=image.getchannel('A');left=top=-(size//2);rows=[]
+    for y in range(size):
+        start=None
+        for x in range(size+1):
+            opaque=x<size and alpha.getpixel((x,y))>0
+            if opaque and start is None:start=x
+            if not opaque and start is not None:
+                rows.append((left+start,top+y,left+x,top+y+1));start=None
+    return MarkerGeometry(left,top,left+size,top+size,tuple(rows),(size,size)) if rows else LEGACY
+
+
+@lru_cache(maxsize=1536)
 def pin_image(category,width,height,collected=False):
-    source=chest_art(category)
+    source=map_art(category)
     if source is None:return None
-    image=pin_shell(width,height).copy()
-    # Fit the original image inside the circular head, preserving its aspect.
-    icon=ImageOps.contain(source,(width-8,width-10),Image.Resampling.LANCZOS)
-    image.alpha_composite(icon,((width-icon.width)//2,(width-icon.height)//2))
-    image.putalpha(pin_shell(width,height).getchannel('A'))
+    if category in CHESTS:
+        image=pin_shell(width,height).copy()
+        icon=ImageOps.contain(source,(width-8,width-10),Image.Resampling.LANCZOS)
+        image.alpha_composite(icon,((width-icon.width)//2,(width-icon.height)//2))
+        image.putalpha(pin_shell(width,height).getchannel('A'))
+    else:
+        icon=ImageOps.contain(source,(width,height),Image.Resampling.LANCZOS)
+        image=Image.new('RGBA',(width,height))
+        image.alpha_composite(icon,((width-icon.width)//2,(height-icon.height)//2))
+        image.putalpha(image.getchannel('A').point(lambda a:255 if a>=128 else 0))
     if collected:
         alpha=image.getchannel('A')
         image=ImageOps.colorize(ImageOps.grayscale(image),'#18252e','#a6adb0').convert('RGBA')

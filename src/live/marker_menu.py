@@ -5,6 +5,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from src.live.icons import draw_marker
+from src.live.category_art import draw_category_art
 from src.live.catalog import CATEGORIES
 
 
@@ -87,7 +88,8 @@ class MarkerMenu:
         detail=self.progress.respawn_text(item) if hasattr(self.progress,"respawn_text") else ""
         self.badge.configure(text=detail or ("Já pego" if collected else "Ainda não pego"),wraplength=265,justify="left")
         self.icon.delete("all")
-        draw_marker(self.icon,item.category,20,21,1.6,collected=collected)
+        if not draw_category_art(self.icon,item.category,20,21,size=34,collected=collected):
+            draw_marker(self.icon,item.category,20,21,1.6,collected=collected)
         self.action.configure(text="↺  Desmarcar item" if collected else "✓  Marcar como pego")
         self._hover(False)
 
