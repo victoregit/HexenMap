@@ -15,17 +15,17 @@ def build_executable(install: bool = True) -> None:
         raise SystemExit("Build the Windows executable on Windows")
     subprocess.run([sys.executable,"-m","PyInstaller","--noconfirm","--clean",
                     "--distpath",str(ROOT/"dist"),"--workpath",str(ROOT/"build/pyinstaller"),
-                    str(ROOT/"GenshinOverlay.spec")],cwd=ROOT,check=True)
+                    str(ROOT/"HexenMap.spec")],cwd=ROOT,check=True)
     if not install:
-        print(f"Built: {ROOT/'dist/GenshinOverlay.exe'}")
+        print(f"Built: {ROOT/'dist/HexenMap.exe'}")
         return
-    staged=ROOT/"GenshinOverlay.exe.new"
-    shutil.copy2(ROOT/"dist/GenshinOverlay.exe",staged)
+    staged=ROOT/"HexenMap.exe.new"
+    shutil.copy2(ROOT/"dist/HexenMap.exe",staged)
     try:
-        os.replace(staged,ROOT/"GenshinOverlay.exe")
+        os.replace(staged,ROOT/"HexenMap.exe")
     except PermissionError:
-        raise SystemExit("Feche a versão anterior e execute o build novamente. O novo arquivo está em dist/GenshinOverlay.exe.")
-    print(f"Executable: {ROOT/'GenshinOverlay.exe'}")
+        raise SystemExit("Feche a versão anterior e execute o build novamente. O novo arquivo está em dist/HexenMap.exe.")
+    print(f"Executable: {ROOT/'HexenMap.exe'}")
     print("Personal reference packs stay in userData; not bundled or redistributed.")
 
 

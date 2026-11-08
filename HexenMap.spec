@@ -14,6 +14,6 @@ a=Analysis(
     noarchive=False,
 )
 pyz=PYZ(a.pure)
-exe=EXE(pyz,a.scripts,a.binaries,a.datas,[],name='GenshinOverlay',
+exe=EXE(pyz,a.scripts,a.binaries,a.datas,[],name='HexenMap',
         console=False,debug=False,strip=False,upx=False,
-        disable_windowed_traceback=False)
+        disable_windowed_traceback=False,version=str(root/'data/windows/version_info.txt'))
