@@ -11,7 +11,7 @@ Abra **HexenMap.exe** ou **Iniciar_HexenMap.bat**, selecione o que procurar no p
 - **Buscar itens:** a bússola guia até o item disponível mais próximo entre as categorias selecionadas (baús, flores, minérios, oculi etc.). Recalcula o mais próximo conforme você anda, sem precisar confirmar coleta; seleção vazia não gera alvo. Atalhos padrão: **Ctrl+Alt+F9** iniciar/parar e **Ctrl+Alt+F10** pular.
 - **Ctrl + clique esquerdo no ícone:** abrir o menu para marcar como pego ou desmarcar. Segurar Ctrl revela os itens já pegos em cinza.
 
-O painel abre como janela independente e pode ser recolhido em um botão animado. Categorias têm ícones, busca e contadores; o botão de camadas seleciona mapas/andares. AppSample é a única fonte operacional. A seleção usa seus mapas e camadas nativos; não há divisão por nações inferida de outro catálogo. Referências pessoais ficam fora do executável. Mapas sem referência válida não recebem ícones de demonstração.
+O painel abre como janela independente e pode ser recolhido em um botão animado. Categorias têm ícones, busca e contadores; Recursos reúne seis subgrupos recolhíveis, com nomes e aliases em português (ver [revisão do catálogo](docs/LOCALIZATION.md)); o botão de camadas seleciona mapas/andares. AppSample é a única fonte operacional. A seleção usa seus mapas e camadas nativos; não há divisão por nações inferida de outro catálogo. Referências pessoais ficam fora do executável. Mapas sem referência válida não recebem ícones de demonstração.
 
 [Estado e aceite](docs/REBUILD.md) · [Cobertura efetiva](docs/REGIONAL_COVERAGE.md)
 

@@ -6,6 +6,7 @@ from src.live.catalog import load_catalog
 from src.live.territory import TerritoryIndex
 from src.live.respawn import PERMANENT,UNKNOWN
 from src.live.appsample_catalog import SPACE
+from src.live.localization import localized_metadata
 
 @dataclass(frozen=True)
 class CatalogPackage:
@@ -54,4 +55,4 @@ class RegionalCatalog:
         self.inventory['maps']=[{'id':key,'region_id':'appsample','item_count':count,'layers':sorted(layers[key]),'coordinate_system':SPACE} for key,count in sorted(counts.items())]
         self.inventory['version']=source.get('version',source.get('snapshot','personal'))
         self.regions={'appsample':{'id':'appsample','name':'AppSample','item_count':len(items),'coordinate_system':SPACE}}
-        return CatalogPackage('appsample',items,'appsample',SPACE,source.get('categories',{}),source.get('map_names',{}))
+        return CatalogPackage('appsample',items,'appsample',SPACE,localized_metadata(source.get('categories',{})),source.get('map_names',{}))
