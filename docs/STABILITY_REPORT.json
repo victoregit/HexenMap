@@ -1,0 +1,179 @@
+{
+  "before": {
+    "frames": 450,
+    "drawn": 281,
+    "gaps_s": [
+      1.2659999999741558,
+      0.7030000000086147,
+      0.07899999999790452,
+      0.0629999999946449,
+      0.20300000000861473,
+      0.125,
+      0.125,
+      0.0629999999946449
+    ],
+    "short_gaps": 6,
+    "hidden_seconds": 2.6269999999785796,
+    "cpu_seconds": 12.71875,
+    "foreground_ms_p95": 21.93961999582825,
+    "rss_peak_mib": 440.296875
+  },
+  "after": {
+    "frames": 450,
+    "drawn": 288,
+    "gaps_s": [
+      1.2339999999967404,
+      0.7030000000086147,
+      0.07800000000861473,
+      0.062000000005355105,
+      0.21799999999348074,
+      0.062000000005355105
+    ],
+    "short_gaps": 4,
+    "hidden_seconds": 2.357000000018161,
+    "cpu_seconds": 12.46875,
+    "foreground_ms_p95": 22.84184500313125,
+    "rss_peak_mib": 443.9921875
+  },
+  "short_gap_reduction": 0.33333333333333337,
+  "target_reduction": 0.8,
+  "target_met": false,
+  "live_30_minutes": "initial attempt failed; corrected build awaiting new session",
+  "automated_tests_passed": 405,
+  "signal_replay": [
+    {
+      "session": "20261108-155508-opening",
+      "kind": "positive_sessions",
+      "frames": 180,
+      "events": [
+        {
+          "frame": "0031.jpg",
+          "opened": 4.375,
+          "reward": 5.203000000008615
+        }
+      ]
+    },
+    {
+      "session": "20261108-163102-opening",
+      "kind": "positive_sessions",
+      "frames": 179,
+      "events": [
+        {
+          "frame": "0058.jpg",
+          "opened": 8.40700000000652,
+          "reward": 9.76600000000326
+        }
+      ]
+    },
+    {
+      "session": "20261108-155857-negative",
+      "kind": "negative_sessions",
+      "frames": 115,
+      "events": []
+    }
+  ],
+  "revision_2": {
+    "before": {
+      "frames": 450,
+      "drawn": 276,
+      "gaps_s": [
+        1.5159999999741558,
+        0.8440000000118744,
+        0.14100000000325963,
+        0.0629999999946449,
+        0.28200000000651926,
+        0.10899999999674037,
+        0.1870000000053551,
+        0.0629999999946449
+      ],
+      "short_gaps": 6,
+      "hidden_seconds": 3.2049999999871943,
+      "cpu_seconds": 14.375,
+      "foreground_ms_p95": 42.46279998624215,
+      "rss_peak_mib": 444.52734375
+    },
+    "after": {
+      "frames": 450,
+      "drawn": 308,
+      "gaps_s": [
+        0.3120000000053551,
+        0.07899999999790452,
+        0.062000000005355105,
+        0.20300000000861473,
+        0.0470000000204891
+      ],
+      "short_gaps": 5,
+      "hidden_seconds": 0.7030000000377186,
+      "cpu_seconds": 11.25,
+      "foreground_ms_p95": 21.449265022238226,
+      "rss_peak_mib": 446.98046875
+    },
+    "short_gap_reduction": 0.16666666666666663,
+    "target_met": false,
+    "crop_alignment_regression": "Independent HUD/tracker crops verified on shared screen pixels"
+  },
+  "no_compass_hotfix": {
+    "frames": 450,
+    "drawn": 309,
+    "gaps_s": [
+      0.26600000000325963,
+      0.062000000005355105,
+      0.0629999999946449,
+      0.20300000000861473,
+      0.0629999999946449
+    ],
+    "short_gaps": 5,
+    "hidden_seconds": 0.6570000000065193,
+    "cpu_seconds": 8.265625,
+    "foreground_ms_p95": 9.783375005645205,
+    "rss_peak_mib": 440.93359375,
+    "tests_passed": 350,
+    "windows_elevation_required": true,
+    "near_marker_regression": "passed",
+    "live_automark": "pending",
+    "compass_removed": true
+  },
+  "water_glyph_hotfix": {
+    "real_sample": {
+      "old_component_pixels": 931,
+      "separated_glyph_pixels": 111,
+      "saved_image_files": false
+    },
+    "recorded_opening": {
+      "frames": 179,
+      "localized": 179,
+      "events": 1,
+      "outcomes": [
+        "marked"
+      ],
+      "original_progress_preserved": true
+    },
+    "circle_replay": {
+      "before": {
+        "detected": 401,
+        "far_from_known_hud_center": 12,
+        "seconds": 7.79843960001017
+      },
+      "after": {
+        "detected": 409,
+        "far_from_known_hud_center": 9,
+        "seconds": 8.230688599986024
+      }
+    },
+    "live_new_opening": {
+      "date_local": "2026-11-08",
+      "time_local": "22:43:49",
+      "event": "single_unambiguous_chest_saved",
+      "opening_detected": true,
+      "rewards_detected": true,
+      "position_valid": true,
+      "persisted": true,
+      "screenshots_saved": false,
+      "all_rarities_validated": false,
+      "category": "common-chest",
+      "user_confirmed_marking": true,
+      "user_reported_flicker_improved": true
+    },
+    "tests_passed": 360
+  }
+}

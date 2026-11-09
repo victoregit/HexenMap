@@ -99,18 +99,6 @@ class CompactPanel:
         hints=ttk.Frame(self.explore);hints.pack(fill='x',pady=(5,3))
         ttk.Label(hints,text='ITENS',foreground=MUTED,font=('Segoe UI',8)).pack(side='left')
         ttk.Button(hints,text='Selecionar todos',style='Quiet.TButton',command=lambda:self.set_categories(True)).pack(side='right')
-        farm=tk.Frame(self.explore,bg=ROW,padx=6,pady=6)
-        farm.pack(side='bottom',fill='x',pady=(8,0))
-        farm_actions=tk.Frame(farm,bg=ROW);farm_actions.pack(fill='x')
-        self.farm_button=ttk.Button(farm_actions,text='Buscar itens',style='Primary.TButton',command=self.toggle_farm)
-        self.farm_button.pack(side='left',fill='x',expand=True)
-        self.farm_next=ttk.Button(farm_actions,text='Próximo',command=self.next_farm_target,state='disabled');self.farm_next.pack(side='right',padx=(6,0))
-        self.farm_hint=tk.StringVar()
-        farm_hint_label=tk.Label(farm,textvariable=self.farm_hint,bg=ROW,fg=MUTED,font=('Segoe UI',8),wraplength=300,anchor='w')
-        def show_farm_hint(*args):
-            if self.farm_hint.get():farm_hint_label.pack(fill='x',pady=(5,0))
-            else:farm_hint_label.pack_forget()
-        self.farm_hint.trace_add('write',show_farm_hint)
         listing=ttk.Frame(self.explore);listing.pack(fill='both',expand=True,pady=(1,0))
         canvas=CategoryBrowser(listing,self.choose_categories,height=150)
         scroll=ttk.Scrollbar(listing,orient='vertical',command=canvas.yview);scroll.pack(side='right',fill='y')
@@ -167,8 +155,7 @@ class CompactPanel:
         ttk.Label(prefs_body, text='Atalhos globais').pack(anchor='w', pady=5)
         self.key_vars = {}
         for action, label in (('panel', 'Abrir / recolher painel'), ('visibility', 'Mostrar / ocultar ícones'),
-                              ('collect', 'Coletar próximo'), ('undo', 'Desfazer coleta'),
-                              ('farm','Iniciar / parar busca'),('farm_next','Pular item-alvo')):
+                              ('collect', 'Coletar próximo'), ('undo', 'Desfazer coleta')):
             row = ttk.Frame(prefs_body); row.pack(fill='x', pady=4)
             ttk.Label(row, text=label).pack(side='left')
             var = tk.StringVar(value=self.settings['hotkeys'][action]); self.key_vars[action] = var
@@ -179,6 +166,7 @@ class CompactPanel:
         ttk.Button(prefs_body, text='Encerrar overlay', command=self.close).pack(fill='x', pady=5)
         if self.catalogs.appsample_available:
             ttk.Button(prefs_body,text='Importar coletados do AppSample…',command=self.import_appsample_progress).pack(fill='x',pady=3)
+            ttk.Button(prefs_body,text='Como exportar do AppSample…',command=self.show_appsample_export).pack(fill='x',pady=3)
         ttk.Label(prefs_body,textvariable=self.status,wraplength=300,foreground=MUTED).pack(fill='x',pady=8)
         def scroll_preferences(event):
             prefs_canvas.yview_scroll(-int(event.delta/120),'units');return 'break'
@@ -236,18 +224,6 @@ class CompactPanel:
         self.session.notice='Overlay visível no compartilhamento de tela.' if value else 'Overlay oculto no compartilhamento de tela.'
         try:self.persist_settings()
         except OSError as exc:self.session.notice=f'Visibilidade alterada; preferência não salva: {exc}'
-
-    def toggle_farm(self):
-        if getattr(self,'region_loading',False):return
-        farm=self.session.farm
-        if farm.enabled:farm.stop()
-        else:farm.start(self.session)
-        self.farm_button.configure(text='Parar busca' if farm.enabled else 'Buscar itens')
-        self.farm_next.configure(state='normal' if farm.enabled else 'disabled')
-        self.session.notice='' if farm.enabled else 'Busca encerrada.'
-
-    def next_farm_target(self):
-        if self.session.farm.enabled:self.session.farm.skip()
 
     def panel_undo(self):
         if getattr(self,'region_loading',False):return

@@ -116,13 +116,15 @@ class BudgetRecognizer:
         check_cancel(self.cancelled);h,w=frame.shape[:2];p=self.pack;circle=None
         if template_visible(frame,p.map_ui,p.map_ui_roi):
             surface='map';mask=np.zeros((h,w),np.uint8);mask[int(.08*h):int(.9*h),int(.2*w):int(.8*w)]=255
-        elif template_visible(frame,p.gameplay_ui,p.gameplay_ui_roi) or foreground_ui_visible(frame,p.gameplay_ui,p.gameplay_ui_roi):
+        else:
+            hud=template_visible(frame,p.gameplay_ui,p.gameplay_ui_roi) or foreground_ui_visible(frame,p.gameplay_ui,p.gameplay_ui_roi)
+            # A current circumference plus the native cyan pointer can qualify
+            # gameplay independently of a single colour-sensitive HUD glyph.
             circle=confirmed_circle(frame,self.circle_hint)
             if circle is None:return Observation('hidden',stamp,reason='Minimapa não reconhecido')
             self.circle_hint=circle;surface='minimap';x,y,r=circle
             mask=np.zeros((h,w),np.uint8);cv2.circle(mask,(round(x),round(y)),max(1,round(r-8)),255,-1)
             cv2.circle(mask,(round(x),round(y)),max(8,round(r*.17)),0,-1)
-        else:return Observation('hidden',stamp,reason='Menu, carregamento ou tela não reconhecida')
         # The HUD is tiny. A small crop-only resampling recovers stable corners
         # without relaxing the geometric inlier or error gates.
         self.query_engine.query_scale=1.5 if surface=='minimap' else 1.

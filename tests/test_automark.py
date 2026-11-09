@@ -7,7 +7,7 @@ from src.live.catalog import Item
 from src.live.session import Session
 from src.live.vision import Observation
 from src.live.storage import read_settings,write_json
-from src.live.chest_farm import CHEST_NAMES
+from src.live.chest_types import CHEST_NAMES
 from src.progress.progress_manager import ProgressManager
 
 

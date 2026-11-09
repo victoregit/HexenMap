@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 
 from src.live.reference import ReferencePack, Terrain
-from src.live.facing import player_facing
+from src.live.minimap_glyph import pointer_shape
 
 
 @dataclass(frozen=True)
@@ -25,8 +25,8 @@ class Observation:
     reason: str = "Localizando…"
     map_id: str | None = None
     layer_id: str | None = None
-    heading_screen: float | None = None
-    heading_confidence: float = 0.
+    continuity_id: int = 0
+    position_uncertainty_px: float = 0.
 
     def fresh(self, now: float, ttl: float = 0.65) -> bool:
         age = now - self.captured_at
@@ -37,6 +37,14 @@ class Observation:
 
 def gray(image: np.ndarray) -> np.ndarray:
     return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image
+
+
+def steady_circle(current,previous):
+    """Keep fixed HUD geometry only after a fresh circle independently agrees."""
+    if current is not None and previous is not None:
+        if math.hypot(current[0]-previous[0],current[1]-previous[1])<=2 and abs(current[2]-previous[2])<=previous[2]*.08:
+            return previous
+    return current
 
 
 class TerrainMatcher:
@@ -163,6 +171,12 @@ def foreground_ui_visible(frame: np.ndarray, template: np.ndarray, roi: tuple) -
 
 def detect_circle(frame: np.ndarray) -> tuple[float, float, float] | None:
     h, w = frame.shape[:2]
+    # The standard desktop HUD is anchored to client height. Validate its
+    # native glyph now, rather than allowing a coastline Hough circle to
+    # shrink the map. Other layouts retain visual circumference recovery.
+    if w/h>=1.7:
+        standard=(h*.154,h*.115,h*.10)
+        if pointer_shape(frame,standard) is not None:return standard
     crop = gray(frame[:int(h*0.35), :int(w*0.28)])
     if crop.size == 0:
         return None
@@ -172,29 +186,36 @@ def detect_circle(frame: np.ndarray) -> tuple[float, float, float] | None:
                                minRadius=max(15, int(55*scale)), maxRadius=max(20, int(130*scale)))
     if circles is None:
         return None
-    # Require the cyan player arrow near the detected center; terrain circles
-    # alone are not evidence of the gameplay minimap. Refine its center from
-    # that arrow instead of trusting a partly occluded circumference.
     hsv=cv2.cvtColor(frame[:crop.shape[0],:crop.shape[1]],cv2.COLOR_BGR2HSV)
     cyan=cv2.inRange(hsv,(80,100,160),(110,255,255))
     count,_,stats,centers=cv2.connectedComponentsWithStats(cyan)
+    # HUD positions scale with client height. This is a broad image-only search
+    # region, not a player/world coordinate or a manual calibration.
+    expected=np.array([h*.154,h*.115])
+    def near_hud(px,py):return np.linalg.norm(np.array([px,py])-expected)<=h*.03
     candidates=[]
+    def add(px,py,radius):
+        if not (near_hud(px,py) and radius>=max(15,55*scale) and px-radius>=0 and py-radius>=0
+                and px+radius<crop.shape[1] and py+radius<crop.shape[0]):return
+        candidate=(float(px),float(py),radius)
+        previous=next((n for n,(a,b,_) in enumerate(candidates) if math.hypot(px-a,py-b)<5),None)
+        if previous is None:candidates.append(candidate)
+        elif radius>candidates[previous][2]:candidates[previous]=candidate
+    # Keep the established colour test when it is unambiguous. The local
+    # contrast path is recovery for a small glyph or water-connected component.
     for x,y,r in circles[0]:
         for i in range(1,count):
-            px,py=centers[i]; _,_,aw,ah,area=stats[i]
-            offset=math.hypot(px-x,py-y)
-            # HUD occlusion can shift Hough's center. Anchor to the arrow and
-            # use the inscribed disk, never expand the uncertain outer border.
-            radius=float(r)-offset
-            if (w*.065<px<w*.18 and h*.04<py<h*.22 and
-                    .015*r*r<area<.07*r*r and .65<aw/max(ah,1)<1.5 and
-                    offset<r*.4 and radius>=max(15,55*scale) and
-                    px-radius>=0 and py-radius>=0 and px+radius<crop.shape[1] and py+radius<crop.shape[0]):
-                candidate=(float(px),float(py),radius)
-                previous=next((n for n,(a,b,_) in enumerate(candidates) if math.hypot(px-a,py-b)<5),None)
-                if previous is None:
-                    candidates.append(candidate)
-                elif radius>candidates[previous][2]: candidates[previous]=candidate
+            px,py=centers[i];_,_,aw,ah,area=stats[i];offset=math.hypot(px-x,py-y)
+            if (.015*r*r<area<.07*r*r and .65<aw/max(ah,1)<1.5 and offset<r*.4):
+                add(px,py,float(r)-offset)
+    if candidates:return candidates[0] if len(candidates)==1 else None
+    for x,y,r in circles[0]:
+        if not (w*.065<x<w*.18 and h*.04<y<h*.22):continue
+        pointer=pointer_shape(frame,(x,y,r),center_fraction=.3)
+        if pointer is None:continue
+        _,center=pointer
+        margin=max(12,round(r*.27));left=max(0,round(x)-margin);top=max(0,round(y)-margin)
+        px,py=center+[left,top];add(px,py,float(r)-math.hypot(px-x,py-y))
     return candidates[0] if len(candidates)==1 else None
 
 
@@ -208,14 +229,7 @@ def confirmed_circle(frame,previous=None):
         x,y,r=previous;h,w=frame.shape[:2];scale=h/1080
         if (w*.065<x<w*.18 and h*.04<y<h*.22 and 55*scale<=r<=130*scale
                 and x-r>=0 and y-r>=0 and x+r<w*.28 and y+r<h*.35):
-            margin=max(12,round(r*.25));left=max(0,round(x)-margin);top=max(0,round(y)-margin)
-            crop=frame[top:round(y)+margin,left:round(x)+margin]
-            cyan=cv2.inRange(cv2.cvtColor(crop,cv2.COLOR_BGR2HSV),(80,100,160),(110,255,255))
-            count,_,stats,centers=cv2.connectedComponentsWithStats(cyan)
-            for i in range(1,count):
-                _,_,aw,ah,area=stats[i];px,py=centers[i]+[left,top]
-                if .015*r*r<area<.07*r*r and .65<aw/max(ah,1)<1.5 and math.hypot(px-x,py-y)<r*.1:
-                    return previous
+            if pointer_shape(frame,previous) is not None:return previous
     return detect_circle(frame)
 
 
@@ -400,7 +414,5 @@ class ScreenRecognizer:
             point = inverse @ np.array([circle[0], circle[1], 1])
             player = (float(point[0]), float(point[1]))
             self.last_minimap_player=player
-        heading,heading_confidence=player_facing(frame,circle)
         return Observation(surface, stamp, matrix, confidence, error, circle, player,
-                           "Explorando" if circle else "Mapa reconhecido",self.pack.map_id,self.pack.layer_id,
-                           heading,heading_confidence)
+                           "Explorando" if circle else "Mapa reconhecido",self.pack.map_id,self.pack.layer_id)

@@ -100,6 +100,20 @@ def test_cached_block_preserves_independent_geometry_and_current_timestamps(rast
     assert recognizer.diagnostics()['resident_blocks']<=2
 
 
+def test_current_minimap_geometry_can_locate_without_colour_sensitive_hud_glyph(raster,tmp_path,monkeypatch):
+    import src.live.budget_vision as module
+    configure_gameplay(monkeypatch)
+    monkeypatch.setattr(module,'foreground_ui_visible',lambda *a:False)
+    hints=[]
+    monkeypatch.setattr(module,'confirmed_circle',lambda frame,hint:(hints.append(hint) or (256.,256.,110.)))
+    recognizer=BudgetRecognizer([pack_for(raster)],tmp_path/'cache')
+    result=recognizer.observe(cv2.imread(str(raster.path)),10.)
+    assert result.surface=='minimap' and hints==[None]
+    monkeypatch.setattr(module,'confirmed_circle',lambda *a:None)
+    assert recognizer.observe(cv2.imread(str(raster.path)),10.1).surface=='hidden'
+    recognizer.close()
+
+
 def test_identical_different_layers_are_ambiguous(raster,tmp_path,monkeypatch):
     configure_gameplay(monkeypatch)
     other=replace(raster,pack_index=1)

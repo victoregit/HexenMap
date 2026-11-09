@@ -94,19 +94,6 @@ def test_tk_cache_preserves_images_still_used_by_canvas():
     assert list(cache.values)==['used'] and cache.bytes==64
 
 
-def test_farm_availability_cache_expires_exactly_on_utc_deadline(tmp_path):
-    from tests.test_chest_farm import setup
-    from src.live.respawn import RespawnRule
-    s,o=setup(tmp_path);s.items=[replace(s.items[2],rule_id='elapsed')];s.selected={'plant'}
-    s.rules['elapsed']=RespawnRule('elapsed','elapsed',seconds=60,source='test',checked_at='2026-11-08')
-    now=datetime(2026,11,8,tzinfo=timezone.utc);s.clock=lambda:now
-    s.farm.start(s);s.set_collected('resource',True)
-    assert s.farm.update(s,o,100) is None
-    s.clock=lambda:now+timedelta(seconds=60)-timedelta(microseconds=1)
-    assert s.farm.update(s,o,100) is None
-    s.clock=lambda:now+timedelta(seconds=60)
-    assert s.farm.update(s,o,100).target_id=='resource'
-
 
 def test_rapid_selection_cannot_acknowledge_release_of_a_still_active_recognizer():
     import threading
