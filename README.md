@@ -35,3 +35,7 @@ python scripts/build_exe.py
 Dados e referências podem ser verificados sem abrir a interface com `python src/app.py --diagnose`. O progresso antigo é preservado em `userData`; os dados reais usam IDs próprios para não confundir itens de demonstração com coletáveis reais.
 
 O aplicativo usa captura de tela e uma janela transparente do Windows. Não lê memória do jogo nem envia comandos. Genshin Impact pertence à HoYoverse; este projeto é independente. Código original sob MIT; dados comunitários mantêm a licença de sua fonte.
+
+## Exportar progresso do AppSample
+
+[Extensão local Hexen Map Exporter](docs/APPSAMPLE_IMPORT.md): ZIP de teste para Chrome e Edge, exportação de IDs sem F12 e importação com prévia e backup no aplicativo. [Instalação ilustrada](docs/EXPORTER_INSTALL.html) · [Testes e limitações](docs/EXPORTER_TEST_REPORT.md).
