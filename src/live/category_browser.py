@@ -12,7 +12,12 @@ from src.live.oculus_art import ORDER,category_for,draw_oculus
 from src.live.category_art import draw_category_art
 from src.live.localization import PENDING,RESOURCE_SUBGROUPS
 
-BG='#111923';ROW='#1b2734';TEXT='#edf1f5';GOLD='#dfc48d';MUTED='#91a0b2'
+from src.live.theme import BG, SURFACE as ROW, TEXT, ACCENT as GOLD, MUTED, BORDER, SELECTED, rounded, Tooltip
+from src.live.marker_art import CHESTS
+CHEST_ORDER=('common-chest','exquisite-chest','precious-chest','luxurious-chest','remarkable-chest')
+CHEST_LABELS=dict(zip(CHEST_ORDER,('Comum','Sofisticado','Precioso','Luxuoso','Extraordinário')))
+GROUP_TITLES={'Destaques':'Oculi e destaques','Enigmas':'Enigmas e desafios'}
+GROUP_SYMBOLS={'Destaques':'✧','Baús':'▱','Recursos':'♧','Enigmas':'◇','Exploração':'⌖','Inimigos':'♜'}
 
 
 @dataclass(frozen=True)
@@ -113,11 +118,14 @@ class CategoryBrowser(tk.Canvas):
 
     def __init__(self, parent, changed, **kwargs):
         super().__init__(parent,bg=BG,highlightthickness=0,yscrollincrement=36,**kwargs)
+        self.ui_scale=getattr(self.winfo_toplevel(),'_lunar_signature',1.)
+        self.HEIGHT=round(36*self.ui_scale);self.configure(yscrollincrement=self.HEIGHT)
         self.changed=changed;self.model=None;self.rows=[];self.selected=set();self.counts={}
         self.collapsed=set(GROUP_ORDER)
         self.collapsed_subgroups=set(RESOURCE_SUBGROUPS)
         self.query='';self.paint_job=None;self.last_range=None
         self.bind('<Configure>',lambda e:self.schedule_paint())
+        self.bind('<Map>',lambda e:self.schedule_paint())
         self.bind('<MouseWheel>',lambda e:self.yview_scroll(-int(e.delta/120),'units'))
         self.bind('<Button-1>',self.click)
         self.bind('<Key-space>',self.activate_focused)
@@ -129,6 +137,7 @@ class CategoryBrowser(tk.Canvas):
         self.tile_column=0
         self.bind('<Left>',lambda e:self.move_tile(-1))
         self.bind('<Right>',lambda e:self.move_tile(1))
+        tip=Tooltip(self,self.tooltip_text);self.bind('<Motion>',tip.schedule,add='+')
 
     def connect_scrollbar(self, scrollbar):
         def changed(first,last):
@@ -162,7 +171,8 @@ class CategoryBrowser(tk.Canvas):
                             if subgroup not in self.collapsed_subgroups or self.query:
                                 self.rows.extend(('entry',e,None) for e in members)
                         continue
-                    tiles=sorted((e for e in entries if group=='Destaques' and category_for(e)),key=lambda e:ORDER.index(category_for(e)))
+                    tiles=sorted((e for e in entries if (group=='Destaques' and category_for(e)) or (group=='Baús' and e.icon in CHESTS)),
+                                 key=lambda e:CHEST_ORDER.index(e.icon) if e.icon in CHESTS else ORDER.index(category_for(e)))
                     for offset in range(0,len(tiles),4):
                         chunk=tiles[offset:offset+4]
                         self.rows.extend((('tiles',chunk,None),('tile-tail',chunk,None)))
@@ -173,15 +183,17 @@ class CategoryBrowser(tk.Canvas):
 
     def schedule_paint(self):
         # Capture/input timers can keep Tk permanently non-idle during gameplay.
-        if self.paint_job is None:self.paint_job=self.after(16,self.paint)
+        if self.paint_job is None and self.winfo_ismapped():self.paint_job=self.after(0,self.paint)
 
     def paint(self):
-        self.paint_job=None;self.delete('all')
-        width=max(1,self.winfo_width());top=self.canvasy(0)
+        self.paint_job=None
+        if not self.winfo_ismapped():return
+        self.delete('all')
+        physical_width=max(1,self.winfo_width());width=physical_width/self.ui_scale;top=self.canvasy(0)
         start=max(0,int(top/self.HEIGHT)-1)
         end=min(len(self.rows),int((top+self.winfo_height())/self.HEIGHT)+2)
         for index in range(start,end):
-            kind,value,entries=self.rows[index];y=index*self.HEIGHT
+            kind,value,entries=self.rows[index];y=index*36
             if kind=='tile-tail':continue
             if kind=='tiles':
                 cell=width/4
@@ -189,29 +201,36 @@ class CategoryBrowser(tk.Canvas):
                     left=column*cell+2;right=(column+1)*cell-3;center=(left+right)/2
                     chosen=bool(entry.members & self.selected)
                     focused=index==self.focused and column==self.tile_column and self.focus_get()==self
-                    self.create_rectangle(left,y+2,right,y+69,fill='#243344' if chosen else ROW,outline=GOLD if chosen or focused else '#2a3949')
-                    draw_oculus(self,entry,center,y+22)
-                    self.create_text(center,y+44,text=entry.label,fill=TEXT,font=('Segoe UI',8))
-                    count=self.counts.get(entry.key);counter=f'{count[0]}/{count[1]}' if count is not None else '—'
+                    rounded(self,(left,y+2,right,y+69),radius=12,fill=SELECTED if chosen else ROW,outline=GOLD if chosen or focused else BORDER)
+                    if entry.icon in CHESTS:
+                        if not draw_category_art(self,entry.icon,center,y+22,size=round(30*self.ui_scale)):
+                            draw_marker(self,entry.icon,center,y+22,scale=1.2)
+                    else:draw_oculus(self,entry,center,y+22,size=round(30*self.ui_scale))
+                    self.create_text(center,y+44,text=CHEST_LABELS.get(entry.icon,entry.label),fill=TEXT,font=('Segoe UI',7 if entry.icon=='remarkable-chest' else 8))
+                    count=self.counts.get(entry.key);counter=f'{count[0]:,} / {count[1]:,}'.replace(',','.') if count is not None else '—'
                     self.create_text(center,y+59,text=counter,fill=GOLD if chosen else MUTED,font=('Segoe UI',8))
                     if chosen:self.create_text(right-7,y+10,text='✓',fill=GOLD,font=('Segoe UI',8,'bold'))
                 continue
             if kind in {'group','subgroup'}:
                 collapsed=self.collapsed if kind=='group' else self.collapsed_subgroups
                 offset=0 if kind=='group' else 10
-                if value in collapsed and not self.query:
+                if kind=='group':
+                    self.create_line(2,y,width-2,y,fill=BORDER)
+                    self.create_text(10,y+18,text=GROUP_SYMBOLS.get(value,'◇'),fill=MUTED,font=('Segoe UI Symbol',12))
+                elif value in collapsed and not self.query:
                     self.create_polygon(offset+8,y+14,offset+13,y+18,offset+8,y+22,fill=GOLD,outline='')
                 else:self.create_polygon(offset+7,y+15,offset+15,y+15,offset+11,y+21,fill=GOLD,outline='')
                 active=sum(bool(e.members & self.selected) for e in entries)
-                self.create_text(22+offset,y+18,text=value+(f' · {active}' if active else ''),
+                label=GROUP_TITLES.get(value,value)
+                self.create_text(26+offset,y+18,text=label+(f' · {active}' if active else ''),
                                  anchor='w',fill=TEXT,font=('Segoe UI',9,'bold' if kind=='group' else 'normal'))
                 self.create_text(width-53,y+18,text='Todos',fill=MUTED,font=('Segoe UI',8))
                 self.create_text(width-14,y+18,text='×',fill=MUTED,font=('Segoe UI',12))
                 continue
             entry=value;chosen=bool(entry.members & self.selected)
-            self.create_rectangle(1,y+1,width-2,y+34,fill='#202f3e' if chosen else BG,
-                                  outline=GOLD if index==self.focused and self.focus_get()==self else '')
-            if not draw_category_art(self,entry.icon,17,y+18):draw_marker(self,entry.icon,17,y+18,scale=.95)
+            rounded(self,(1,y+1,width-2,y+34),radius=8,fill=SELECTED if chosen else BG,
+                    outline=GOLD if index==self.focused and self.focus_get()==self else '')
+            if not draw_category_art(self,entry.icon,17,y+18,size=round(22*self.ui_scale)):draw_marker(self,entry.icon,17,y+18,scale=.95)
             label=entry.label
             # Ellipsis keeps counters in their own column; full label remains searchable.
             max_chars=max(12,int((width-126)/6.3))
@@ -221,11 +240,23 @@ class CategoryBrowser(tk.Canvas):
             counter=f'{count[0]}/{count[1]}' if count is not None else '—'
             self.create_text(width-34,y+17,text=counter,anchor='e',
                              fill=MUTED,font=('Segoe UI',8))
-            self.create_rectangle(width-23,y+11,width-11,y+23,fill=GOLD if chosen else BG,outline=GOLD if chosen else '#465669')
+            self.create_rectangle(width-23,y+11,width-11,y+23,fill=GOLD if chosen else BG,outline=GOLD if chosen else BORDER)
             if chosen:self.create_text(width-17,y+17,text='✓',fill=BG,font=('Segoe UI',9,'bold'))
 
         if not self.rows:
             self.create_text(width/2,25,text='Carregando catálogo…' if self.model is None else 'Nenhum item encontrado',fill=MUTED,font=('Segoe UI',9))
+        if self.ui_scale!=1.:self.scale('all',0,0,self.ui_scale,self.ui_scale)
+
+    def tooltip_text(self):
+        index=int(self.canvasy(self.winfo_pointery()-self.winfo_rooty())/self.HEIGHT)
+        if 0<=index<len(self.rows):
+            kind,value,_=self.rows[index]
+            if kind=='tile-tail':kind,value,_=self.rows[index-1]
+            if kind=='entry':return value.label
+            if kind=='tiles':
+                column=min(3,max(0,int((self.winfo_pointerx()-self.winfo_rootx())*4/max(1,self.winfo_width()))))
+                if column<len(value):return value[column].label
+        return 'Abra um grupo para selecionar itens. Todos seleciona o grupo; × limpa sua seleção.'
 
     def click(self, event):
         self.focus_set()
@@ -244,9 +275,9 @@ class CategoryBrowser(tk.Canvas):
                 entry=value[column];self.changed(entry.members,not bool(entry.members & self.selected))
             return
         if kind in {'group','subgroup'}:
-            if x>self.winfo_width()-32:
+            if x>self.winfo_width()-32*self.ui_scale:
                 self.changed(set().union(*(e.members for e in entries)),False)
-            elif x>self.winfo_width()-80:
+            elif x>self.winfo_width()-80*self.ui_scale:
                 self.changed(set().union(*(e.members for e in entries)),True)
             else:
                 collapsed=self.collapsed if kind=='group' else self.collapsed_subgroups

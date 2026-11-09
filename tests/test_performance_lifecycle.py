@@ -114,7 +114,7 @@ def test_selector_draws_use_the_returned_cached_photo_without_private_root_dicts
     import src.live.marker_art as markers
     image=Image.new('RGBA',(22,22),'white');photo=object();calls=[]
     canvas=SimpleNamespace(create_image=lambda *a,**kw:calls.append(kw['image']))
-    monkeypatch.setattr(oculi,'selector_image',lambda category:image)
+    monkeypatch.setattr(oculi,'selector_image',lambda category,size=30:image)
     monkeypatch.setattr(oculi,'tk_image',lambda *a:photo)
     oculi.draw_oculus(canvas,SimpleNamespace(members={'cryoculus'},label='Cryoculi',icon='cryoculus'),10,10)
     monkeypatch.setattr(markers,'legend_image',lambda *a:image)

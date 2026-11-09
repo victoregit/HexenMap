@@ -84,7 +84,7 @@ def browser_model():
 
 def test_subgroups_search_expands_results_without_overwriting_collapsed_state():
     items,model=browser_model();actions=[]
-    browser=SimpleNamespace(HEIGHT=36,model=model,rows=[],query='',collapsed=set(),collapsed_subgroups=set(RESOURCE_SUBGROUPS),
+    browser=SimpleNamespace(HEIGHT=36,ui_scale=1.,model=model,rows=[],query='',collapsed=set(),collapsed_subgroups=set(RESOURCE_SUBGROUPS),
         configure=lambda **k:None,winfo_width=lambda:320,yview_moveto=lambda v:None,schedule_paint=lambda:None,
         changed=lambda members,chosen:actions.append((members,chosen)),selected=set())
     browser.rebuild=lambda:CategoryBrowser.rebuild(browser)

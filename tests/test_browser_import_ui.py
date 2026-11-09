@@ -38,7 +38,7 @@ def test_browser_file_requires_existing_preview_confirmation(tmp_path,monkeypatc
     before=Path(manager.filepath).read_bytes()
     path=tmp_path/'delivery.processing';path.write_text(json.dumps({'source':'appsample','version':1,'markerIds':['1']}))
     prompts=[]
-    monkeypatch.setattr(desktop.messagebox,'askyesno',lambda title,text,**kw:prompts.append(text) or confirm)
+    monkeypatch.setattr(desktop,'confirm_dialog',lambda title,text,**kw:prompts.append(text) or confirm)
     app=SimpleNamespace(region_loading=False,package_id='appsample',user_dir=tmp_path,root=object(),refresh_counts=lambda:None,
         session=SimpleNamespace(items=[Item('appsample:marker:1','Baú','common-chest',0,0,rule_id='permanent')],progress=manager,notice=''))
     DesktopApp.import_appsample_progress(app,path)
