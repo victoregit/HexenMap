@@ -32,6 +32,7 @@ from src.live.reference_store import read_spec
 from src.live.budget_vision import BudgetRecognizer
 from src.live.performance import PerformanceTelemetry
 from src.live.identity import WINDOW_TITLE
+from src.live.theme import BG, SURFACE, TEXT, ACCENT, ON_ACCENT, confirm_dialog, place_dialog
 from src.live.automark import AutoMark,ChestSignals
 from src.live.automark_service import AutoMarkService
 from src.live.opening_recovery import minimap_frame
@@ -202,16 +203,18 @@ class DesktopApp(CompactPanel):
         except OSError as exc: self.session.notice=f"Falha ao salvar preferências: {exc}"
         self.reload_reference()
 
-    def show_appsample_export(self):
-        from src.live.appsample_export import GUIDE, script_text
+    def show_appsample_export(self, manual=False):
+        from src.live.appsample_export import GUIDE, MANUAL_GUIDE, script_text
         from tkinter import filedialog
         import webbrowser
-        popup=tk.Toplevel(self.root);popup.title('Exportação local — AppSample');popup.geometry('540x580')
+        popup=tk.Toplevel(self.root);popup.title('Trazer coletados do AppSample');popup.configure(bg=BG)
         popup.transient(self.root)
-        body=tk.Text(popup,wrap='word',font=('Segoe UI',10),padx=14,pady=12)
+        body=tk.Text(popup,wrap='word',font=('Segoe UI',10),padx=14,pady=12,
+                     bg=SURFACE,fg=TEXT,insertbackground=TEXT,selectbackground=ACCENT,
+                     selectforeground=ON_ACCENT,borderwidth=0,highlightthickness=0)
         scroll=ttk.Scrollbar(popup,command=body.yview);scroll.pack(side='right',fill='y')
         body.configure(yscrollcommand=scroll.set);body.pack(fill='both',expand=True)
-        body.insert('1.0',GUIDE);body.configure(state='disabled')
+        body.insert('1.0',MANUAL_GUIDE if manual else GUIDE);body.configure(state='disabled')
         actions=ttk.Frame(popup);actions.pack(fill='x',padx=10,pady=8)
         def save_script():
             name=filedialog.asksaveasfilename(parent=popup,title='Salvar código para conferir',
@@ -221,9 +224,23 @@ class DesktopApp(CompactPanel):
                     Path(name).write_text(script_text(),encoding='utf-8')
                     messagebox.showinfo('Script salvo','Abra o arquivo em um editor para conferir o código. Execute somente no DevTools do AppSample, seguindo as instruções.',parent=popup)
                 except OSError as exc:messagebox.showerror('Falha ao salvar',str(exc),parent=popup)
-        ttk.Button(actions,text='Salvar script…',command=save_script).pack(side='left')
+        if manual:
+            ttk.Button(actions,text='Salvar script…',command=save_script).pack(side='left')
+        else:
+            ttk.Button(actions,text='Pasta da extensão…',command=self.open_exporter_folder).pack(side='left')
         ttk.Button(actions,text='Abrir AppSample',command=lambda:webbrowser.open('https://genshin-impact-map.appsample.com/pt/')).pack(side='left',padx=6)
         ttk.Button(actions,text='Importar arquivo…',command=lambda:(popup.destroy(),self.import_appsample_progress())).pack(side='right')
+        place_dialog(popup,self.root,(540,580))
+
+    def open_exporter_folder(self):
+        import os
+        from src.live.exporter_install import prepare_extension
+        try:
+            folder=prepare_extension()
+            os.startfile(str(folder))
+            self.session.notice='Pasta pronta: selecione-a em Extensões → Modo do desenvolvedor → Carregar sem compactação.'
+        except (OSError,ValueError) as exc:
+            messagebox.showerror('Pasta da extensão',f'Não foi possível preparar a extensão: {exc}',parent=self.root)
 
     def install_browser_connector(self):
         from src.live.browser_connector import register_connector
@@ -279,7 +296,7 @@ class DesktopApp(CompactPanel):
             if path.suffix=='.processing':payload=validated_payload(payload)
             ids,_=parse_marker_ids(payload)
             records,missing,key=import_records(ids,self.session.items)
-            if not messagebox.askyesno('Importar coletados',f'{len(records)} itens encontrados no catálogo.\n{len(missing)} IDs ausentes serão preservados no arquivo original.\n\nMesclar com o progresso atual, criando backup?',parent=self.root):return
+            if not confirm_dialog('Importar coletados',f'{len(records)} itens encontrados no catálogo.\n{len(missing)} IDs ausentes serão preservados no arquivo original.\n\nMesclar com o progresso atual, criando backup?',parent=self.root):return
             result=self.session.progress.merge_imported_records(records,key,'appsample')
             self.refresh_counts();self.session.notice=f"AppSample: {result['added']} novos coletados; {len(missing)} IDs sem posição nesta versão."
         except Exception as exc:
@@ -851,14 +868,7 @@ class DesktopApp(CompactPanel):
             if time.monotonic()-self.counts_at>=1:
                 if self.refresh_counts() is not False:self.counts_at=time.monotonic()
             if self.session.pending_ids and time.monotonic()-self.session.pending_at>30: self.session.pending_ids.clear()
-            order=[i for i in self.session.items if i.id in self.session.pending_ids]
-            if [i.id for i in order]!=self.pending_order:
-                self.pending_order=[i.id for i in order]
-                self.candidates.configure(values=[f"{i.name} · {i.id[-8:]}" for i in order])
-                if order:
-                    self.candidates.set(""); self.candidates.pack(fill="x"); self.confirm_button.pack(fill="x")
-                else:
-                    self.candidates.pack_forget(); self.confirm_button.pack_forget()
+            self.sync_pending_candidates()
         except Exception as exc:
             logger.exception("Falha na atualização do overlay")
             self.close_marker_menu()
@@ -868,6 +878,19 @@ class DesktopApp(CompactPanel):
             if self.overlay_hwnd: self.native.hide(self.overlay_hwnd)
             self.session.invalidate("Overlay pausado após uma falha"); self.session.notice=str(exc)
         self.root.after(16 if foreground else 100,self._tick)
+
+    def sync_pending_candidates(self):
+        # Usually empty: never walk the full installed catalog on an input timer.
+        pending=set(self.session.pending_ids)
+        if pending==set(self.pending_order):return
+        order=[self.session.item_by_id(identifier) for identifier in sorted(pending)]
+        order=[item for item in order if item is not None]
+        self.pending_order=[item.id for item in order]
+        self.candidates.configure(values=[f"{item.name} · {item.id[-8:]}" for item in order])
+        if order:
+            self.candidates.set("");self.candidates.pack(fill='x');self.confirm_button.pack(fill='x')
+        else:
+            self.candidates.pack_forget();self.confirm_button.pack_forget()
 
     def close(self):
         try: self.persist_settings()

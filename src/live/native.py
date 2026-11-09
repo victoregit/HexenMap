@@ -156,6 +156,22 @@ class Windows:
         """Apply the user's capture preference to interactive controls too."""
         hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
         self.capture_policy(hwnd)
+        self._caption_theme(hwnd)
+
+    def _caption_theme(self,hwnd):
+        """App-window colors only; older Windows keeps its native frame."""
+        try:
+            from src.live.theme import BG,TEXT
+            if not hasattr(self,'_dwm'):
+                self._dwm=ct.WinDLL('dwmapi')
+                self._dwm.DwmSetWindowAttribute.argtypes=[wt.HWND,wt.DWORD,ct.c_void_p,wt.DWORD]
+                self._dwm.DwmSetWindowAttribute.restype=ct.c_long
+            dark=wt.BOOL(True)
+            self._dwm.DwmSetWindowAttribute(hwnd,20,ct.byref(dark),ct.sizeof(dark))
+            for attribute,color in ((35,BG),(36,TEXT)):
+                value=wt.DWORD(int(color[1:3],16)|(int(color[3:5],16)<<8)|(int(color[5:7],16)<<16))
+                self._dwm.DwmSetWindowAttribute(hwnd,attribute,ct.byref(value),ct.sizeof(value))
+        except (OSError,AttributeError):pass
 
     def capture_policy(self,hwnd):
         if not self.u.SetWindowDisplayAffinity(hwnd,0 if getattr(self,'capture_visible',False) else 0x11):
@@ -183,6 +199,20 @@ class Windows:
     def desktop_bounds(self):
         x,y=self.u.GetSystemMetrics(76),self.u.GetSystemMetrics(77)
         return x,y,x+self.u.GetSystemMetrics(78),y+self.u.GetSystemMetrics(79)
+
+    def work_area(self,x,y):
+        """Usable monitor rectangle for panel placement, excluding the taskbar."""
+        class MonitorInfo(ct.Structure):
+            _fields_=[('size',wt.DWORD),('monitor',wt.RECT),('work',wt.RECT),('flags',wt.DWORD)]
+        self.u.MonitorFromPoint.argtypes=[wt.POINT,wt.DWORD]
+        self.u.MonitorFromPoint.restype=wt.HANDLE
+        self.u.GetMonitorInfoW.argtypes=[wt.HANDLE,ct.POINTER(MonitorInfo)]
+        self.u.GetMonitorInfoW.restype=wt.BOOL
+        monitor=self.u.MonitorFromPoint(wt.POINT(round(x),round(y)),2)
+        info=MonitorInfo();info.size=ct.sizeof(info)
+        if monitor and self.u.GetMonitorInfoW(monitor,ct.byref(info)):
+            r=info.work;return r.left,r.top,r.right,r.bottom
+        return self.desktop_bounds()
 
     def move_panel(self, child_hwnd, x, y):
         hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd

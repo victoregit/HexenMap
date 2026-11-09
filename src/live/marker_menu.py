@@ -10,6 +10,7 @@ from src.live.icons import draw_marker
 from src.live.category_art import draw_category_art
 from src.live.catalog import CATEGORIES
 from src.live.marker_hints import marker_url
+from src.live.theme import BG, SURFACE, TEXT, MUTED, ACCENT, BORDER, apply_theme, Tooltip
 
 
 LABELS={"common-chest":"Baú comum","exquisite-chest":"Baú sofisticado",
@@ -30,60 +31,67 @@ class MarkerMenu:
         self.photos=[]
         self.photo_index=0
         self.photo_image=None
+        apply_theme(parent.winfo_toplevel(),getattr(parent.winfo_toplevel(),'_lunar_signature',1.))
         self.window=tk.Toplevel(parent)
         self.window.withdraw()
         self.window.overrideredirect(True)
-        self.window.configure(bg="#cbb88a")
+        self.window.configure(bg=BG)
         self.window.bind("<Escape>",lambda event:on_close())
-        card=tk.Frame(self.window,bg="#1c2a3b",padx=16,pady=14)
+        card=ttk.Frame(self.window,style='Card.TFrame',padding=(16,14))
         card.pack(fill="both",expand=True,padx=1,pady=1)
-        header=tk.Frame(card,bg="#1c2a3b");header.pack(fill="x")
-        self.icon=tk.Canvas(header,width=40,height=40,bg="#1c2a3b",highlightthickness=0)
+        header=tk.Frame(card,bg=SURFACE);header.pack(fill="x")
+        self.icon=tk.Canvas(header,width=40,height=40,bg=SURFACE,highlightthickness=0)
         self.icon.pack(side="left",padx=(0,8))
-        titles=tk.Frame(header,bg="#1c2a3b");titles.pack(side="left",fill="x",expand=True)
-        self.title=tk.Label(titles,bg="#1c2a3b",fg="#eee9df",font=("Segoe UI",12,"bold"),anchor="w")
+        titles=tk.Frame(header,bg=SURFACE);titles.pack(side="left",fill="x",expand=True)
+        self.title=tk.Label(titles,bg=SURFACE,fg=TEXT,font=("Segoe UI",12,"bold"),anchor="w")
         self.title.pack(fill="x")
-        self.badge=tk.Label(titles,bg="#1c2a3b",fg="#a0adbd",font=("Segoe UI",9),anchor="w")
+        self.badge=tk.Label(titles,bg=SURFACE,fg=MUTED,font=("Segoe UI",9),anchor="w")
         self.badge.pack(fill="x")
-        close=tk.Label(header,text="×",bg="#1c2a3b",fg="#a0adbd",font=("Segoe UI",16),cursor="hand2")
+        close=tk.Label(header,text="×",bg=SURFACE,fg=MUTED,font=("Segoe UI",16),cursor="hand2")
         close.pack(side="right",anchor="n")
         close.bind("<ButtonRelease-1>",lambda event:on_close())
+        Tooltip(close,'Fechar cartão (Esc).')
         if len(items)>1:
-            tk.Label(card,text="Há itens sobrepostos. Escolha qual alterar:",bg="#1c2a3b",fg="#a0adbd",
+            tk.Label(card,text="Há itens sobrepostos. Escolha qual alterar:",bg=SURFACE,fg=MUTED,
                      font=("Segoe UI",9)).pack(anchor="w",pady=(10,4))
             selector=ttk.Combobox(card,state="readonly",width=34,
                                  values=[f"{i+1}. {LABELS.get(item.category,CATEGORIES.get(item.category,(item.name,))[0])}" for i,item in enumerate(items)])
             selector.pack(fill="x")
             selector.current(0)
             selector.bind("<<ComboboxSelected>>",lambda event:self.select(selector.current()))
-        tk.Frame(card,bg="#3c495b",height=1).pack(fill="x",pady=12)
+        tk.Frame(card,bg=BORDER,height=1).pack(fill="x",pady=12)
         self.action=self._button(card)
         if hints is not None:
-            tk.Label(card,text='Fotos do local · AppSample',bg='#1c2a3b',fg='#dfc48d',
+            tk.Label(card,text='Fotos do local · AppSample',bg=SURFACE,fg=ACCENT,
                      font=('Segoe UI',10,'bold')).pack(anchor='w',pady=(10,4))
-            self.hint_status=tk.Label(card,bg='#1c2a3b',fg='#a0adbd',font=('Segoe UI',8),anchor='w',wraplength=360)
+            self.hint_status=tk.Label(card,bg=SURFACE,fg=MUTED,font=('Segoe UI',8),anchor='w',wraplength=360)
             self.hint_status.pack(fill='x')
             self.photo_size=(min(480,max(240,game.width-90)),min(300,max(80,game.height-360)))
             self.photo_canvas=tk.Canvas(card,width=self.photo_size[0],height=self.photo_size[1],
-                                        bg='#101923',highlightthickness=0)
+                                        bg=BG,highlightthickness=0)
             self.photo_canvas.pack(pady=6)
-            navigation=tk.Frame(card,bg='#1c2a3b');navigation.pack(fill='x',pady=(0,6))
-            self.previous_photo=ttk.Button(navigation,text='◀ Anterior',command=lambda:self._show_photo(-1),takefocus=False)
+            navigation=tk.Frame(card,bg=SURFACE);navigation.pack(fill='x',pady=(0,6))
+            self.previous_photo=ttk.Button(navigation,text='◀ Anterior',style='Card.TButton',command=lambda:self._show_photo(-1),takefocus=False)
             self.previous_photo.pack(side='left')
-            self.photo_counter=tk.Label(navigation,bg='#1c2a3b',fg='#eee9df',font=('Segoe UI',9))
+            self.photo_counter=tk.Label(navigation,bg=SURFACE,fg=TEXT,font=('Segoe UI',9))
             self.photo_counter.pack(side='left',expand=True)
-            self.next_photo=ttk.Button(navigation,text='Próxima ▶',command=lambda:self._show_photo(1),takefocus=False)
+            self.next_photo=ttk.Button(navigation,text='Próxima ▶',style='Card.TButton',command=lambda:self._show_photo(1),takefocus=False)
             self.next_photo.pack(side='right')
-            links=tk.Frame(card,bg='#1c2a3b');links.pack(fill='x')
-            self.source_link=ttk.Button(links,text='Abrir ponto no AppSample',command=self._open_source,takefocus=False)
+            links=tk.Frame(card,bg=SURFACE);links.pack(fill='x')
+            self.source_link=ttk.Button(links,text='Abrir ponto no AppSample',style='Card.TButton',command=self._open_source,takefocus=False)
             self.source_link.pack(side='left')
-            self.refresh_link=ttk.Button(links,text='Atualizar',command=lambda:self._load_hints(True),takefocus=False)
+            self.refresh_link=ttk.Button(links,text='Atualizar',style='Card.TButton',command=lambda:self._load_hints(True),takefocus=False)
             self.refresh_link.pack(side='right')
-        tk.Label(card,text="Clique fora para voltar ao jogo",bg="#1c2a3b",fg="#a0adbd",
+        tk.Label(card,text="Clique fora para voltar ao jogo",bg=SURFACE,fg=MUTED,
                  font=("Segoe UI",8)).pack(pady=(10,0))
         self.select(0)
         self.window.update_idletasks()
         width=self.window.winfo_reqwidth();height=self.window.winfo_reqheight()
+        if hints is not None and height>game.height:
+            self.photo_size=(self.photo_size[0],max(1,self.photo_size[1]-(height-game.height)-8))
+            self.photo_canvas.configure(height=self.photo_size[1])
+            self.window.update_idletasks()
+            width=self.window.winfo_reqwidth();height=self.window.winfo_reqheight()
         # Clamp to the game client, including monitors with negative origins.
         x=max(game.x,min(x,game.x+game.width-width))
         y=max(game.y,min(y,game.y+game.height-height))
@@ -95,11 +103,8 @@ class MarkerMenu:
         native.place(self.hwnd,GameWindowRect(x,y,width,height))
 
     def _button(self,parent):
-        widget=tk.Label(parent,font=("Segoe UI",10,"bold"),padx=12,pady=9,anchor="w",cursor="hand2")
-        widget.pack(fill="x",pady=3)
-        widget.bind("<ButtonRelease-1>",lambda event:self._activate())
-        widget.bind("<Enter>",lambda event:self._hover(True))
-        widget.bind("<Leave>",lambda event:self._hover(False))
+        widget=ttk.Button(parent,style='Card.Primary.TButton',command=self._activate,takefocus=False)
+        widget.pack(fill='x',pady=3)
         return widget
 
     def _activate(self):
@@ -108,8 +113,7 @@ class MarkerMenu:
 
     def _hover(self,hover):
         collected=self.progress.is_collected(self.items[self.index].id)
-        bg=("#354860" if hover else "#293b51") if collected else ("#e8d5a7" if hover else "#cbb88a")
-        self.action.configure(bg=bg,fg="#eee9df" if collected else "#1c2a3b")
+        self.action.configure(style='Card.Quiet.TButton' if collected else 'Card.Primary.TButton')
 
     def select(self,index):
         self.index=index
@@ -135,7 +139,7 @@ class MarkerMenu:
         self.photo_image=None
         self.photo_canvas.delete('all')
         width,height=self.photo_size
-        self.photo_canvas.create_text(width/2,height/2,text=text,fill='#a0adbd',
+        self.photo_canvas.create_text(width/2,height/2,text=text,fill=MUTED,
                                       width=width-24,font=('Segoe UI',10),justify='center')
 
     def _load_hints(self,refresh=False):

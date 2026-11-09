@@ -7,6 +7,7 @@ import tkinter as tk
 from PIL import Image, ImageTk
 
 from src.live.storage import bundle_dir
+from src.live.theme import BG, SURFACE, HOVER, BORDER, ACCENT, CHAMPAGNE
 
 TRANSPARENT = '#010203'
 
@@ -49,10 +50,10 @@ class AnimatedBadge(tk.Canvas):
         super().__init__(parent,width=size,height=size,bg=TRANSPARENT,
                          highlightthickness=0,cursor='hand2',takefocus=1)
         # Static backplate stays visible even during the GIF's small-star frames.
-        self.create_oval(1,2,size-1,size,fill='#091321',outline='#435b85',width=2,tags='badge-halo')
-        self.create_oval(4,4,size-4,size-4,fill='#18283e',outline='#dfd3b8',width=2,tags='badge-body')
-        self.bind('<Enter>',lambda e:self.itemconfigure('badge-body',fill='#243b58',outline='#fff0c9'))
-        self.bind('<Leave>',lambda e:self.itemconfigure('badge-body',fill='#18283e',outline='#dfd3b8'))
+        self.create_oval(1,2,size-1,size,fill=BG,outline=BORDER,width=2,tags='badge-halo')
+        self.create_oval(4,4,size-4,size-4,fill=SURFACE,outline=ACCENT,width=2,tags='badge-body')
+        self.bind('<Enter>',lambda e:self.itemconfigure('badge-body',fill=HOVER,outline=CHAMPAGNE))
+        self.bind('<Leave>',lambda e:self.itemconfigure('badge-body',fill=SURFACE,outline=ACCENT))
         frames,self.durations=badge_frames(size)
         self.images=[ImageTk.PhotoImage(frame,master=self) for frame in frames]
         self.item=self.create_image(size/2,size/2,image=self.images[0])

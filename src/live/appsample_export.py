@@ -1,16 +1,31 @@
 """Auditable local browser helper; never accesses browser sessions from Python."""
 from src.live.storage import bundle_dir
 
-GUIDE = '''Exportar coletados do AppSample
+GUIDE = '''Trazer meus coletados do AppSample
 
-Método recomendado: extensão Hexen Map Exporter (ZIP de teste).
-Envio direto opcional: em Ajustes, use Ativar conexão com a extensão (uma vez). HexenMapBridge.exe deve ficar junto do aplicativo. Na extensão 0.2.0, Enviar ao Hexen Map abre a prévia; confirme a mesclagem para aplicar. Ao migrar da 0.1.x, desative a extensão antiga antes de carregar a nova.
-O conector é local, sem localhost e sem escrever no AppSample. Os arquivos enviados ficam em userData/browser-imports; cancelar a prévia preserva seu progresso.
-Extraia o ZIP, abra chrome://extensions ou edge://extensions, ative Modo do desenvolvedor e use Carregar sem compactação na pasta que contém manifest.json.
-Abra o AppSample, entre na conta pelo próprio site e clique na extensão. Use Atualizar leitura se a aba já estava aberta. Confira a quantidade, exporte e importe o JSON pelo Hexen Map. Lista vazia confirmada é diferente de leitura ausente.
-Após mudar marcações ou trocar de conta, atualize a leitura. A extensão não salva histórico nem modifica o site. Compatibilidade real deve ser conferida nos dois navegadores antes de distribuir como versão estável.
+Instalar a extensão de teste (uma vez):
 
-Alternativa manual experimental:
+1. Clique em Pasta da extensão nesta janela ou em Ajustes → Coletados do AppSample → Abrir pasta da extensão. O aplicativo já inclui os arquivos prontos, sem baixar ou extrair ZIP.
+2. No Chrome, digite chrome://extensions; no Edge, edge://extensions.
+3. Ative Modo do desenvolvedor, clique em Carregar sem compactação e selecione a pasta que o aplicativo abriu (a que contém manifest.json).
+4. Mantenha essa pasta no lugar. A extensão ainda não foi publicada na loja; o navegador pode exibir um aviso de instalação local.
+
+Com a extensão instalada:
+
+1. Abra o AppSample e entre na sua conta pelo próprio site.
+2. Abra a extensão, clique em Atualizar leitura e aguarde o progresso ser detectado.
+3. Escolha Enviar ao Hexen Map para abrir a prévia aqui. Para isso, ative uma vez Ajustes → Coletados do AppSample → Ativar conexão com a extensão. HexenMapBridge.exe deve ficar junto do aplicativo.
+4. Confira a quantidade e confirme a mesclagem. O progresso atual é preservado e recebe backup.
+
+Prefere usar um arquivo? Na extensão, clique em Baixar JSON. Depois use Importar arquivo de coletados no aplicativo.
+
+Ao migrar da versão 0.1.x, desative a extensão antiga antes de carregar a nova. O ZIP separado continua sendo uma alternativa.
+
+Não há sincronização automática nem alteração das marcações no site. Depois de mudar marcações ou trocar de conta, atualize a leitura. Não envie senhas, cookies ou tokens.
+
+A exportação foi conferida no Chrome. O envio direto e a validação completa no Edge continuam em teste.'''
+
+MANUAL_GUIDE = '''Alternativa manual experimental:
 1. Salve o script e abra o AppSample no seu navegador.
 2. Pressione F12 → Sources (Fontes) → Snippets. Se estiver oculto, use ».
 3. Clique em New snippet (Novo snippet), abra o arquivo salvo em um editor e copie seu conteúdo para o snippet. Confira o código antes de executar.
