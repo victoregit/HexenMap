@@ -187,3 +187,15 @@ def test_verified_gap_recovery_does_not_invert_a_missing_current_transform(monke
     assert result.surface=='minimap' and result.world_to_screen[0,2]==10
     assert motion.anchor_motion is None  # The pending chain still has an unverified gap.
     motion.close()
+
+
+def test_current_verified_flow_can_bridge_slow_absolute_confirmation_without_freezing(monkeypatch):
+    motion,pending,calls=pipeline(monkeypatch,'minimap')
+    motion.previous=frame(0);motion.previous_surface='minimap';motion.circle=(50.,50.,40.)
+    motion.current=Observation('minimap',101.95,np.eye(2,3),.95,.2,circle=motion.circle)
+    motion.last_absolute=100.;motion.last_submit=101.95
+    result=motion.observe(frame(5),102.)
+    assert result.surface=='minimap' and result.world_to_screen[0,2]==5 and result.captured_at==102.
+    assert motion.last_absolute==100. # No renewal of the absolute anchor's time.
+    assert motion.observe(frame(100),102.05).surface=='hidden' # No unverified hold.
+    motion.close()

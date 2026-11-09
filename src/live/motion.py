@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from collections import deque
 from dataclasses import replace
 import math
 import logging
@@ -9,8 +10,9 @@ import logging
 import cv2
 import numpy as np
 
-from src.live.vision import Observation, ScreenRecognizer, gray, template_visible, detect_circle, foreground_ui_visible
-from src.live.facing import FacingTracker
+from src.live.vision import Observation, ScreenRecognizer, gray, template_visible, detect_circle, foreground_ui_visible,steady_circle
+from src.live.minimap_glyph import pointer_shape
+from src.live.gameplay import GameplayGate
 
 logger=logging.getLogger(__name__)
 
@@ -49,6 +51,9 @@ def follow(previous: np.ndarray, current: np.ndarray, observation: Observation,
     before=previous[y:y+h,x:x+w]
     after=current[y:y+h,x:x+w]
     mask=mask[y:y+h,x:x+w]
+    if float(before.std())<25:
+        contrast=cv2.createCLAHE(clipLimit=2.,tileGridSize=(4,4))
+        before=contrast.apply(before);after=contrast.apply(after)
     factor=.5 if observation.surface=='map' and w>600 else 1.
     if factor!=1:
         before=cv2.resize(before,None,fx=factor,fy=factor,interpolation=cv2.INTER_AREA)
@@ -88,14 +93,17 @@ def follow(previous: np.ndarray, current: np.ndarray, observation: Observation,
     residual=float(np.percentile(np.linalg.norm(predicted-destination[accepted],axis=1),95))
     if residual>1.5:
         return None
+    uncertainty=math.hypot(observation.position_uncertainty_px,residual)
+    if uncertainty>2.5:return None
     matrix=delta@np.vstack([observation.world_to_screen,[0,0,1]])
     player=None
     if observation.circle:
         x,y,_=observation.circle
         p=cv2.invertAffineTransform(matrix)@np.array([x,y,1])
         player=(float(p[0]),float(p[1]))
-    return Observation(observation.surface,stamp,matrix,min(observation.confidence,.95),
-                       residual,observation.circle,player,observation.reason,observation.map_id,observation.layer_id)
+    return replace(observation,captured_at=stamp,world_to_screen=matrix,confidence=min(observation.confidence,.95),
+                   error_px=residual,player=player,
+                   position_uncertainty_px=uncertainty)
 
 
 class MotionRecognizer:
@@ -121,9 +129,15 @@ class MotionRecognizer:
         self.verified_frame=None
         self.verified_observation=None
         self.absolute_reason='pending'
-        self.facing=FacingTracker()
+        self.gameplay=GameplayGate();self.continuity_id=0
+        self.recent=deque(maxlen=3)
+        self.circle_checked=-math.inf
+        self.circle_hint=None;self.image_shape=None
 
     def reset(self):
+        self.continuity_id+=1;self.gameplay.reset()
+        self.recent.clear()
+        self.circle_checked=-math.inf
         self.previous=None
         self.current=Observation("hidden",0)
         self.last_absolute=-math.inf
@@ -137,7 +151,6 @@ class MotionRecognizer:
         self.circle=None
         self.verified_frame=None
         self.verified_observation=None
-        self.facing.reset()
 
     def close(self,wait=False):
         self.pool.shutdown(wait=wait,cancel_futures=True)
@@ -145,30 +158,65 @@ class MotionRecognizer:
     def observe(self, frame: np.ndarray | None, stamp: float) -> Observation:
         if frame is None or frame.size==0:
             self.reset()
-            return Observation("hidden",stamp,reason="Captura indisponível")
+            return Observation("hidden",stamp,reason="Captura indisponível",continuity_id=self.continuity_id)
         image=gray(frame)
+        if frame.shape!=self.image_shape:
+            self.circle_hint=None;self.image_shape=frame.shape
         pack=self.recognizer.pack
         is_map=template_visible(frame,pack.map_ui,pack.map_ui_roi)
         is_gameplay=not is_map and (template_visible(frame,pack.gameplay_ui,pack.gameplay_ui_roi) or
                                    foreground_ui_visible(frame,pack.gameplay_ui,pack.gameplay_ui_roi))
+        if not is_map and not is_gameplay and frame.ndim==3:
+            hint=self.circle or self.circle_hint
+            if hint is not None and pointer_shape(frame,hint) is not None:
+                self.circle=hint;is_gameplay=True
+            elif hint is None and stamp-self.circle_checked>=1:
+                self.circle_checked=stamp
+                detected=detect_circle(frame)
+                if detected is not None:
+                    self.circle=detected;self.circle_hint=detected;is_gameplay=True
+        # A single missing HUD glyph is tolerated only with a current player pointer.
+        circle=self.circle
+        tentative=None
+        if circle is not None and frame.ndim==3:
+            if (not is_map and not is_gameplay and 0<=stamp-self.gameplay.confirmed<=.35
+                    and self.previous is not None and self.current.surface=='minimap'):
+                tentative=follow(self.previous,image,self.current,stamp)
+            is_gameplay=self.gameplay.accept(stamp,map_open=is_map,hud=is_gameplay,
+                                             pointer=is_gameplay or tentative is not None or pointer_shape(frame,circle) is not None)
+        elif is_gameplay:self.gameplay.confirmed=stamp
         surface="map" if is_map else "minimap" if is_gameplay else "hidden"
         if surface=="hidden":
             self.reset()
-            return Observation("hidden",stamp,reason="Menu, carregamento ou tela não reconhecida")
+            return Observation("hidden",stamp,reason="Menu, carregamento ou tela não reconhecida",continuity_id=self.continuity_id)
         if surface=='minimap':
             if self.circle is None or self.previous_surface!='minimap':
-                self.circle=detect_circle(frame)
+                self.circle=self.circle or detect_circle(frame)
+            if self.circle is not None:self.circle_hint=self.circle
         else:self.circle=None
-        updated=None
+        updated=tentative
         discontinuity=False
-        if self.previous is not None and self.current.surface==surface and stamp-self.last_absolute<=1.5:
+        # Continue solving the current image while its uncertainty remains
+        # bounded. This is verified relative motion, never a held screen pose.
+        age_limit=5. if (surface=='minimap' and self.current.confidence>=.9
+                         and self.current.position_uncertainty_px<=2.) else 1.5
+        if updated is None and self.previous is not None and self.current.surface==surface and stamp-self.last_absolute<=age_limit:
             updated=follow(self.previous,image,self.current,stamp)
         if (updated is None and surface=='minimap' and self.verified_frame is not None
-                and self.verified_observation is not None and stamp-self.last_absolute<=1.5
+                and self.verified_observation is not None and stamp-self.last_absolute<=age_limit
                 and 0<stamp-self.verified_observation.captured_at<=.25):
             # A brief occlusion can defeat one LK step. Re-register against the
             # last verified image; never reuse its old screen coordinates.
             updated=follow(self.verified_frame,image,self.verified_observation,stamp)
+        if updated is None and surface=='minimap' and stamp-self.last_absolute<=age_limit:
+            for recent_frame,recent_obs in reversed(self.recent):
+                if 0<stamp-recent_obs.captured_at<=.5:
+                    recovered=follow(recent_frame,image,recent_obs,stamp)
+                    if recovered is not None:
+                        probes=comparison_points(recovered,image.shape[1],image.shape[0])
+                        relative=recovered.world_to_screen@np.vstack([cv2.invertAffineTransform(recent_obs.world_to_screen),[0,0,1]])
+                        if np.max(np.linalg.norm(probes@relative.T-probes[:,:2],axis=1))<=max(12,recovered.circle[2]*.25):
+                            updated=recovered;break
         if self.future is not None and self.anchor_motion is not None:
             step=None
             if updated is not None and self.current.world_to_screen is not None:
@@ -211,8 +259,10 @@ class MotionRecognizer:
                                 probes@relative.T-probes[:,:2],axis=1)))
                             discontinuity=discrepancy>24
                             if discrepancy<=3:
-                                rebased=replace(rebased,world_to_screen=(
-                                    rebased.world_to_screen+updated.world_to_screen)/2)
+                                blended=(rebased.world_to_screen+updated.world_to_screen)/2
+                                player=tuple(cv2.invertAffineTransform(blended)@np.array([*rebased.circle[:2],1])) if rebased.circle else rebased.player
+                                rebased=replace(rebased,world_to_screen=blended,player=player,
+                                                position_uncertainty_px=max(discrepancy,rebased.error_px))
                         updated=rebased
                         self.last_absolute=self.anchor_stamp
                         if surface=='minimap':self.circle=rebased.circle
@@ -231,23 +281,23 @@ class MotionRecognizer:
             self.anchor_motion=np.eye(3)
         self.previous=image
         self.previous_surface=surface
-        if updated is not None and surface=='minimap':
-            if discontinuity:self.facing.reset()
-            heading,heading_confidence=self.facing.update(frame,updated.circle,stamp,updated.world_to_screen)
-            updated=replace(updated,heading_screen=heading,heading_confidence=heading_confidence)
-        else:self.facing.reset()
         self.current=updated or Observation("hidden",stamp,reason="Localizando no mapa selecionado…")
         if updated is not None and surface=='minimap':
             self.verified_frame=image
             self.verified_observation=updated
+            if not self.recent or stamp-self.recent[-1][1].captured_at>=.12:
+                self.recent.append((image.copy(),updated))
         status=('correction' if discontinuity else 'tracking' if updated else
-                'anchor_expired' if stamp-self.last_absolute>1.5 else 'flow_lost')
+                'anchor_expired' if stamp-self.last_absolute>age_limit else 'flow_lost')
         if status!=self.tracking_status:
             self.tracking_status=status
             logger.info('Tracking surface=%s state=%s anchor_age=%.3f pending_age=%.3f absolute=%s',
                         surface,status,stamp-self.last_absolute,
                         stamp-self.anchor_stamp if self.future else 0,self.absolute_reason)
         if discontinuity:
+            self.continuity_id+=1
+            self.recent.clear()
             # Keep the recovered anchor internally; never animate across a large correction.
-            return Observation("hidden",stamp,reason="Recuperando alinhamento…")
+            return Observation("hidden",stamp,reason="Recuperando alinhamento…",continuity_id=self.continuity_id)
+        self.current=replace(self.current,continuity_id=self.continuity_id)
         return self.current

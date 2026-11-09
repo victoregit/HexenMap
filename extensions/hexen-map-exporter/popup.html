@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>Hexen Map Exporter</title><link rel="stylesheet" href="popup.css">
+<body><header><span class="star">✦</span><div><h1>Hexen Map Exporter</h1><small>EXPORTAÇÃO LOCAL · TESTE</small></div></header>
+<main><p id="state" role="status" aria-live="polite">Aguardando…</p><p id="detail">Consultando a aba ativa.</p>
+<div id="loading" role="progressbar" aria-label="Leitura do progresso" aria-valuetext="Aguardando resposta" hidden><span></span></div>
+<small id="stage" aria-live="polite"></small>
+<button id="send" disabled>Enviar ao Hexen Map</button><button id="export" disabled>Baixar JSON</button><button id="refresh" disabled>Atualizar leitura</button><button id="open">Abrir AppSample</button>
+<p class="note">Para enviar: no aplicativo, Ajustes → Ativar conexão com a extensão. A prévia pede confirmação antes de mesclar.</p>
+<p class="note">Após mudar marcações ou trocar de conta, atualize a leitura. A atualização recarrega a aba.</p>
+<details><summary>Privacidade e limites</summary><p>Lemos somente IDs da resposta de progresso já recebida pelo site. Sem cookies, senhas, histórico ou novos pedidos de rede. Os IDs ficam na memória desta aba até recarregar ou fechar.</p><p>Enviar ao Hexen Map usa o conector local, somente após seu clique. O aplicativo guarda o arquivo recebido para apresentar a prévia. Não escreve no AppSample.</p><p>Não é uma integração oficial. A página pode interferir na captura; a ponte não comprova autenticidade contra uma página maliciosa.</p></details></main>
+<script src="appsample-core.js"></script><script src="popup.js"></script></body></html>

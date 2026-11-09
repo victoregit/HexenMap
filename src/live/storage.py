@@ -12,8 +12,7 @@ import queue
 import threading
 
 
-DEFAULT_KEYS = {"visibility": "Ctrl+Alt+F12", "collect": "F9", "undo": "F10", "panel": "F8",
-                "farm":"Ctrl+Alt+F9","farm_next":"Ctrl+Alt+F10"}
+DEFAULT_KEYS = {"visibility": "Ctrl+Alt+F12", "collect": "F9", "undo": "F10", "panel": "F8"}
 HOTKEY_OPTIONS=tuple([f"F{i}" for i in range(6,13)]+[f"Ctrl+Alt+F{i}" for i in range(6,13)])
 
 
@@ -90,11 +89,16 @@ def read_settings(path: Path) -> dict:
         if not isinstance(data, dict) or not isinstance(data.get("categories"), list):
             return defaults
         keys = data.get("hotkeys", {})
+        retired_navigation=isinstance(keys,dict) and bool({'farm','farm_next'} & keys.keys())
+        if retired_navigation:
+            backup=path.with_name(path.name+'.pre-no-compass.bak')
+            if not backup.exists():shutil.copy2(path,backup)
+            keys={k:v for k,v in keys.items() if k not in {'farm','farm_next'}}
         if (isinstance(keys,dict) and set(keys) in ({"visibility","collect","undo"},{"visibility","collect","undo","panel"})
                 and all(isinstance(v,str) and v in HOTKEY_OPTIONS for v in keys.values())
                 and len(set(keys.values()))==len(keys)):
             keys=dict(keys)
-            for action in ('panel','farm','farm_next'):
+            for action in ('panel',):
                 if action not in keys:
                     candidates=('F8','F7','F6','Ctrl+Alt+F8',*HOTKEY_OPTIONS) if action=='panel' else (DEFAULT_KEYS[action],*HOTKEY_OPTIONS)
                     keys[action]=next(k for k in candidates if k not in keys.values())
@@ -143,6 +147,7 @@ def read_settings(path: Path) -> dict:
                 write_json(path,result)
             except OSError as exc:
                 raise RuntimeError("Não foi possível preservar as preferências antes da migração") from exc
+        if retired_navigation:write_json(path,result)
         return result
     except (ValueError, OSError):
         return defaults

@@ -16,11 +16,11 @@ Leve é o padrão; carrega no máximo dois blocos detalhados e limita seu cache 
 
 O atlas nativo AppSample da superfície usa blocos sobrepostos de até 1280 px. O relatório `build/appsample-surface-atlas-report.json` distingue arquivos preparados, recortes parciais e pontos sem cobertura. Arquivos presentes não equivalem a validação no jogo. A busca distingue cópias de um mesmo detalhe em trechos sobrepostos; só uma correspondência geométrica atual autoriza desenhar. Captura e desenho são externos, sem memória ou comandos do jogo.
 
-A bússola usa o setor em V do minimapa, não a seta central. Em terreno claro, ajusta o contraste pela luz disponível. V invisível continua sem direção; não inventamos uma orientação nem prometemos latência zero.
+A bússola e a busca guiada foram retiradas. O reconhecimento da seta central serve apenas para confirmar o minimapa; não há orientação nem alvo amarelo.
 
 ## Uso e progresso
 
-Painel independente de 360×540, recolhível em botão animado realçado. Ctrl+clique abre uma ação reversível; fora do pin os cliques passam ao jogo. Coleta, desmarcação, desfazer e persistência usam o mesmo recorte. F8 abre/recolhe, F9 coleta/resolve candidatos, F10 desfaz; os atalhos são configuráveis. A busca guia ao item disponível mais próximo entre as categorias ativas.
+Painel independente de 360×540, recolhível em botão animado realçado. Ctrl+clique abre uma ação reversível; fora do pin os cliques passam ao jogo. Coleta, desmarcação, desfazer e persistência usam o mesmo recorte. F8 abre/recolhe, F9 coleta/resolve candidatos, F10 desfaz; os atalhos são configuráveis.
 
 Não há prazo universal de reposição. Permanentes não expiram; recursos sem regra AppSample qualificada mostram “Reposição não confirmada”. O motor UTC suporta duração e reset América, mas regras de outra fonte não são herdadas.
 
@@ -41,3 +41,11 @@ Full HD (1920×1080) é a referência de desenho. A escala acompanha a altura da
 ## Aceite restante
 
 Conferir recuperação nas nações afetadas e V na neve, com pontos independentes. Ampliar a validação real de abertura/loot para as cinco raridades e mais cenários negativos. Completar referências das outras camadas/mapas. Medir o aplicativo inteiro por 30 minutos na região atual nos modos Leve e Global; testes isolados não aprovam memória, continuidade ou cobertura global. Não repetir o aceite manual já feito de Mondstadt e Liyue.
+
+## Catálogo em português
+
+A revisão versionada confirma 717 das 757 categorias; 40 permanecem em Identificação pendente com ícone e ID. Recursos contém 347 categorias em seis subgrupos recolhíveis. Busca por aliases e nomes sem acentos expande resultados sem alterar o recolhimento anterior. A mesma apresentação alimenta painel, cartão e bússola. Fontes, limites e relatório estão em [LOCALIZATION.md](LOCALIZATION.md). Não houve alteração de posições, progresso ou temporizadores.
+
+## Estabilidade em validação
+
+Não há mais bússola ou alvo de busca. Aberturas sem posição podem aguardar até três segundos para reconstrução geométrica do instante original, com recortes em memória limitados a 16 MiB. A posição posterior não autoriza uma coleta. [STABILITY.md](STABILITY.md) registra os contratos, os testes e os critérios ainda pendentes de aceite real.
