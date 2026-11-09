@@ -10,6 +10,7 @@ from src.live.icons import draw_marker
 from src.live.labels import SOURCE_PT, INTERNAL, GROUP_ORDER, normalized, portuguese_label
 from src.live.oculus_art import ORDER,category_for,draw_oculus
 from src.live.category_art import draw_category_art
+from src.live.localization import PENDING,RESOURCE_SUBGROUPS
 
 BG='#111923';ROW='#1b2734';TEXT='#edf1f5';GOLD='#dfc48d';MUTED='#91a0b2'
 
@@ -22,6 +23,7 @@ class CategoryEntry:
     members: frozenset
     icon: str
     search: str
+    subgroup: str | None = None
 
 
 class CategoryModel:
@@ -34,21 +36,24 @@ class CategoryModel:
             source=meta.get('source_name',meta.get('name',fallback))
             name=meta.get('name',fallback)
             original_group=meta.get('group',CATEGORY_GROUPS.get(category,'Exploração'))
-            label=portuguese_label(name,source)
+            label=name if meta.get('presentation_reviewed') else portuguese_label(name,source)
             group={'Oculi':'Destaques','Seelies':'Enigmas','Desafios':'Enigmas',
                    'Puzzles':'Enigmas','Santuários':'Exploração'}.get(original_group,original_group)
             if source in INTERNAL: group='Etiquetas da fonte'
             if label is None or meta.get('translation_reviewed') is False:
-                group='Sem tradução revisada'
-                label=source  # Explicit secondary section, never fabricated Portuguese.
-            key=(original_group,source)
-            if key not in buckets: buckets[key]=[label,group,set(),category]
+                group=PENDING
+                label=name if meta.get('presentation_status')=='pending' else source
+            key=(meta.get('source_group',original_group),meta['source_type']) if meta.get('source_type') else (original_group,source)
+            subgroup=meta.get('subgroup') if group=='Recursos' else None
+            if group=='Recursos' and subgroup not in RESOURCE_SUBGROUPS:subgroup='Outros materiais'
+            if key not in buckets:buckets[key]=[label,group,set(),category,subgroup,set()]
             buckets[key][2].add(category)
+            buckets[key][5].update((source,category,*meta.get('aliases',[])))
         order={g:i for i,g in enumerate(GROUP_ORDER)}
         self.entries=[CategoryEntry(key,label,group,frozenset(members),icon,
-                      normalized(label+' '+key[1]+' '+group))
-                      for key,(label,group,members,icon) in buckets.items()]
-        self.entries.sort(key=lambda e:(order.get(e.group,99),normalized(e.label)))
+                      normalized(' '.join((label,group,subgroup or '',*sorted(aliases)))),subgroup)
+                      for key,(label,group,members,icon,subgroup,aliases) in buckets.items()]
+        self.entries.sort(key=lambda e:(order.get(e.group,99),RESOURCE_SUBGROUPS.index(e.subgroup) if e.subgroup in RESOURCE_SUBGROUPS else -1,normalized(e.label)))
         self.by_key={entry.key:entry for entry in self.entries}
         self.membership={c:e.key for e in self.entries for c in e.members}
         self.items=items
@@ -109,7 +114,8 @@ class CategoryBrowser(tk.Canvas):
     def __init__(self, parent, changed, **kwargs):
         super().__init__(parent,bg=BG,highlightthickness=0,yscrollincrement=36,**kwargs)
         self.changed=changed;self.model=None;self.rows=[];self.selected=set();self.counts={}
-        self.collapsed=set(GROUP_ORDER)-{'Destaques','Baús'}
+        self.collapsed=set(GROUP_ORDER)
+        self.collapsed_subgroups=set(RESOURCE_SUBGROUPS)
         self.query='';self.paint_job=None;self.last_range=None
         self.bind('<Configure>',lambda e:self.schedule_paint())
         self.bind('<MouseWheel>',lambda e:self.yview_scroll(-int(e.delta/120),'units'))
@@ -148,6 +154,14 @@ class CategoryBrowser(tk.Canvas):
                 self.rows.append(('group',group,entries))
                 # Existing selections remain discoverable even in secondary sections.
                 if group not in self.collapsed or self.query:
+                    if group=='Recursos':
+                        for subgroup in RESOURCE_SUBGROUPS:
+                            members=[e for e in entries if e.subgroup==subgroup]
+                            if not members:continue
+                            self.rows.append(('subgroup',subgroup,members))
+                            if subgroup not in self.collapsed_subgroups or self.query:
+                                self.rows.extend(('entry',e,None) for e in members)
+                        continue
                     tiles=sorted((e for e in entries if group=='Destaques' and category_for(e)),key=lambda e:ORDER.index(category_for(e)))
                     for offset in range(0,len(tiles),4):
                         chunk=tiles[offset:offset+4]
@@ -182,13 +196,15 @@ class CategoryBrowser(tk.Canvas):
                     self.create_text(center,y+59,text=counter,fill=GOLD if chosen else MUTED,font=('Segoe UI',8))
                     if chosen:self.create_text(right-7,y+10,text='✓',fill=GOLD,font=('Segoe UI',8,'bold'))
                 continue
-            if kind=='group':
-                if value in self.collapsed and not self.query:
-                    self.create_polygon(8,y+14,13,y+18,8,y+22,fill=GOLD,outline='')
-                else:self.create_polygon(7,y+15,15,y+15,11,y+21,fill=GOLD,outline='')
+            if kind in {'group','subgroup'}:
+                collapsed=self.collapsed if kind=='group' else self.collapsed_subgroups
+                offset=0 if kind=='group' else 10
+                if value in collapsed and not self.query:
+                    self.create_polygon(offset+8,y+14,offset+13,y+18,offset+8,y+22,fill=GOLD,outline='')
+                else:self.create_polygon(offset+7,y+15,offset+15,y+15,offset+11,y+21,fill=GOLD,outline='')
                 active=sum(bool(e.members & self.selected) for e in entries)
-                self.create_text(22,y+18,text=value+(f' · {active}' if active else ''),
-                                 anchor='w',fill=TEXT,font=('Segoe UI',9,'bold'))
+                self.create_text(22+offset,y+18,text=value+(f' · {active}' if active else ''),
+                                 anchor='w',fill=TEXT,font=('Segoe UI',9,'bold' if kind=='group' else 'normal'))
                 self.create_text(width-53,y+18,text='Todos',fill=MUTED,font=('Segoe UI',8))
                 self.create_text(width-14,y+18,text='×',fill=MUTED,font=('Segoe UI',12))
                 continue
@@ -227,14 +243,15 @@ class CategoryBrowser(tk.Canvas):
             if column<len(value):
                 entry=value[column];self.changed(entry.members,not bool(entry.members & self.selected))
             return
-        if kind=='group':
+        if kind in {'group','subgroup'}:
             if x>self.winfo_width()-32:
                 self.changed(set().union(*(e.members for e in entries)),False)
             elif x>self.winfo_width()-80:
                 self.changed(set().union(*(e.members for e in entries)),True)
             else:
-                if value in self.collapsed:self.collapsed.remove(value)
-                else:self.collapsed.add(value)
+                collapsed=self.collapsed if kind=='group' else self.collapsed_subgroups
+                if value in collapsed:collapsed.remove(value)
+                else:collapsed.add(value)
                 self.rebuild()
         else:self.changed(value.members,not bool(value.members & self.selected))
 

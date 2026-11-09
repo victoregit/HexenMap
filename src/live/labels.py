@@ -157,7 +157,7 @@ SOURCE_PT.update({
 })
 INTERNAL={'宝箱相关','特殊方式','不计数','坐标','直接开启','对话','击败魔物','内有「绯红玉髓」',
           '文本','头像','特殊图标','武器外观','概率不存在','版本限定','角色限定彩蛋','随机彩蛋'}
-GROUP_ORDER=('Destaques','Baús','Enigmas','Recursos','Exploração','Inimigos','Etiquetas da fonte','Sem tradução revisada')
+GROUP_ORDER=('Destaques','Baús','Enigmas','Recursos','Exploração','Inimigos','Etiquetas da fonte','Identificação pendente')
 
 
 def normalized(value):
@@ -175,5 +175,6 @@ def register_presentation(metadata):
     from src.live.catalog import CATEGORIES, CATEGORY_GROUPS
     for key,meta in metadata.items():
         name=meta['name']
-        CATEGORIES[key]=(portuguese_label(name,meta.get('source_name','')) or name,meta.get('color','#a8d5e5'))
+        label=name if meta.get('presentation_reviewed') else portuguese_label(name,meta.get('source_name','')) or name
+        CATEGORIES[key]=(label,meta.get('color','#a8d5e5'))
         CATEGORY_GROUPS[key]=meta['group']

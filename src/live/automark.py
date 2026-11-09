@@ -9,7 +9,7 @@ from functools import lru_cache
 import cv2
 import numpy as np
 
-from src.live.chest_farm import CHEST_NAMES
+from src.live.chest_types import CHEST_NAMES
 
 DESIGN_SIZE=(1920,1080)
 # Existing proximity tolerances expressed in the Full HD design space.
@@ -147,6 +147,12 @@ class ChestSignals:
         """Only the configured HUD rectangles, from the game client DC."""
         return self.read_signals(rect.width,rect.height,lambda box:native.capture(rect,region=box))
 
+    def resolve_opening(self,observation,now):
+        if self.phase and self.phase[0]=='opening_unlocated':
+            _,opened,_,scale=self.phase
+            if 0<=now-opened<=3 and observation.fresh(opened) and abs(observation.captured_at-opened)<1e-5:
+                self.phase=('opening',opened,observation,scale);self.state='recovered_opening'
+
     def advance(self,signals,observation,stamp,gameplay_confirmed=False):
         located=observation.fresh(stamp) and observation.surface=='minimap'
         if not self.ready or (not located and not gameplay_confirmed):
@@ -162,7 +168,9 @@ class ChestSignals:
                 if stamp-self.quiet>=1.5:self.phase=None
             else:self.quiet=None
             return None
-        if self.phase and located:
+        if self.phase and self.phase[0]=='opening_unlocated' and stamp-self.phase[1]>3:
+            self.reset();self.state='unresolved_opening';return None
+        if self.phase and located and self.phase[0]!='opening_unlocated':
             old=self.phase[2]
             displacement=(np.linalg.norm(observation.world_to_screen[:,:2]@(np.asarray(observation.player)-old.player))
                           if observation.player is not None and old.player is not None else math.inf)
@@ -171,13 +179,14 @@ class ChestSignals:
                 self.reset();self.last_stamp=stamp
         if self.phase and stamp-self.phase[1]>6:self.reset();self.last_stamp=stamp
         if opening:
-            if not located:
-                self.state='opening_without_location';return None
             self.opening_count+=1
             if self.opening_count>=2:
-                self.phase=('opening',stamp,observation,self.hud_scale)
-                self.loot_seen=-math.inf;self.gem_seen=-math.inf;self.exp_seen=-math.inf
-                self.state='armed'
+                if self.phase is None:
+                    self.phase=('opening' if located else 'opening_unlocated',stamp,observation,self.hud_scale)
+                    self.loot_seen=-math.inf;self.gem_seen=-math.inf;self.exp_seen=-math.inf
+                elif self.phase[0]=='opening' and located:
+                    self.phase=('opening',stamp,observation,self.hud_scale)
+                self.state='armed' if self.phase[0]=='opening' else 'recovering_opening'
             return None
         self.opening_count=0
         if self.phase:
@@ -189,7 +198,9 @@ class ChestSignals:
         # The game staggers the notifications; both must follow the prompt's
         # disappearance, within one short reward wave, rather than one frame.
         reward=max(self.gem_seen,self.exp_seen)
-        if (self.phase and max(stamp-self.loot_seen,stamp-reward)<=2
+        if (self.phase and self.phase[0]=='opening' and abs(self.loot_seen-reward)<=2
+                and self.phase[1]<min(self.loot_seen,reward)
+                and max(self.loot_seen,reward)-self.phase[1]<=6
                 and 0<stamp-self.phase[1]<=6):
             _,opened,at_open,scale=self.phase;self.token+=1;self.phase=('done',stamp,None);self.quiet=None
             self.state='confirmed'
@@ -230,7 +241,9 @@ class AutoMark:
         self.last_candidates=[(item.id,round(distance,2),session.is_collected(item.id)) for distance,item in candidates[:4]]
         if not candidates:return result('ignored','no_nearby_chest')
         if session.is_collected(candidates[0][1].id):return result('ignored','nearest_already_collected')
-        if len(candidates)==1 or (candidates[1][0]-candidates[0][0]>CLEAR_GAP*scale and candidates[1][0]>candidates[0][0]*1.6):
+        uncertainty=max(obs.position_uncertainty_px,obs.error_px)
+        if not math.isfinite(uncertainty) or uncertainty>3:return result('ignored','uncertain_opening_position')
+        if len(candidates)==1 or (candidates[1][0]-candidates[0][0]>max(CLEAR_GAP*scale,2*uncertainty) and candidates[1][0]>candidates[0][0]*1.6):
             changed=session.set_collected(candidates[0][1].id,True)
             return result('marked' if changed else 'ignored','saved' if changed else 'unchanged')
         self.context=self.scope(session)

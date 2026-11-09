@@ -1,0 +1,352 @@
+{
+  "checked_at": "2026-11-08",
+  "version": 1,
+  "total_categories": 757,
+  "confirmed": 717,
+  "pending": 40,
+  "groups": {
+    "Destaques": 8,
+    "Baús": 5,
+    "Enigmas": 122,
+    "Recursos": 347,
+    "Exploração": 148,
+    "Inimigos": 87,
+    "Identificação pendente": 40
+  },
+  "resource_subgroups": {
+    "Especialidades locais": 63,
+    "Plantas e ingredientes": 43,
+    "Minérios": 9,
+    "Madeiras": 33,
+    "Pesca e animais": 180,
+    "Outros materiais": 19
+  },
+  "pending_entries": [
+    {
+      "source_type": "o132",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o133",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o134",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o135",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o136",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o137",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o138",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o157",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o158",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o181",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o183",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o192",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o203",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o204",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o262",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o263",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o316",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o318",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o319",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o333",
+      "points": 1,
+      "maps": [
+        "as-map-7"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o390",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o391",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o414",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o432",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o433",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o452",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o457",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o467",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o517",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o518",
+      "points": 5,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o658",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o659",
+      "points": 6,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o685",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o686",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o693",
+      "points": 8,
+      "maps": [
+        "as-map-2",
+        "as-map-40"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o761",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o790",
+      "points": 1,
+      "maps": [
+        "as-map-37"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o822",
+      "points": 1,
+      "maps": [
+        "as-map-40"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o830",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    },
+    {
+      "source_type": "o831",
+      "points": 1,
+      "maps": [
+        "as-map-2"
+      ],
+      "reason": "Ausente nos seletores públicos PT/EN dos sete mapas conferidos; não identificar por imagem."
+    }
+  ],
+  "catalog": "../data/localization/appsample-pt-BR.json",
+  "notes": [
+    "Names/classification only, not live map validation.",
+    "No progress files read; no respawn rules modified."
+  ]
+}

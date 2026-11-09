@@ -30,6 +30,7 @@ MANIFEST
 *.manifest
 *.spec
 !HexenMap.spec
+!HexenMapBridge.spec
 *.exe
 
 # Installer logs

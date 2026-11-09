@@ -45,16 +45,18 @@ def source_layer(meta):
 def normalized_package(points,labels):
     lookup={}
     for row in labels:
-        match=re.search(r'/((?:o)\d+)\.(?:png|webp)',row.get('url',''))
-        if match and row.get('label'):lookup.setdefault(match[1],row)
+        match=re.search(r'/((?:o)\d+)\.(?:png|webp)',row.get('url',row.get('icon_url','')))
+        if match:
+            key=match[1]
+            if key not in lookup or not lookup[key].get('label') and row.get('label'):lookup[key]=row
     categories={};items=[]
     for point in points:
         known=KNOWN.get(point.marker_type)
         label=lookup.get(point.marker_type,{})
-        category,name,group=known or ('as-'+point.marker_type,label.get('label','Tipo '+point.marker_type),
+        category,name,group=known or ('as-'+point.marker_type,label.get('label') or 'Tipo '+point.marker_type,
                                      GROUPS.get(label.get('group'),'Exploração'))
         categories.setdefault(category,{'name':name,'source_name':label.get('label',point.marker_type),
-            'group':group,'source_type':point.marker_type,'translation_reviewed':bool(known or label)})
+            'group':group,'source_type':point.marker_type,'translation_reviewed':bool(known or label.get('label'))})
         x,y=project(point.x,point.y);layer=source_layer(point.layer_meta)
         # Found progress has no resource collection time. Never start a generic
         # respawn timer or transfer a duration policy from another source.
@@ -63,4 +65,5 @@ def normalized_package(points,labels):
             'x':x,'y':y,'region_id':'appsample','map_id':f'as-map-{point.map_id}',
             'layer_id':layer,'layer_ids':[] if layer=='surface' else [layer],
             'area_id':'unclassified','rule_id':rule,'source_marker_id':int(point.external_id)})
-    return items,categories
+    from src.live.localization import localized_metadata
+    return items,localized_metadata(categories)

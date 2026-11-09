@@ -38,7 +38,7 @@ def test_unreviewed_labels_and_internal_tags_remain_explicit_and_available():
               'b':{'name':'宝箱相关','source_name':'宝箱相关','group':'Baús'}}
     items=[Item('one','Original','a',0,0),Item('two','Original','b',0,0)]
     entries={e.icon:e for e in CategoryModel(items,metadata).entries}
-    assert entries['a'].group=='Sem tradução revisada'
+    assert entries['a'].group=='Identificação pendente'
     assert entries['b'].group=='Etiquetas da fonte' and entries['b'].label=='Etiquetas de baús'
     assert normalized('MINÉRIO')=='minerio'
 
