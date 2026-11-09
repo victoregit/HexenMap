@@ -226,9 +226,21 @@ class DesktopApp(CompactPanel):
                 except OSError as exc:messagebox.showerror('Falha ao salvar',str(exc),parent=popup)
         if manual:
             ttk.Button(actions,text='Salvar script…',command=save_script).pack(side='left')
+        else:
+            ttk.Button(actions,text='Pasta da extensão…',command=self.open_exporter_folder).pack(side='left')
         ttk.Button(actions,text='Abrir AppSample',command=lambda:webbrowser.open('https://genshin-impact-map.appsample.com/pt/')).pack(side='left',padx=6)
         ttk.Button(actions,text='Importar arquivo…',command=lambda:(popup.destroy(),self.import_appsample_progress())).pack(side='right')
         place_dialog(popup,self.root,(540,580))
+
+    def open_exporter_folder(self):
+        import os
+        from src.live.exporter_install import prepare_extension
+        try:
+            folder=prepare_extension()
+            os.startfile(str(folder))
+            self.session.notice='Pasta pronta: selecione-a em Extensões → Modo do desenvolvedor → Carregar sem compactação.'
+        except (OSError,ValueError) as exc:
+            messagebox.showerror('Pasta da extensão',f'Não foi possível preparar a extensão: {exc}',parent=self.root)
 
     def install_browser_connector(self):
         from src.live.browser_connector import register_connector

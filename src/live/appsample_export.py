@@ -3,7 +3,14 @@ from src.live.storage import bundle_dir
 
 GUIDE = '''Trazer meus coletados do AppSample
 
-Com a extensão Hexen Map Exporter instalada no Chrome ou Edge:
+Instalar a extensão de teste (uma vez):
+
+1. Clique em Pasta da extensão nesta janela ou em Ajustes → Coletados do AppSample → Abrir pasta da extensão. O aplicativo já inclui os arquivos prontos, sem baixar ou extrair ZIP.
+2. No Chrome, digite chrome://extensions; no Edge, edge://extensions.
+3. Ative Modo do desenvolvedor, clique em Carregar sem compactação e selecione a pasta que o aplicativo abriu (a que contém manifest.json).
+4. Mantenha essa pasta no lugar. A extensão ainda não foi publicada na loja; o navegador pode exibir um aviso de instalação local.
+
+Com a extensão instalada:
 
 1. Abra o AppSample e entre na sua conta pelo próprio site.
 2. Abra a extensão, clique em Atualizar leitura e aguarde o progresso ser detectado.

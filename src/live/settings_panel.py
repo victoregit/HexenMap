@@ -74,6 +74,8 @@ def build_settings(app, parent, *, bg, muted):
     if app.catalogs.appsample_available:
         imports=section('Coletados do AppSample')
         note(imports,'Traga os itens que você já marcou no site. A prévia pede confirmação e a mesclagem preserva seu progresso com backup.')
+        ttk.Button(imports,text='Abrir pasta da extensão…',command=app.open_exporter_folder).pack(fill='x',pady=3)
+        note(imports,'Instalação manual: no Chrome ou Edge, abra Extensões, ative Modo do desenvolvedor e use Carregar sem compactação. Selecione a pasta aberta pelo botão acima. Não mova nem apague essa pasta após instalar.')
         ttk.Button(imports,text='Importar arquivo de coletados…',command=app.import_appsample_progress).pack(fill='x',pady=3)
         ttk.Button(imports,text='Ativar conexão com a extensão…',command=app.install_browser_connector).pack(fill='x',pady=3)
         note(imports,'Ative a conexão uma vez para usar Enviar ao Hexen Map na extensão. Sem conexão, você pode baixar o JSON e importar o arquivo.')
