@@ -1,0 +1,116 @@
+# Hexen Map
+
+[Português (Brasil)](README.md) · **English**
+
+### Your AppSample progress, on the in-game maps.
+
+Explore **Genshin Impact** with pins on the minimap and the full-screen map, track your collected items, and bring along the progress you already marked on AppSample. Choose your items, collapse the panel, and keep playing.
+
+**Windows 10/11 · External overlay · Test version**
+
+> This page is available in English. The application interface and reviewed item catalog currently use Brazilian Portuguese; this is not an English UI release. Supporting documents linked below are primarily in Portuguese.
+
+## What Hexen Map offers
+
+| Feature | How it helps |
+| --- | --- |
+| **Minimap and full-screen map pins** | Displays selected items on the game's native maps, following the alignment recognized on screen. |
+| **Chest AutoMark · Beta** | Combines opening and reward signals to record a nearby chest when the association is reliable. |
+| **AppSample progress import** | Reuses your collected items through a preview, merge, and backup workflow. |
+| **Organized resource catalog** | Groups resources into subcategories and supports aliases and accent-insensitive searches. Unidentified categories remain labeled as pending. |
+| **Location photos** | Shows AppSample community images in the item's card when available. |
+| **Independent panel** | Can be moved outside the game area and collapsed into an animated button. |
+
+The application uses external image recognition. It does not read game memory, inject code, or control the character. Recognition may lose alignment; pins are hidden while the position is recovered.
+
+## Start playing
+
+1. Extract the **complete portable package** into a permanent folder, keeping `userData` intact.
+2. Open **HexenMap.exe** or **Iniciar_HexenMap.bat**. Accept the administrator prompt when needed to interact with an elevated game.
+3. Run Genshin in **windowed or borderless mode**. Choose your map, layer, and items in the panel.
+4. Return to the game. Press **F8** to collapse or reopen the panel.
+
+**The ready-to-use package does not require Python or Node.js.** Cloning this repository or copying the `.exe` alone does not install personal map, image, and reference packs. Available coverage depends on the files included in your installation.
+
+## Controls
+
+| Default control | Action |
+| --- | --- |
+| **F8** | Open/collapse the panel. |
+| **Ctrl+Alt+F12** | Show/hide pins. |
+| **Ctrl + click a pin** | Open its card to mark/unmark it and view photos. |
+| **Hold Ctrl** | Reveal collected items in gray. |
+| **F9** | Confirm a nearby collection or choose between candidates. |
+| **F10** | Undo the session's last collection. |
+
+Hotkeys can be configured under **Ajustes** (Settings). Settings are grouped into collapsible sections for the panel and screen sharing, AutoMark, AppSample progress, performance, hotkeys, and diagnostics. Screen-sharing visibility determines whether the overlay appears in captures; it does not turn recognition off.
+
+## Bring your AppSample progress
+
+The test **Hexen Map Exporter** extension for Chrome and Edge captures progress IDs loaded by AppSample itself. Normal export does not require browser developer tools.
+
+1. Extract the extension ZIP and load the **HexenMapExporter** folder at `chrome://extensions` or `edge://extensions`, using **Developer mode → Load unpacked**.
+2. Open AppSample while signed in. In the extension, click **Atualizar leitura** (Refresh reading), then check for **Progresso detectado** (Progress detected) after the page loads.
+3. Choose a delivery method:
+
+| Option in the interface | Workflow |
+| --- | --- |
+| **Enviar ao Hexen Map** (Send to Hexen Map) | Enable **Ajustes → Coletados do AppSample → Ativar conexão com a extensão** once in the application. With `HexenMapBridge.exe` next to the application, the button forwards IDs and opens the import preview in Hexen Map. |
+| **Baixar JSON** (Download JSON) | Save the file, then choose **Importar arquivo de coletados** in the application's settings. Connector activation is not required. |
+
+Review the preview and confirm the merge. Existing progress is preserved with a backup; importing the same file again does not duplicate collections. IDs without a verified match are not mapped by proximity. Canceling the preview does not apply collections.
+
+Direct delivery uses **Native Messaging**, only on an explicit action, without a server or localhost. The extension does not read cookies, passwords, or tokens and does not modify marks on AppSample. There is no automatic or two-way synchronization. Refresh the reading after changing accounts or collected items on the site. When upgrading from extension 0.1.x, disable the old extension before installing the new one.
+
+[Illustrated installation and permissions](docs/EXPORTER_INSTALL.html) · [Import guide](docs/APPSAMPLE_IMPORT.md)
+
+## AutoMark: automatic assistance with conservative confirmation
+
+**AutoMark is a beta and is off by default.** It requires qualified visual references in your installation and combines interaction, reward, and position signals to associate an opening with one nearby chest.
+
+An uncertain position or multiple candidates do not authorize automatic collection. Manual confirmation remains available, and **F10** undoes the session's last collection. Live validation does not yet cover every rarity, background, resolution, and language.
+
+## Coverage, performance, and current status
+
+- **Maps and layers:** AppSample is the sole operational source of markers and terrain references. Maps without valid references remain unavailable. Imported data does not mean complete coverage has been tested in the game.
+- **Progress:** stored in `userData`, alongside preferences and personal packs. Keep this folder and its backups when updating.
+- **Respawns:** permanent items never expire. Resources without a qualified rule show **Reposição não confirmada** (Respawn unconfirmed); there is no universal timer.
+- **Leve (Light) mode:** the default; loads nearby references on demand. Long-distance travel may require a brief recovery.
+- **Global mode:** prepares the selected map and layers. Uses more memory and may increase CPU use and loading time. It does not load every installed map; memory failure falls back to Light mode.
+
+**Verified so far:** a real Chrome export containing 3,755 unique IDs, with the file accepted by the importer. Full native delivery through the browser and real Edge compatibility remain pending. We do not claim better accuracy, stability, or resource use than other overlays without a controlled comparison.
+
+[Project status](docs/REBUILD.md) · [Coverage](docs/REGIONAL_COVERAGE.md) · [Stability](docs/STABILITY.md) · [Performance](docs/PERFORMANCE.md) · [Exporter tests](docs/EXPORTER_TEST_REPORT.md)
+
+<details>
+<summary><strong>Development and builds</strong></summary>
+
+Use a Python version supported by `pyproject.toml` and run from the repository root:
+
+```powershell
+python -m pip install -r requirements.txt
+python src/app.py
+python src/app.py --diagnose
+python -m pytest -q
+```
+
+JavaScript extension tests also require Node.js in the development environment.
+
+```powershell
+python -m pip install pyinstaller
+python scripts/build_exe.py --build-only
+python -m PyInstaller --noconfirm --distpath dist --workpath build/bridge HexenMapBridge.spec
+python scripts/package_exporter.py
+```
+
+Outputs are written to `dist`: `HexenMap.exe`, `HexenMapBridge.exe`, the loadable `HexenMapExporter` folder, and its versioned ZIP. Load the generated folder; the extension source folder needs the packager to include the shared core.
+
+`scripts/package_portable.py` assembles a portable package from the executables and verified personal packs in the installation. It does not download or license missing data.
+
+[Portuguese catalog review](docs/LOCALIZATION.md) · [Photo sources and cache](docs/MARKER_HINTS.md)
+
+</details>
+
+## Credits and license
+
+Hexen Map is an independent project, unaffiliated with HoYoverse or AppSample. Genshin Impact belongs to HoYoverse. Original code is available under the [MIT license](LICENSE); third-party images, contributions, and data retain their own terms. Personal packs are excluded from Git; the code license does not grant permission to redistribute them.

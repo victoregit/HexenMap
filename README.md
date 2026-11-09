@@ -1,37 +1,114 @@
 # Hexen Map
 
-**Hexen Map** é um overlay externo de exploração para os mapas nativos do Genshin Impact, em reconstrução e validação real no Windows.
+**Português (Brasil)** · [English](README.en.md)
 
-Abra **HexenMap.exe** ou **Iniciar_HexenMap.bat**, selecione o que procurar no painel e volte ao jogo. O aplicativo desenha somente ícones sobre o minimapa e o mapa M; não abre outro mapa nem simula o personagem. Use o jogo em janela ou sem bordas.
+### Seu progresso do AppSample, nos mapas do jogo.
 
-- **F8:** abrir/recolher o painel em um botão animado e arrastável (configurável). Clique no GIF para reabrir; a janela independente e suas funções são preservadas.
-- **Ctrl+Alt+F12:** mostrar/ocultar overlay.
-- **F9:** marcar o item próximo como coletado; se houver mais de um, selecionar no painel.
-- **F10:** desfazer a última coleta da sessão.
-- **Buscar itens:** a bússola guia até o item disponível mais próximo entre as categorias selecionadas (baús, flores, minérios, oculi etc.). Recalcula o mais próximo conforme você anda, sem precisar confirmar coleta; seleção vazia não gera alvo. Atalhos padrão: **Ctrl+Alt+F9** iniciar/parar e **Ctrl+Alt+F10** pular.
-- **Ctrl + clique esquerdo no ícone:** abrir o menu para marcar como pego ou desmarcar. Segurar Ctrl revela os itens já pegos em cinza.
+Explore o **Genshin Impact** com pins sobre o minimapa e o mapa M, acompanhe suas coletas e aproveite o progresso que você já marcou no AppSample. Escolha os itens no painel, recolha a janela e continue jogando.
 
-O painel abre como janela independente e pode ser recolhido em um botão animado. Categorias têm ícones, busca e contadores; o botão de camadas seleciona mapas/andares. AppSample é a única fonte operacional. A seleção usa seus mapas e camadas nativos; não há divisão por nações inferida de outro catálogo. Referências pessoais ficam fora do executável. Mapas sem referência válida não recebem ícones de demonstração.
+**Windows 10/11 · Overlay externo · Versão de teste**
 
-[Estado e aceite](docs/REBUILD.md) · [Cobertura efetiva](docs/REGIONAL_COVERAGE.md)
+## O que o Hexen Map oferece
 
-## Desempenho
+| Recurso | Como ajuda na exploração |
+| --- | --- |
+| **Pins no minimapa e no mapa M** | Mostra os itens selecionados sobre os mapas nativos, acompanhando o alinhamento reconhecido na tela. |
+| **AutoMark de baús · Beta** | Combina sinais de abertura e recompensas para registrar um baú próximo quando a associação é confiável. |
+| **Importação do AppSample** | Aproveita seus coletados com prévia, mesclagem e backup, sem precisar marcar tudo novamente. |
+| **Catálogo em português** | Organiza recursos em subgrupos e permite buscar por nomes, aliases e texto sem acentos. Categorias ainda não identificadas ficam sinalizadas. |
+| **Fotos dos pontos** | Exibe imagens da comunidade AppSample no cartão do item, quando disponíveis. |
+| **Painel independente** | Pode ser movido, recolhido em um botão animado e mantido fora da área do jogo. |
 
-Em **Ajustes → Desempenho**, **Leve** é o padrão: carrega o entorno sob demanda e pode precisar recuperar a localização após viagens longas. **Global** mantém prontas as referências do mapa escolhido e suas camadas; consome mais memória e pode aumentar CPU e tempo de carregamento. Em seleção automática, Global prepara apenas o mapa identificado. A troca dispensa reinício; se faltar memória no Global, o aplicativo retorna ao Leve.
+O aplicativo usa reconhecimento de imagem externo. Não lê memória do jogo, não injeta código e não controla o personagem. O reconhecimento pode perder o alinhamento; nessas situações, os pins são ocultados enquanto a posição é recuperada.
 
-[Como foi medido e o que falta validar](docs/PERFORMANCE.md). Os índices gerados são cache local descartável; as referências originais e o progresso são preservados.
+## Começar a jogar
 
-## Desenvolvimento
+1. Extraia o **pacote portátil completo** em uma pasta fixa, preservando `userData`.
+2. Abra **HexenMap.exe** ou **Iniciar_HexenMap.bat**. Aceite a solicitação de administrador quando necessária para interagir com o jogo elevado.
+3. Use o Genshin em **janela ou sem bordas**. Escolha o mapa, a camada e os itens desejados no painel.
+4. Volte ao jogo. Use **F8** para recolher ou reabrir o painel.
+
+**O pacote pronto não exige Python nem Node.js.** Clonar o repositório ou copiar somente o `.exe` não instala os pacotes pessoais de mapas, imagens e referências. A cobertura disponível depende dos arquivos presentes na instalação.
+
+## Controles
+
+| Controle padrão | Ação |
+| --- | --- |
+| **F8** | Abrir/recolher o painel. |
+| **Ctrl+Alt+F12** | Mostrar/ocultar os pins. |
+| **Ctrl + clique no pin** | Abrir o cartão para marcar/desmarcar e consultar fotos. |
+| **Segurar Ctrl** | Revelar itens já coletados em cinza. |
+| **F9** | Confirmar uma coleta próxima ou escolher entre candidatos. |
+| **F10** | Desfazer a última coleta da sessão. |
+
+Os atalhos são configuráveis nos **Ajustes**. Suas opções ficam em seções recolhíveis: painel e compartilhamento, AutoMark, coletados do AppSample, desempenho, atalhos e diagnóstico. O controle de compartilhamento define se o overlay aparece nas capturas; ele não desliga o reconhecimento.
+
+## Traga seus coletados do AppSample
+
+A extensão de teste **Hexen Map Exporter**, para Chrome e Edge, captura os IDs de progresso carregados pelo próprio site. A exportação normal dispensa F12.
+
+1. Extraia o ZIP da extensão e carregue a pasta **HexenMapExporter** em `chrome://extensions` ou `edge://extensions`, usando **Modo do desenvolvedor → Carregar sem compactação**.
+2. Abra o AppSample conectado à sua conta. Na extensão, clique em **Atualizar leitura** e confira **Progresso detectado** após a página carregar.
+3. Escolha como trazer os dados:
+
+| Opção | Fluxo |
+| --- | --- |
+| **Enviar ao Hexen Map** | Ative uma vez **Ajustes → Coletados do AppSample → Ativar conexão com a extensão**. Com `HexenMapBridge.exe` junto do aplicativo, o botão encaminha os IDs e abre a prévia no Hexen Map. |
+| **Baixar JSON** | Salve o arquivo e use **Importar arquivo de coletados** nos Ajustes do aplicativo. Não exige ativar o conector. |
+
+Confira a prévia e confirme a mesclagem. O progresso existente é preservado com backup; repetir a mesma importação não duplica coletas. IDs sem correspondência comprovada não são associados por aproximação. Cancelar a prévia não aplica coletas.
+
+O envio direto usa **Native Messaging**, por ação explícita, sem servidor ou localhost. A extensão não lê cookies, senhas ou tokens e não modifica marcações no site. Não há sincronização automática ou bidirecional. Após trocar de conta ou alterar coletados no AppSample, atualize a leitura. Ao migrar da extensão 0.1.x, desative a antiga antes de instalar a nova.
+
+[Instalação ilustrada e permissões](docs/EXPORTER_INSTALL.html) · [Guia de importação](docs/APPSAMPLE_IMPORT.md)
+
+## AutoMark: ajuda automática, com confirmação conservadora
+
+O **AutoMark é beta e vem desligado**. Depende de referências visuais qualificadas na instalação e combina sinais de interação, recompensas e posição para associar a abertura a um único baú próximo.
+
+Uma posição incerta ou vários candidatos não autorizam uma coleta automática. A confirmação manual continua disponível, e **F10** desfaz a última marcação da sessão. A validação real ainda não cobre todas as raridades, fundos, resoluções e idiomas.
+
+## Cobertura, desempenho e estado atual
+
+- **Mapas e camadas:** AppSample é a única fonte operacional de marcadores e referências de terreno. Mapas sem referência válida ficam indisponíveis. Dados importados não equivalem a cobertura integral testada no jogo.
+- **Progresso:** fica em `userData`, junto das preferências e dos pacotes pessoais. Preserve essa pasta e seus backups ao atualizar.
+- **Reposição:** itens permanentes não expiram. Recursos sem regra qualificada mostram **Reposição não confirmada**; não há temporizador universal.
+- **Modo Leve:** padrão, carrega referências próximas sob demanda. Viagens longas podem exigir breve recuperação.
+- **Modo Global:** prepara o mapa e as camadas selecionadas. Consome mais memória e pode aumentar CPU e carregamento. Não carrega todos os mapas instalados; falha de memória retorna ao Leve.
+
+**O que já foi conferido:** exportação real no Chrome com 3.755 IDs únicos e validação do arquivo pelo importador. O envio nativo completo pelo navegador e a compatibilidade real no Edge continuam pendentes. Não afirmamos vantagem de precisão, estabilidade ou consumo sobre outros overlays sem comparação controlada.
+
+[Estado do projeto](docs/REBUILD.md) · [Cobertura](docs/REGIONAL_COVERAGE.md) · [Estabilidade](docs/STABILITY.md) · [Desempenho](docs/PERFORMANCE.md) · [Testes do exportador](docs/EXPORTER_TEST_REPORT.md)
+
+<details>
+<summary><strong>Desenvolvimento e builds</strong></summary>
+
+Use uma versão de Python compatível com `pyproject.toml` e execute a partir da raiz:
 
 ```powershell
 python -m pip install -r requirements.txt
 python src/app.py
-# Após instalar o pacote: hexenmap
+python src/app.py --diagnose
 python -m pytest -q
-python -m pip install pyinstaller
-python scripts/build_exe.py
 ```
 
-Dados e referências podem ser verificados sem abrir a interface com `python src/app.py --diagnose`. O progresso antigo é preservado em `userData`; os dados reais usam IDs próprios para não confundir itens de demonstração com coletáveis reais.
+Os testes JavaScript da extensão também precisam de Node.js no ambiente de desenvolvimento.
 
-O aplicativo usa captura de tela e uma janela transparente do Windows. Não lê memória do jogo nem envia comandos. Genshin Impact pertence à HoYoverse; este projeto é independente. Código original sob MIT; dados comunitários mantêm a licença de sua fonte.
+```powershell
+python -m pip install pyinstaller
+python scripts/build_exe.py --build-only
+python -m PyInstaller --noconfirm --distpath dist --workpath build/bridge HexenMapBridge.spec
+python scripts/package_exporter.py
+```
+
+As saídas ficam em `dist`: `HexenMap.exe`, `HexenMapBridge.exe`, a pasta carregável `HexenMapExporter` e seu ZIP versionado. Carregue a pasta gerada; a pasta-fonte da extensão depende do empacotador para incluir o núcleo compartilhado.
+
+`scripts/package_portable.py` monta o pacote portátil usando os executáveis e os pacotes pessoais conferidos da instalação. Não baixa nem licencia dados ausentes.
+
+[Catálogo em português](docs/LOCALIZATION.md) · [Origem e cache das fotos](docs/MARKER_HINTS.md)
+
+</details>
+
+## Créditos e licença
+
+Hexen Map é um projeto independente, sem afiliação com a HoYoverse ou o AppSample. Genshin Impact pertence à HoYoverse. O código original está sob [licença MIT](LICENSE); imagens, contribuições e dados de terceiros mantêm suas próprias condições de uso. Os pacotes pessoais ficam fora do Git; a licença do código não concede autorização para redistribuí-los.
