@@ -167,6 +167,7 @@ class CompactPanel:
         if self.catalogs.appsample_available:
             ttk.Button(prefs_body,text='Importar coletados do AppSample…',command=self.import_appsample_progress).pack(fill='x',pady=3)
             ttk.Button(prefs_body,text='Como exportar do AppSample…',command=self.show_appsample_export).pack(fill='x',pady=3)
+            ttk.Button(prefs_body,text='Ativar conexão com a extensão…',command=self.install_browser_connector).pack(fill='x',pady=3)
         ttk.Label(prefs_body,textvariable=self.status,wraplength=300,foreground=MUTED).pack(fill='x',pady=8)
         def scroll_preferences(event):
             prefs_canvas.yview_scroll(-int(event.delta/120),'units');return 'break'

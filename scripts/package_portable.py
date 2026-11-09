@@ -35,6 +35,7 @@ def main():
             if digest(path)!=entry['sha256']:raise ValueError(f'Hash mismatch: {path}')
             copy(path,relative.parent/entry['file'])
     copy(ROOT/'dist/HexenMap.exe',Path('HexenMap.exe'))
+    copy(ROOT/'dist/HexenMapBridge.exe',Path('HexenMapBridge.exe'))
     manifest(ROOT/'userData/catalogs/appsample/SOURCE.json',Path('userData/catalogs/appsample/SOURCE.json'))
     for path in (ROOT/'userData/references/appsample').rglob('manifest.json'):
         manifest(path,path.relative_to(ROOT))

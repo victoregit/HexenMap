@@ -152,6 +152,7 @@ class DesktopApp(CompactPanel):
         self.automark_worker.start()
         self.root.after(16,self._tick)
         self.root.after(10,self._poll_pointer)
+        self.root.after(1000,self.poll_browser_imports)
 
     def populate_region_controls(self):
         region=self.session.region_id
@@ -224,7 +225,39 @@ class DesktopApp(CompactPanel):
         ttk.Button(actions,text='Abrir AppSample',command=lambda:webbrowser.open('https://genshin-impact-map.appsample.com/pt/')).pack(side='left',padx=6)
         ttk.Button(actions,text='Importar arquivo…',command=lambda:(popup.destroy(),self.import_appsample_progress())).pack(side='right')
 
-    def import_appsample_progress(self):
+    def install_browser_connector(self):
+        from src.live.browser_connector import register_connector
+        try:
+            register_connector(install_dir())
+            messagebox.showinfo('Conector do navegador',
+                'Conexão local ativada para Chrome e Edge neste usuário.\n'
+                'Instale a extensão 0.2.0 e use Enviar ao Hexen Map.\n'
+                'Cada envio abrirá a prévia; nada será mesclado sem confirmação.',parent=self.root)
+        except Exception as exc:
+            messagebox.showerror('Conector do navegador',str(exc),parent=self.root)
+
+    def poll_browser_imports(self):
+        try:
+            if self.region_loading or self.package_id!='appsample':return
+            inbox=self.user_dir/'browser-imports'
+            paths=sorted(inbox.glob('*.json'))
+            if not paths:return
+            path=paths[0]
+            # Claim before opening a modal dialog; a nested Tk loop cannot reapply it.
+            claimed=path.with_suffix('.processing')
+            path.rename(claimed)
+            try:
+                self.root.deiconify();self.root.lift()
+                self.import_appsample_progress(claimed)
+            finally:
+                archive=inbox/'archive';archive.mkdir(exist_ok=True)
+                claimed.replace(archive/path.name)
+        except Exception:
+            logger.exception('Falha ao receber importação do navegador')
+        finally:
+            if not self.stop_event.is_set():self.root.after(1000,self.poll_browser_imports)
+
+    def import_appsample_progress(self, filename=None):
         if self.region_loading:return
         if self.package_id!='appsample':
             self.session.notice='Selecione a fonte AppSample antes de importar.';return
@@ -232,13 +265,19 @@ class DesktopApp(CompactPanel):
         from src.live.appsample_import import parse_marker_ids
         from src.live.appsample_runtime import import_records
         import json
-        filename=filedialog.askopenfilename(parent=self.root,title='Coletados do AppSample',
-            initialdir=self.user_dir/'imports/appsample',filetypes=[('Progresso JSON','*.json *.txt')])
+        if filename is None:
+            filename=filedialog.askopenfilename(parent=self.root,title='Coletados do AppSample',
+                initialdir=self.user_dir/'imports/appsample',filetypes=[('Progresso JSON','*.json *.txt')])
         if not filename:return
         try:
             path=Path(filename)
             if path.stat().st_size>16*1024*1024:raise ValueError('Arquivo maior que 16 MiB')
-            ids,_=parse_marker_ids(json.loads(path.read_text(encoding='utf-8-sig')))
+            payload=json.loads(path.read_text(encoding='utf-8-sig'))
+            from src.live.browser_connector import validated_payload
+            # Browser deliveries use only the normalized contract. Manual imports
+            # remain compatible with historical Firestore files.
+            if path.suffix=='.processing':payload=validated_payload(payload)
+            ids,_=parse_marker_ids(payload)
             records,missing,key=import_records(ids,self.session.items)
             if not messagebox.askyesno('Importar coletados',f'{len(records)} itens encontrados no catálogo.\n{len(missing)} IDs ausentes serão preservados no arquivo original.\n\nMesclar com o progresso atual, criando backup?',parent=self.root):return
             result=self.session.progress.merge_imported_records(records,key,'appsample')
