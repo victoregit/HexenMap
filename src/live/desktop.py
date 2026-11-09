@@ -19,6 +19,7 @@ from src.live.labels import register_presentation
 from src.live.category_browser import CountIndices
 from src.live.marker_art import draw_pin, LEGACY
 from src.live.marker_menu import MarkerMenu
+from src.live.marker_hints import HintService
 from src.live.panel import CompactPanel
 from src.live.presentation import DisplayMotion, MarkerCanvas, DisplayTelemetry, outside_controls
 from src.live.native import Windows, OverlayAlreadyRunning
@@ -48,6 +49,7 @@ class DesktopApp(CompactPanel):
         if not self.native.acquire_instance():raise OverlayAlreadyRunning()
         self.user_dir=install_dir()/"userData"
         self.user_dir.mkdir(exist_ok=True)
+        self.marker_hints=HintService(self.user_dir/'cache/marker-hints')
         self.settings_path=self.user_dir/"settings.json"
         self.settings=read_settings(self.settings_path)
         self.native.set_capture_visible(self.settings.get('capture_visible',False))
@@ -513,11 +515,11 @@ class DesktopApp(CompactPanel):
         self.automark.reset()
         self.close_marker_menu(restore_focus=False)
         self.menu_open=True;self.menu_geometry=self.rect_key(rect)
-        self.menu_deadline=time.monotonic()+30;self.menu_mouse_down=False
+        self.menu_deadline=time.monotonic()+120;self.menu_mouse_down=False
         self.native.interactive(self.input_hwnd,False);self.native.hide(self.input_hwnd)
         self.marker_menu=MarkerMenu(self.root,self.native,rect,choices,self.session,
                                     self.change_marker_state,self.close_marker_menu,
-                                    rect.x+rect.width//2,rect.y+rect.height//2)
+                                    rect.x+rect.width//2,rect.y+rect.height//2,getattr(self,'marker_hints',None))
 
     def refresh_counts(self):
         if hasattr(self,'category_browser'):
@@ -582,7 +584,7 @@ class DesktopApp(CompactPanel):
         logger.info("Marker menu opened: %s item(s)",len(items))
         self.menu_open=True
         self.menu_geometry=self.rect_key(rect)
-        self.menu_deadline=time.monotonic()+30
+        self.menu_deadline=time.monotonic()+120
         self.menu_mouse_down=True
         # Only the card receives input while open; outside clicks reach the game.
         self.native.interactive(self.input_hwnd,False)
@@ -590,7 +592,7 @@ class DesktopApp(CompactPanel):
         try:
             self.marker_menu=MarkerMenu(self.root,self.native,rect,items,self.session,
                                         self.change_marker_state,self.close_marker_menu,
-                                        event.x_root,event.y_root)
+                                        event.x_root,event.y_root,getattr(self,'marker_hints',None))
         except Exception:
             self.close_marker_menu()
             logger.exception("Falha ao abrir cartão do item")
