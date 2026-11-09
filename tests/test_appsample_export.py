@@ -20,7 +20,7 @@ def test_export_only_ids_and_restore_browser(tmp_path,transport,case):
 const fs=require('fs'), vm=require('vm'), assert=require('assert');
 const [file,transport,kind]=process.argv.slice(2);
 let downloads=[],blob,clicked=0,confirmed=0,timeout;
-const payload=[{found:{name:'private-account-path',fields:{email:{stringValue:'private'},markerIds:{arrayValue:{values:kind==='empty'?[]:[{stringValue:'20'},{stringValue:'10'},{stringValue:'20'}]}}}}}];
+const payload=[{found:{name:'projects/genshin-impact/databases/(default)/documents/users/private-account',fields:{email:{stringValue:'private'},markerIds:{arrayValue:{values:kind==='empty'?[]:[{stringValue:'20'},{stringValue:'10'},{stringValue:'20'}]}}}}}];
 if(kind==='invalid')payload[0].found.fields.markerIds.arrayValue.values=[{stringValue:'not-an-id'}];
 const response={ok:true,clone:()=>({text:async()=>JSON.stringify(payload)})};
 const fetch=async()=>response;
@@ -30,7 +30,7 @@ const url='https://firestore.googleapis.com/v1/projects/genshin-impact/databases
 const URLClass=class extends URL {};
 URLClass.createObjectURL=b=>{blob=b;return 'blob:local'};URLClass.revokeObjectURL=()=>{};
 const context={location:{protocol:'https:',hostname:'genshin-impact-map.appsample.com',href:'https://genshin-impact-map.appsample.com/pt/'},
-URL:URLClass,Blob,XMLHttpRequest:XHR,fetch,console:{info:()=>{}},alert:()=>{},confirm:()=>{confirmed++;return kind!=='cancel'},
+URL:URLClass,Blob,TextEncoder,TextDecoder,XMLHttpRequest:XHR,fetch,console:{info:()=>{}},alert:()=>{},confirm:()=>{confirmed++;return kind!=='cancel'},
 setTimeout:(f,ms)=>{if(ms===180000)timeout=f;return 1},clearTimeout:()=>{},
 document:{body:{appendChild:()=>{}},createElement:()=>({click(){clicked++},remove(){}})}};
 context.window=context;vm.createContext(context);vm.runInContext(fs.readFileSync(file,'utf8'),context);
@@ -38,6 +38,7 @@ context.window=context;vm.createContext(context);vm.runInContext(fs.readFileSync
  if(kind==='timeout')timeout();
  else if(transport==='xhr'){const x=new XHR();x.open('POST',url);x.load()}
  else assert.strictEqual(await context.fetch(kind==='foreign'?'https://example.com/documents:batchGet':url),response);
+ await new Promise(resolve=>setImmediate(resolve));
  if(['valid','empty','cancel','timeout'].includes(kind)){
    assert.strictEqual(context.fetch,fetch);assert.strictEqual(XHR.prototype.open,open);assert(!context.__hexenExportV1);
  }else {assert(context.__hexenExportV1);timeout()}
