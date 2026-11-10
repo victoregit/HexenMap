@@ -1,20 +1,21 @@
 from PIL import Image
 
-from src.live.brand import badge_frames, animation_frame
+from src.live.brand import badge_frames, animation_frame,badge_symbol_angle
 from src.live.storage import bundle_dir
 
 
-def test_collapsed_badge_uses_approved_rift_and_exact_five_second_timeline():
+def test_collapsed_badge_stays_clickable_during_long_cycle_with_occasional_cut():
     import json
     assets=bundle_dir()/'data/assets/brand'
     metadata=json.loads((assets/'animations.json').read_text(encoding='utf-8'))['minimized']
     assert metadata['identity']=='electro-rift-spin-v3'
     frames,durations=badge_frames(64)
-    assert len(frames)==len(durations)==120
+    assert len(frames)==len(durations)==504
     assert set(durations)=={41,42}
-    assert sum(durations)==5000
+    assert sum(durations)==21000
     assert all(frame.size==(64,64) for frame in frames)
-    assert frames[0].getchannel('A').getextrema()==(0,0)
+    # No blank button, including the old transparent beginning/end of the cut.
+    assert all(sum(value>0 for value in frame.getchannel('A').crop((26,26,38,38)).getdata())>60 for frame in frames)
     assert frames[72].getchannel('A').getextrema()==(0,255)
     assert all({value for _,value in frame.getchannel('A').getcolors()}<={0,255} for frame in frames)
     assert len({frame.tobytes() for frame in frames})>60
@@ -23,7 +24,7 @@ def test_collapsed_badge_uses_approved_rift_and_exact_five_second_timeline():
     for index,duration in enumerate(durations):
         assert animation_frame(durations,elapsed)==(index,duration)
         elapsed+=duration
-    assert animation_frame(durations,5000)==(0,durations[0])
+    assert animation_frame(durations,21000)==(0,durations[0])
 
 
 def test_collapsed_badge_reads_the_atlas_in_row_order_without_neighbor_pixels():
@@ -31,13 +32,21 @@ def test_collapsed_badge_reads_the_atlas_in_row_order_without_neighbor_pixels():
     assets=bundle_dir()/'data/assets/brand'
     metadata=json.loads((assets/'animations.json').read_text(encoding='utf-8'))['minimized']
     frames,_=badge_frames(76)
-    with Image.open(assets/'minimized.png') as atlas:
+    with Image.open(assets/'minimized-rift.png') as atlas:
         assert atlas.size==(1536,2880)
-        for index in [0,7,8,72,95,119]:
+        for playback,index in [(0,65),(7,72),(8,73),(23,88),(24,87),(45,66)]:
             x=index%8*192;y=index//8*192
             expected=atlas.crop((x,y,x+192,y+192)).convert('RGBA').resize((76,76),Image.Resampling.LANCZOS)
             expected.putalpha(expected.getchannel('A').point(lambda value:255 if value>=128 else 0))
-            assert frames[index].tobytes()==expected.tobytes()
+            # Independent emblem and bloom occupy the central area only.
+            assert frames[playback].crop((0,0,76,20)).tobytes()==expected.crop((0,0,76,20)).tobytes()
+
+
+def test_emblem_never_reverses_and_loop_has_no_rotation_jump():
+    angles=[badge_symbol_angle(i/240) for i in range(21*240+1)]
+    assert all(b>a for a,b in zip(angles,angles[1:]))
+    assert abs(angles[-1]-angles[0]-1080)<1e-8
+    assert abs((angles[1]-angles[0])-(angles[-1]-angles[-2]))<.001
 
 
 def test_launcher_frames_match_lossless_atlas_in_reading_order():

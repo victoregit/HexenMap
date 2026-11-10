@@ -57,8 +57,8 @@ def test_release_version_is_consistent():
     import tomllib
     from src.live.identity import VERSION
     root=Path(__file__).resolve().parents[1]
-    assert VERSION=='1.0.2'
+    assert VERSION=='1.0.3'
     assert tomllib.loads((root/'pyproject.toml').read_text())['project']['version']==VERSION
     resource=(root/'data/windows/version_info.txt').read_text()
     assert f"StringStruct('ProductVersion','{VERSION}')" in resource
-    assert 'filevers=(1,0,2,0)' in resource
+    assert 'filevers=(1,0,3,0)' in resource

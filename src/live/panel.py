@@ -6,6 +6,7 @@ from src.live.catalog import CATEGORIES, CATEGORY_GROUPS
 from src.live.category_browser import CategoryBrowser, CategoryModel
 from src.live.identity import DISPLAY_NAME, VERSION
 from src.live.brand import AnimatedBadge, apply_app_icon, TRANSPARENT
+from src.live.support import report_problem
 
 from src.live.theme import (BG, SURFACE as ROW, TEXT, ACCENT as GOLD, MUTED,
                             BORDER, ON_ACCENT, apply_theme, panel_size, place_dialog, Tooltip)
@@ -137,9 +138,19 @@ class CompactPanel(PanelLayout):
         ttk.Button(footer,text='Desfazer',style='Quiet.TButton',command=self.panel_undo).pack(side='left')
         play=ttk.Button(footer,text='Jogar',style='Primary.TButton',width=7,command=self.collapse_to_game)
         play.pack(side='right');Tooltip(play,'Recolher o painel e devolver o foco ao Genshin.')
-        self.version_label=tk.Label(information,text=f'v{VERSION}',bg=BG,fg=MUTED,
+        bottom=tk.Frame(information,bg=BG);bottom.pack(fill='x',pady=(3,0))
+        self.report_button=tk.Button(bottom,text='Report',command=lambda:report_problem(self.root),
+                                     bg=BG,fg=GOLD,activebackground=BG,activeforeground=GOLD,
+                                     relief='flat',borderwidth=0,font=('Segoe UI',8,'underline'),cursor='hand2',padx=0)
+        self.report_button.pack(side='left')
+        self.support_button=tk.Button(bottom,text='Support us',state='disabled',
+                                      bg=BG,fg=MUTED,disabledforeground=MUTED,
+                                      relief='flat',borderwidth=0,font=('Segoe UI',8,'underline'),padx=0)
+        self.support_button.pack(side='left',padx=(12,0))
+        Tooltip(self.support_button,'Link de apoio em breve.')
+        self.version_label=tk.Label(bottom,text=f'v{VERSION}',bg=BG,fg=MUTED,
                                     font=('Segoe UI',8),anchor='e')
-        self.version_label.pack(fill='x',pady=(3,0))
+        self.version_label.pack(side='right')
         def show_notice(*args):
             if self.notice.get():notice_label.pack(fill='x',before=footer)
             else:notice_label.pack_forget()

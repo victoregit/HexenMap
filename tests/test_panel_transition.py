@@ -73,8 +73,21 @@ app.native.panel=windows.panel;app.native.panel_mask=windows.panel_mask
 app.native.transition_panel=windows.transition_panel
 app.native.control_bounds=windows.control_bounds;app.native.move_panel=windows.move_panel
 focus=[];app.native.restore_game_focus=lambda game:focus.append(True)
-size=app.panel_normal_size;position=windows.control_bounds(root.winfo_id())[:2]
-for action in [app.collapse_to_game,app.panel_shortcut]:
+from src.live.panel_transition import PanelCollapseTransition
+for x,y in [(0,0),(0,200),(800,0),(-500,80)]:
+ windows.move_panel(root.winfo_id(),x,y);root.update()
+ bounds=windows.control_bounds(root.winfo_id())
+ transition=PanelCollapseTransition(root,app.native,bounds,bounds[:2],app.compact_size,lambda:None)
+ transition.start();root.update()
+ actual=windows.control_bounds(transition.window.winfo_id())
+ assert actual[:2]==(bounds[0]-12,bounds[1]-12),(bounds,actual)
+ transition.cancel();root.update()
+windows.move_panel(root.winfo_id(),80,80);root.update()
+size=app.panel_normal_size
+for action,location in [(app.collapse_to_game,(0,0)),(app.panel_shortcut,(0,180)),
+                        (app.collapse_to_game,(800,0)),(app.panel_shortcut,(800,160))]:
+ windows.move_panel(root.winfo_id(),*location);root.update()
+ position=windows.control_bounds(root.winfo_id())[:2]
  before=len(focus);action();transition=app._panel_transition
  assert transition is not None and len(focus)==before
  assert windows.get_style(windows.u.GetAncestor(transition.window.winfo_id(),2),-20)&0x8000000

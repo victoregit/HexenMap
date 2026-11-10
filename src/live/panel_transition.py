@@ -6,7 +6,6 @@ import tkinter as tk
 from PIL import Image,ImageDraw,ImageFilter,ImageTk
 
 from src.live.brand import TRANSPARENT
-from src.live.storage import bundle_dir
 
 DURATION_MS=820
 HANDOFF_MS=3000
@@ -19,17 +18,10 @@ def ease(a,b,t):
 
 @lru_cache(maxsize=1)
 def handoff_frame():
-    import json
-    assets=bundle_dir()/'data/assets/brand'
-    config=json.loads((assets/'animations.json').read_text(encoding='utf-8'))['minimized']
-    elapsed=0;index=0
-    for index,duration in enumerate(config['durations_ms']):
-        if elapsed+duration>HANDOFF_MS:break
-        elapsed+=duration
-    side=config['frame_size'];columns=config['columns']
-    with Image.open(assets/config['file']) as atlas:
-        x=index%columns*side;y=index//columns*side
-        return atlas.crop((x,y,x+side,y+side)).convert('RGBA')
+    from src.live.brand import badge_frames,animation_frame
+    frames,durations=badge_frames(192)
+    index,_=animation_frame(durations,HANDOFF_MS)
+    return frames[index].copy()
 
 
 def transition_frame(snapshot,poster,progress,size,source_origin,target_center,compact_size,source_size=None):
@@ -90,7 +82,10 @@ class PanelCollapseTransition:
             self.window.overrideredirect(True);self.window.attributes('-topmost',True)
             self.window.attributes('-transparentcolor',TRANSPARENT)
             self.window.configure(bg=TRANSPARENT)
-            self.window.geometry(f'{width}x{height}{x:+d}{y:+d}')
+            # Tk's -12 means an offset from the right/bottom edge, not -12
+            # desktop pixels. Keep the sign of the coordinate after an explicit
+            # '+' so the margin also works at zero and on negative monitors.
+            self.window.geometry(f'{width}x{height}+{x}+{y}')
             self.canvas=tk.Canvas(self.window,width=width,height=height,bg=TRANSPARENT,highlightthickness=0)
             self.canvas.pack();self.item=self.canvas.create_image(0,0,anchor='nw')
             self.window.bind('<Destroy>',self._destroyed)

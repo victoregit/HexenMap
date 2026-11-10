@@ -157,6 +157,12 @@
     },
     "loading/47.png": {
       "sha256": "50b4e26e5cd3578c05ef298ca16ca76ac74aaee0f1987c554cc2d44b9d1b1662"
+    },
+    "minimized-rift.png": {
+      "sha256": "bad3db7b7ec6c73e7d94b4d16b52c9e2a3a4be216d95925884e63ade0a81fbe4"
+    },
+    "electro-symbol.png": {
+      "sha256": "a162febce76a94751dbe337481ae4a8ef02d55b1e2fab3aca7390bca5ad898de"
     }
   }
 }
