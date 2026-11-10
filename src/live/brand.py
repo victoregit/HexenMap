@@ -3,13 +3,54 @@ from bisect import bisect_right
 from functools import lru_cache
 import time
 import json
+import math
 import tkinter as tk
 
-from PIL import Image, ImageTk
+from PIL import Image, ImageFilter, ImageTk
 
 from src.live.storage import bundle_dir
 
 TRANSPARENT = '#010203'
+
+
+def badge_symbol_angle(elapsed_seconds):
+    """Clockwise only, with smooth acceleration and an exact three-turn loop."""
+    frequency=2*math.pi/21
+    return (360/7*elapsed_seconds+20/frequency*
+            (math.sin(frequency*(elapsed_seconds-17.5))-math.sin(-frequency*17.5)))
+
+
+def badge_playback(frames,symbol):
+    """An unstable open eye is the resting button; the cut is occasional."""
+    # Only the rift deforms back and forth. The emblem has its own continuous
+    # clockwise timeline and is never read backwards with these frames.
+    idle=list(range(65,89))+list(range(87,65,-1))
+    result=[frames[idle[i%len(idle)]] for i in range(336)]
+    # A slower seven-second closing/cut/opening accent, once per 21s cycle.
+    accent=list(range(89,120))+list(range(65))
+    for i in range(168):
+        index=accent[min(len(accent)-1,i*len(accent)//168)]
+        frame=frames[index]
+        # Keep a living eye underneath the thin cut and the transparent tail.
+        # This also retains a visible clickable center with Win32 color-keying.
+        if index<60 or index>96:
+            base=frames[idle[(336+i)%len(idle)]]
+            strength=min(1.,max(0.,(60-index)/12 if index<60 else (index-96)/12))
+            under=base.copy()
+            under.putalpha(under.getchannel('A').point(lambda a:round(a*strength)))
+            frame=Image.alpha_composite(under,frame)
+        result.append(frame)
+    size=frames[0].width
+    carrier=Image.new('RGBA',(size,size))
+    symbol=symbol.resize((max(1,round(size*84/512)),max(1,round(size*82/512))),Image.Resampling.LANCZOS)
+    carrier.alpha_composite(symbol,(round(size*214/512),round(size*215/512)))
+    for i,frame in enumerate(result):
+        emblem=carrier.rotate(-badge_symbol_angle(i/24),Image.Resampling.BICUBIC,center=(size/2,size/2))
+        glow=emblem.filter(ImageFilter.GaussianBlur(max(.5,size*5.5/512)))
+        glow.putalpha(glow.getchannel('A').point(lambda a:round(a*.3)))
+        result[i]=Image.alpha_composite(Image.alpha_composite(frame,glow),emblem)
+    durations=[round((i+1)*1000/24)-round(i*1000/24) for i in range(len(result))]
+    return tuple(result),tuple(durations)
 
 
 @lru_cache(maxsize=1)
@@ -18,16 +59,19 @@ def badge_frames(size):
     assets=bundle_dir()/'data/assets/brand'
     timing=json.loads((assets/'animations.json').read_text(encoding='utf-8'))
     badge=timing['minimized']
-    with Image.open(assets/badge['file']) as source:
+    with Image.open(assets/'minimized-rift.png') as source:
         side=badge['frame_size'];columns=badge['columns']
         for index in range(badge['frames']):
             x=index%columns*side;y=index//columns*side
             frame=source.crop((x,y,x+side,y+side)).convert('RGBA').resize((size,size),Image.Resampling.LANCZOS)
-            # Windows color-key transparency cannot blend half-transparent edges.
-            frame.putalpha(frame.getchannel('A').point(lambda a:255 if a>=128 else 0))
             frames.append(frame)
             durations.append(badge['durations_ms'][index])
-    return tuple(frames),tuple(durations)
+    with Image.open(assets/'electro-symbol.png') as symbol:
+        frames,durations=badge_playback(frames,symbol.convert('RGBA'))
+    for frame in frames:
+        # Windows color-key transparency cannot blend half-transparent edges.
+        frame.putalpha(frame.getchannel('A').point(lambda a:255 if a>=128 else 0))
+    return frames,durations
 
 
 def animation_frame(durations,elapsed_ms):
