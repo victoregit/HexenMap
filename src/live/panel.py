@@ -4,7 +4,7 @@ from tkinter import ttk
 
 from src.live.catalog import CATEGORIES, CATEGORY_GROUPS
 from src.live.category_browser import CategoryBrowser, CategoryModel
-from src.live.identity import DISPLAY_NAME
+from src.live.identity import DISPLAY_NAME, VERSION
 from src.live.brand import AnimatedBadge, apply_app_icon, TRANSPARENT
 
 from src.live.theme import (BG, SURFACE as ROW, TEXT, ACCENT as GOLD, MUTED,
@@ -137,6 +137,9 @@ class CompactPanel(PanelLayout):
         ttk.Button(footer,text='Desfazer',style='Quiet.TButton',command=self.panel_undo).pack(side='left')
         play=ttk.Button(footer,text='Jogar',style='Primary.TButton',width=7,command=self.collapse_to_game)
         play.pack(side='right');Tooltip(play,'Recolher o painel e devolver o foco ao Genshin.')
+        self.version_label=tk.Label(information,text=f'v{VERSION}',bg=BG,fg=MUTED,
+                                    font=('Segoe UI',8),anchor='e')
+        self.version_label.pack(fill='x',pady=(3,0))
         def show_notice(*args):
             if self.notice.get():notice_label.pack(fill='x',before=footer)
             else:notice_label.pack_forget()
@@ -284,12 +287,52 @@ class CompactPanel(PanelLayout):
             self.root.focus_force()
         else: self.finish_panel_drag()
 
-    def toggle_panel(self, save=True):
+    def _animate_panel_collapse(self,save,return_to_game):
+        from src.live.panel_transition import PanelCollapseTransition,HANDOFF_MS
+        if not hasattr(self.native,'panel_mask') or not hasattr(self.native,'control_bounds') or not self.root.winfo_viewable():return False
+        if getattr(self,'_layout_busy',False):return False
+        self.panel_position();self.close_layers();self.root.update_idletasks()
+        try:bounds=self.native.control_bounds(self.root.winfo_id())
+        except (OSError,tk.TclError):return False
+        if bounds is None:return False
+        target=tuple(self.last_panel_position)
+        def complete():
+            self._panel_transition=None
+            game=self.native.game()
+            allowed=not game.is_found or self.native.menu_foreground(game)
+            if not allowed:self.root.withdraw()
+            self.compact.play_from(HANDOFF_MS)
+            self._apply_panel_state(True,save)
+            if allowed:
+                self.root.deiconify()
+                self.move_panel_to(*target)
+            self.panel_suspended=not allowed
+            if return_to_game and allowed:self.native.restore_game_focus(game)
+        try:
+            transition=PanelCollapseTransition(self.root,self.native,bounds,
+                                               target,self.compact_size,complete)
+        except (OSError,tk.TclError):return False
+        self._panel_transition=transition;self._layout_busy=True
+        try:transition.start()
+        except (OSError,tk.TclError):transition.finish()
+        return True
+
+    def toggle_panel(self, save=True, animate=True, return_to_game=False):
+        transition=getattr(self,'_panel_transition',None)
+        if transition is not None:
+            transition.finish();return
         if self.panel_detached and not self.panel_collapsed and self.root.state()=='iconic':
             self.root.deiconify();self.root.lift();self.root.focus_force()
             return
+        # Saved-state restoration stays immediate; only user actions animate.
+        if not self.panel_collapsed and animate and save:
+            if self._animate_panel_collapse(save,return_to_game):return
+        self._apply_panel_state(not self.panel_collapsed,save)
+        if return_to_game and self.panel_collapsed:self.native.restore_game_focus(self.native.game())
+
+    def _apply_panel_state(self,collapsed,save=True):
         self.panel_position();self.close_layers()
-        self.panel_collapsed=not self.panel_collapsed
+        self.panel_collapsed=collapsed
         self._layout_busy=True
         self.update_panel_constraints()
         if self.panel_collapsed:
@@ -314,10 +357,14 @@ class CompactPanel(PanelLayout):
         if save:self.finish_panel_drag()
 
     def collapse_to_game(self):
-        if not self.panel_collapsed:self.toggle_panel()
-        self.native.restore_game_focus(self.native.game())
+        if not self.panel_collapsed:self.toggle_panel(return_to_game=True)
+        else:self.native.restore_game_focus(self.native.game())
 
     def sync_panel_visibility(self, rect):
+        transition=getattr(self,'_panel_transition',None)
+        if transition is not None:
+            if rect.is_found and not self.native.menu_foreground(rect):transition.finish()
+            else:return
         if self.panel_detached and not self.panel_collapsed:
             if self.panel_suspended:
                 self.native.show_panel(self.root.winfo_id());self.panel_suspended=False
@@ -335,7 +382,8 @@ class CompactPanel(PanelLayout):
 
     def control_rectangles(self, game):
         rectangles=[]
-        for window in (self.root,self.layer_popup):
+        transition=getattr(self,'_panel_transition',None)
+        for window in (self.root,self.layer_popup,getattr(transition,'window',None)):
             if window is None:continue
             occluder=game.hwnd if window is self.root and self.panel_detached and not self.panel_collapsed else None
             bounds=self.native.control_bounds(window.winfo_id(),occluder=occluder)
@@ -347,11 +395,14 @@ class CompactPanel(PanelLayout):
     def raise_attached_controls(self):
         if not self.panel_detached or self.panel_collapsed:self.native.above_icons(self.root.winfo_id())
         if self.layer_popup:self.native.above_icons(self.layer_popup.winfo_id())
+        transition=getattr(self,'_panel_transition',None)
+        if transition is not None and transition.window is not None:
+            self.native.above_icons(transition.window.winfo_id())
 
     def panel_shortcut(self):
-        self.toggle_panel()
-        if self.panel_collapsed:self.native.restore_game_focus(self.native.game())
-        elif not self.panel_detached:self.root.deiconify();self.root.lift();self.root.focus_force()
+        self.toggle_panel(return_to_game=not self.panel_collapsed)
+        if not self.panel_collapsed and not getattr(self,'_panel_transition',None) and not self.panel_detached:
+            self.root.deiconify();self.root.lift();self.root.focus_force()
 
     def open_layers(self, event=None):
         if getattr(self,'region_loading',False):return

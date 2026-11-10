@@ -26,9 +26,8 @@ class ProgressManager:
 
     def __init__(self, filepath: Optional[str] = None) -> None:
         if filepath is None:
-            base_dir = os.path.join(os.getcwd(), "userData")
-            os.makedirs(base_dir, exist_ok=True)
-            filepath = os.path.join(base_dir, "progress.json")
+            from src.live.personal_state import prepare_state
+            filepath = str(prepare_state()/"progress.json")
 
         self._filepath = os.path.abspath(filepath)
         self._backup_filepath = f"{self._filepath}.bak"
@@ -36,9 +35,11 @@ class ProgressManager:
         self._collected_records: Dict[str, Dict[str, Any]] = {}
         self._last_saved_at: Optional[str] = None
         self._metadata: Dict[str, Any] = {}
+        self._had_storage=os.path.exists(self._filepath) or os.path.exists(self._backup_filepath)
 
-        if os.path.exists(self._filepath):
-            self.load()
+        if os.path.exists(self._filepath) or os.path.exists(self._backup_filepath):
+            if not self.load():
+                raise ProgressStorageError('Save e backup inválidos. Recuperação necessária; nenhuma coleta será gravada.')
 
     @property
     def filepath(self) -> str:
@@ -163,9 +164,17 @@ class ProgressManager:
         """
         target_dir = os.path.dirname(self._filepath)
         os.makedirs(target_dir, exist_ok=True)
+        if self._had_storage and not os.path.exists(self._filepath):
+            raise ProgressStorageError('O save desapareceu durante a sessão. Recupere o backup antes de continuar.')
 
         # 1. Create backup if current file exists
         if os.path.exists(self._filepath):
+            from pathlib import Path
+            from src.live.personal_state import read_progress
+            try:
+                read_progress(Path(self._filepath))
+            except (OSError,ValueError,UnicodeError) as exc:
+                raise ProgressStorageError('O save no disco está inválido. Ele e seus backups não serão sobrescritos.') from exc
             # Keep the original pre-migration file forever, independently of .bak.
             try:
                 try:
@@ -180,8 +189,10 @@ class ProgressManager:
                 raise ProgressStorageError(f"Cannot back up progress before migration: {exc}") from exc
             try:
                 shutil.copy2(self._filepath, self._backup_filepath)
+                daily=self._filepath+'.daily-'+datetime.now(timezone.utc).strftime('%Y-%m-%d')+'.bak'
+                if not os.path.exists(daily):shutil.copy2(self._filepath,daily)
             except Exception as e:
-                logger.warning("Failed to create progress backup file: %s", e)
+                raise ProgressStorageError(f'Não foi possível preservar backup do progresso: {e}') from e
 
         payload = {
             "version": self.STORAGE_VERSION,
@@ -202,6 +213,7 @@ class ProgressManager:
             # 3. Atomic rename/replace
             os.replace(temp_path, self._filepath)
             self._last_saved_at = payload["updated_at"]
+            self._had_storage=True
         except Exception as e:
             if os.path.exists(temp_path):
                 try:
@@ -241,11 +253,15 @@ class ProgressManager:
             with open(filepath, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            if not isinstance(data, dict):
+            if (not isinstance(data, dict) or data.get('version',1) not in (1,2)
+                    or not isinstance(data.get('records'),(dict,list))
+                    or not isinstance(data.get('metadata',{}),dict)):
                 return False
 
             version = data.get("version", 1)
             records = data.get("records", {})
+            if 'collected_count' in data and (type(data['collected_count']) is not int or data['collected_count']!=len(records)):
+                return False
             if isinstance(records, dict):
                 # Clean and validate records
                 self._collected_records = {

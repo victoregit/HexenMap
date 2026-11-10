@@ -30,3 +30,35 @@ app.toggle_panel(save=False);root.update();assert app.panel_normal_size==(360,54
 app.compact.stop();root.destroy()
 '''
     subprocess.run([sys.executable,'-c',code],cwd=Path(__file__).resolve().parents[1],capture_output=True,text=True,check=True,timeout=30)
+
+
+def test_version_footer_and_no_blank_strip_after_scrolling_short_list():
+    code='''
+from scripts.preview_lunar import PreviewApp
+from src.live.identity import VERSION
+app=PreviewApp(1.,(1366,768));root=app.root
+root.attributes('-alpha',0);root.deiconify();root.geometry('360x620');root.update()
+assert app.version_label.cget('text')=='v'+VERSION
+assert app.version_label.winfo_ismapped()
+c=app.category_browser
+c.rows=(c.rows*7)[:7];c.sync_scrollregion();root.update()
+assert len(c.rows)*c.HEIGHT<c.winfo_height()
+for direction in (-1,1,-1):
+ c.yview_scroll(direction,'units');root.update()
+ assert c.canvasy(0)==0
+app.show_settings();root.update()
+assert app.version_label.winfo_ismapped()
+app.compact.stop();root.destroy()
+'''
+    subprocess.run([sys.executable,'-c',code],cwd=Path(__file__).resolve().parents[1],capture_output=True,text=True,check=True,timeout=30)
+
+
+def test_release_version_is_consistent():
+    import tomllib
+    from src.live.identity import VERSION
+    root=Path(__file__).resolve().parents[1]
+    assert VERSION=='1.0.2'
+    assert tomllib.loads((root/'pyproject.toml').read_text())['project']['version']==VERSION
+    resource=(root/'data/windows/version_info.txt').read_text()
+    assert f"StringStruct('ProductVersion','{VERSION}')" in resource
+    assert 'filevers=(1,0,2,0)' in resource

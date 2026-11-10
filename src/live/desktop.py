@@ -51,8 +51,10 @@ class DesktopApp(CompactPanel):
         if not self.native.acquire_instance():raise OverlayAlreadyRunning()
         self.user_dir=install_dir()/"userData"
         self.user_dir.mkdir(exist_ok=True)
+        from src.live.personal_state import prepare_state_interactive
+        self.state_dir=prepare_state_interactive(install_dir())
         self.marker_hints=HintService(self.user_dir/'cache/marker-hints')
-        self.settings_path=self.user_dir/"settings.json"
+        self.settings_path=self.state_dir/"settings.json"
         self.settings=read_settings(self.settings_path)
         self.native.set_capture_visible(self.settings.get('capture_visible',False))
         self.preference_writer=PreferenceWriter(self.settings_path)
@@ -74,7 +76,7 @@ class DesktopApp(CompactPanel):
         self.selection_epoch=0
         self.counts_at=0.0
         self.session=Session(items,
-                             ProgressManager(str(self.user_dir/"progress.json")))
+                             ProgressManager(str(self.state_dir/"progress.json")))
         self.automark=AutoMark()
         self.chest_signals=ChestSignals(self.user_dir/'automark')
         self.automark_generation=0;self.automark_snapshot=None
@@ -946,6 +948,8 @@ class DesktopApp(CompactPanel):
             self.candidates.pack_forget();self.confirm_button.pack_forget()
 
     def close(self):
+        transition=getattr(self,'_panel_transition',None)
+        if transition:transition.cancel();self._panel_transition=None
         if getattr(self,'world_map',None):self.world_map.close()
         try: self.persist_settings()
         except OSError: logger.exception("Falha ao salvar painel")

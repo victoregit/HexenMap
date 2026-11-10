@@ -24,6 +24,8 @@ O aplicativo usa reconhecimento de imagem externo. Não lê memória do jogo, n�
 
 ## Começar a jogar
 
+**Instalador (teste local):** execute `HexenMap-VERSAO-Setup-x64.exe`. Depois procure **Hexen Map** no menu Iniciar. O pedido de administrador vem antes da animação; depois o launcher verifica atualizações e abre o aplicativo automaticamente, herdando a permissão. Coletas e configurações ficam salvas no seu PC e são preservadas nas atualizações, reinstalações e desinstalação. [Instalação, atualização e recuperação](docs/UPDATES.md).
+
 1. Extraia o **pacote portátil completo** em uma pasta fixa, preservando `userData`.
 2. Abra **HexenMap.exe** ou **Iniciar_HexenMap.bat**. Aceite a solicitação de administrador quando necessária para interagir com o jogo elevado.
 3. Use o Genshin em **janela ou sem bordas**. Escolha o mapa, a camada e os itens desejados no painel.

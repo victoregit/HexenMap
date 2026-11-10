@@ -78,7 +78,10 @@ F8: abrir/recolher painel. Ctrl+clique: marcar/desmarcar um item.
 F9: coletar próximo. F10: desfazer. Atalhos configuráveis em Ajustes.
 Não há bússola ou busca guiada. AutoMark é beta, desligado por padrão e qualificado em HUD PT-BR.
 Modo Leve padrão. Modo Global opcional consome mais memória.
-Progresso é salvo nesta pasta. Não apague userData ao atualizar; faça backup.
+Desde a 1.0.1, progresso e preferências ficam em %LOCALAPPDATA%\HexenMap\state.
+Faça backup dessa pasta com o app fechado. userData contém recursos e caches.
+Se já usava uma versão antiga, não apague a userData anterior. Se solicitado,
+importe o progress.json antigo em vez de confirmar um perfil novo vazio.
 
 Esta cópia começa sem coletas, sem conta e sem preferências pessoais do autor.
 Não exige login no AppSample para usar o catálogo incluído. Importar progresso é opcional,

@@ -125,7 +125,7 @@ class CategoryBrowser(tk.Canvas):
         self.collapsed=set(GROUP_ORDER)
         self.collapsed_subgroups=set(RESOURCE_SUBGROUPS)
         self.query='';self.paint_job=None;self.last_range=None
-        self.bind('<Configure>',lambda e:self.schedule_paint())
+        self.bind('<Configure>',lambda e:self.sync_scrollregion())
         self.bind('<Map>',lambda e:self.schedule_paint())
         self.bind('<MouseWheel>',lambda e:self.yview_scroll(-int(e.delta/120),'units'))
         self.bind('<Button-1>',self.click)
@@ -178,8 +178,18 @@ class CategoryBrowser(tk.Canvas):
                         chunk=tiles[offset:offset+4]
                         self.rows.extend((('tiles',chunk,None),('tile-tail',chunk,None)))
                     self.rows.extend(('entry',e,None) for e in entries if e not in tiles)
-        self.configure(scrollregion=(0,0,max(1,self.winfo_width()),max(1,len(self.rows)*self.HEIGHT)))
+        self.sync_scrollregion()
         if reset:self.yview_moveto(0)
+        self.schedule_paint()
+
+    def sync_scrollregion(self):
+        # Tk can snap a short region to a negative row when scrolling upward,
+        # leaving an empty strip above the first group. Always fill the viewport.
+        content=len(self.rows)*self.HEIGHT
+        viewport=max(1,self.winfo_height())
+        self.configure(scrollregion=(0,0,max(1,self.winfo_width()),max(viewport,content)))
+        if content<=viewport or self.canvasy(0)<0:
+            self.yview_moveto(0)
         self.schedule_paint()
 
     def schedule_paint(self):

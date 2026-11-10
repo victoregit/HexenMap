@@ -1,18 +1,162 @@
 {
-  "origin": "Arquivos fornecidos pelo usuário no chat para a identidade visual do Hexen Map.",
-  "license": "Não foi fornecida licença de redistribuição; não presumir autorização para distribuição pública.",
+  "origin": "Identidade aprovada no chat: fenda Electro e constelação Viator transparente. Ícones gerais preservados.",
+  "sources": "data/source/brand/SOURCE.json",
   "files": {
-    "app-original.png": {
-      "sha256": "2bb72569d832a60bc15ac65da89fe8f0dd7d653b6a73bf21c22d91ddee38b30a"
-    },
     "app.ico": {
-      "sha256": "5cbb4dba6d2d62f120d9d563edc861a44dda2f9c0ce2132b611cb24ca0c8f96e"
+      "sha256": "36fb66aae7d111a83789550b7aa5cbea95d2b6f1b9f326c910d0550063c9887b"
     },
     "app.png": {
-      "sha256": "100272afbd2290cc92f64ef1d93540d4d6285b8877c4ea5871f614dd63c00f29"
+      "sha256": "3bfddb243e9e9b0200ac4d113459d53ed54516e7ce8f3292ef783b4cad4d9793"
     },
-    "minimized.gif": {
-      "sha256": "57b2356bc5e83fe1ac52d3c3cf66d073dbf947d16b368c96f45760a4722cf659"
+    "loading.png": {
+      "sha256": "beb7b9ebefea6a6f2e6cd31d3a8dab9530239adb06b0a578c568f464ba1aaad7"
+    },
+    "minimized.png": {
+      "sha256": "e7bda8a648cc46f39ce8fcdcd5803d90640bd1ea1a90ca81576296a11594ec98"
+    },
+    "loading/00.png": {
+      "sha256": "6b3f71543215c3eefa98dc83a4f05bd0e621134be1e8854b02a0ad8e5fbfbf26"
+    },
+    "loading/01.png": {
+      "sha256": "f8e931d784cdb0a8434547bb563346cf42453eb60b1d64c74be77b56b45ffab7"
+    },
+    "loading/02.png": {
+      "sha256": "09cf775b18fd48ab5bd7b4504a381f7cf4dc57a0a2e80479582e72a49d38ac6f"
+    },
+    "loading/03.png": {
+      "sha256": "560ca92f338bf6c1c28a584a12760b42332931fd0eea6b83ad09ac482155f980"
+    },
+    "loading/04.png": {
+      "sha256": "20320f0d21d900731fd14d17911092129cc8091ff47d7cc709753bc80d10ef99"
+    },
+    "loading/05.png": {
+      "sha256": "35d4cd77235e2e905f08897bb86722b01c80b2c231bbbb2a24597eae590c3ac7"
+    },
+    "loading/06.png": {
+      "sha256": "bbf7597a5ed818bcdc764ac8968297b2baa5d9c1a8bcb232a9e8cc021ef06781"
+    },
+    "loading/07.png": {
+      "sha256": "27c1a2aeaf79f26e3740758b4ff5e5786b34a5e3ab9cfb8e4386d212b07ef24b"
+    },
+    "loading/08.png": {
+      "sha256": "f9e37f74dab1a1fff62a2fb38df0ffaf13a287ecd5b8ed49bd27c6d93a1d2f1f"
+    },
+    "loading/09.png": {
+      "sha256": "c7f2e98cbd3ac47c59cea9017b9b7f041659597b34412899d78db127e6d6a648"
+    },
+    "loading/10.png": {
+      "sha256": "95c1fbec632a8734f68b7f7025021f3e5daf11e1961f3fd4fa35a02dc2a5167f"
+    },
+    "loading/11.png": {
+      "sha256": "274e2f4e3c755030080ad104fe1dcd9ae0e8d10132e1ceece17aa2a5858a2ece"
+    },
+    "loading/12.png": {
+      "sha256": "28cf85ab7c2ccc43bd81f28687bf57faafb32b28ab894d5f26862bd99d83d672"
+    },
+    "loading/13.png": {
+      "sha256": "91edee725c3b11c48c89bf701d2c0545a1c0fc1f029300028447ae6b1b60b577"
+    },
+    "loading/14.png": {
+      "sha256": "2cf5695a3e38f5b65d8929f643f0bc94c4141fcd3c0b7c04a471df4f4ffb400e"
+    },
+    "loading/15.png": {
+      "sha256": "40eab240e41555484dcc7675ba87a9fab151003d443fc70b222715ff19628a27"
+    },
+    "loading/16.png": {
+      "sha256": "ad14f479f3d8fd23330912a291ce8e6dc3382ce1cd905518206e95ea51cce08e"
+    },
+    "loading/17.png": {
+      "sha256": "6a867ff944a05cf909c99812d7535f70b9bf65c0641edc9a9d2efa3c8e1a4cb4"
+    },
+    "loading/18.png": {
+      "sha256": "7790560eb8b8ecac68620726457b85cb471db7259d26511d2ca14f6c08758328"
+    },
+    "loading/19.png": {
+      "sha256": "040f7c74f40d174510aef791caf88e14ba732193ce1586626f9e0f4882963d59"
+    },
+    "loading/20.png": {
+      "sha256": "411dc197043f37a70df065bc1f9d121aa19ad3697d7845b01c0bb37816984377"
+    },
+    "loading/21.png": {
+      "sha256": "23dcab18fd791ab2564d993c0738646b1e4826de4d655460a6cfd1cab183c575"
+    },
+    "loading/22.png": {
+      "sha256": "b051be791f69ea8060ab56fdcf441c4e1cde845f57af38a674cb3fb41ab03705"
+    },
+    "loading/23.png": {
+      "sha256": "ad17b298a51438bccebb27b42dd273babc1894610f2fbd3e88823d2020587bf8"
+    },
+    "loading/24.png": {
+      "sha256": "f10db47cb9895e0b630af5ca5b93e21b0b596aadbada966daeee8e27036ed448"
+    },
+    "loading/25.png": {
+      "sha256": "01a2229db6d8d7b73dd76dd49872bcb2f3b66b60f0ed13f710d2dd14f39c253d"
+    },
+    "loading/26.png": {
+      "sha256": "b58917ffe853ceac25464216b9a1a3f5a374c5d029ad61ebbe8aebaf3f25e329"
+    },
+    "loading/27.png": {
+      "sha256": "92442cee95d8be40fd7f204f6a86875356f56187afce7ecd213768646313e8a1"
+    },
+    "loading/28.png": {
+      "sha256": "80552760d0725ae9156ad6d7af0a8a0d1740c3d0c69aedc236251a0e8bdd6fee"
+    },
+    "loading/29.png": {
+      "sha256": "47d4316dd66111ae5c0f322d80ab893286c01c52ce80f1cb044d04b86b2e33ab"
+    },
+    "loading/30.png": {
+      "sha256": "ef803309cbb999dadfcef9790102700124cd820215f107ed2d15528c44d1fbd4"
+    },
+    "loading/31.png": {
+      "sha256": "bf04e2c05a074645e729674d65434b61e13a909a73e946e9e9c8c1fe4672c8c6"
+    },
+    "loading/32.png": {
+      "sha256": "c7adcc6eccfdb42a83b55c1bebd7cf4f21691c4c2a35558b6bc7405dc8952cfa"
+    },
+    "loading/33.png": {
+      "sha256": "fde528afcf0c6e454ddcd018d62c4bf128c983d2de72fa63f7440b0ac97d228d"
+    },
+    "loading/34.png": {
+      "sha256": "5a0157f877ad9262995d5c18fb96a1bf2f4f751a664bb6dcb219c7befd303f62"
+    },
+    "loading/35.png": {
+      "sha256": "f4baca62d8548cbb702100d7c662221307173de0782ff385cb2753a0f46d5be0"
+    },
+    "loading/36.png": {
+      "sha256": "8b4da9302f192931d1d5a7f744a1a60d6e309ce2cc4cc9e0f738398d3eb93410"
+    },
+    "loading/37.png": {
+      "sha256": "095bd41032c6d47a24d7a0f1f2e73e30d537b9fdf78419b8e2b8e52f0cfe9abc"
+    },
+    "loading/38.png": {
+      "sha256": "b13d1f615ccd5266817085f8ee905ee106ffaeb668563bdeca3fd2b5137be113"
+    },
+    "loading/39.png": {
+      "sha256": "dad2ecf72dec604fb9d04d429680e23c371dbbab463b91ac6f0cdfbffc37960b"
+    },
+    "loading/40.png": {
+      "sha256": "a8f09289e6d4a6d7453135a9f700fcaf3b6e78e2353135c4b08cde2d07fd2746"
+    },
+    "loading/41.png": {
+      "sha256": "98c212e5cad9c8d5efa6dc7a45b0f665f96baa6fa9b3f925a4d4f7b789071f33"
+    },
+    "loading/42.png": {
+      "sha256": "4cf1b4d076e84279e5b1c8d477dc8113c8ef3aeda57cf6cf10885655c62f1b33"
+    },
+    "loading/43.png": {
+      "sha256": "4b164c21606b7217dd6687a7233d8ac5c288000ed97b688e7cfa72d9f8b6cdec"
+    },
+    "loading/44.png": {
+      "sha256": "c47a88f0969298995786fbc7000ae0bb0eedc288c79bf4f1edaf29ec224fd6d3"
+    },
+    "loading/45.png": {
+      "sha256": "69d8455542e42eafb44558282b9db8cdf102670d7da604af94a62c06c8e78112"
+    },
+    "loading/46.png": {
+      "sha256": "db342f64b7bab24448fa14859687d2cd00fb924af00dc8c3fa3aa4f26d7f2f03"
+    },
+    "loading/47.png": {
+      "sha256": "50b4e26e5cd3578c05ef298ca16ca76ac74aaee0f1987c554cc2d44b9d1b1662"
     }
   }
 }

@@ -105,17 +105,10 @@ def sample_repository(sample_markers_dict):
 
 
 @pytest.fixture
-def temp_progress_file():
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-        path = f.name
-    yield path
-    # Cleanup
-    for p in [path, f"{path}.bak"]:
-        if os.path.exists(p):
-            try:
-                os.remove(p)
-            except OSError:
-                pass
+def temp_progress_file(tmp_path):
+    # A new profile has no file. An existing empty file is now corruption and
+    # must never be silently accepted as an empty collection.
+    yield str(tmp_path/'progress.json')
 
 
 @pytest.fixture

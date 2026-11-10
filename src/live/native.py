@@ -218,6 +218,27 @@ class Windows:
         hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
         self.u.SetWindowPos(hwnd,None,x,y,0,0,0x01|0x04|0x10)
 
+    def panel_mask(self,child_hwnd,bounds=None):
+        """Clip our own live panel during collapse; None restores its full shape."""
+        hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
+        if bounds is None:
+            if not self.u.SetWindowRgn(hwnd,None,True):raise ct.WinError(ct.get_last_error())
+            return
+        region=self.g.CreateRectRgn(*map(round,bounds))
+        if not region:raise ct.WinError(ct.get_last_error())
+        try:
+            if not self.u.SetWindowRgn(hwnd,region,True):raise ct.WinError(ct.get_last_error())
+            region=None  # Ownership transfers to Windows after a successful call.
+        finally:
+            if region:self.g.DeleteObject(region)
+
+    def transition_panel(self,child_hwnd):
+        """The temporary visual never activates or adds a taskbar button."""
+        hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
+        ct.set_last_error(0)
+        self.set_style(hwnd,-20,self.get_style(hwnd,-20)|0x80|0x8000000)
+        if ct.get_last_error():raise ct.WinError(ct.get_last_error())
+
     def control_bounds(self, child_hwnd, occluder=None):
         hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
         if not self.u.IsWindowVisible(hwnd) or self.u.IsIconic(hwnd):return None
