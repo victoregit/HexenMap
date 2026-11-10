@@ -136,8 +136,9 @@ def read_settings(path: Path) -> dict:
         if isinstance(panel,dict):
             result["panel"]={"collapsed":panel.get("collapsed") is True,
                              "detached":panel.get('detached') is not False}
-            for key in ("x","y"):
+            for key in ("x","y","width","height"):
                 if isinstance(panel.get(key),int): result["panel"][key]=panel[key]
+            if 'scale' in panel:result['panel']['scale']=panel['scale'] if panel['scale'] in (100,125,150) else 100
         regional_data=data.get('regional',{})
         retired=(data.get('package') not in (None,'appsample') or 'last_kongying_package' in data
                  or (isinstance(regional_data,dict) and any(k!='appsample' for k in regional_data)))

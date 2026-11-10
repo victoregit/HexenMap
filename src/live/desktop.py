@@ -89,6 +89,7 @@ class DesktopApp(CompactPanel):
         self.reference_dir=reference_dir or self.user_dir/"references/appsample/as-map-2/surface"
         self.recognizer=None
         self.reference_error=""
+        self.capture_quality={}
         self.reference_lock=threading.Lock()
         self.reference_build_lock=threading.Lock()
         self.reference_released=threading.Event();self.reference_released.set()
@@ -245,6 +246,30 @@ class DesktopApp(CompactPanel):
         except (OSError,ValueError) as exc:
             messagebox.showerror('Pasta da extensão',f'Não foi possível preparar a extensão: {exc}',parent=self.root)
 
+    def open_world_map(self):
+        if getattr(self,'world_map',None):
+            self.world_map.window.deiconify();self.world_map.window.lift();return
+        from src.live.world_map import WorldMap
+        self.world_map=WorldMap(self)
+
+    def copy_diagnostics(self):
+        import json
+        from src.live.identity import VERSION
+        rect=self.native.game();obs=self.session.observation
+        report={'versao':VERSION,'janela_encontrada':rect.is_found,'area_cliente':[rect.width,rect.height],
+            'dpi':self.native.dpi_scale(rect.hwnd) if rect.hwnd else None,
+            'jogo_em_foco':self.native.foreground(rect),'tipos_selecionados':sorted(self.session.selected),
+            'overlay_oculto':self.session.hidden,'mapa':self.session.map_id,'camada':self.session.layer_id,
+            'localizacao':{'superficie':obs.surface,'motivo':obs.reason,'confianca':obs.confidence},
+            'referencias':self.reference_error or self.overlay_error or ('carregadas' if self.recognizer is not None else 'carregando'),
+            'ultimo_quadro_em_foco':self.capture_quality.copy(),
+            'automark':{'ativado':self.settings.get('automark',False),'referencias_prontas':self.chest_signals.ready,
+                        'estado':self.automark_service.status,'fase':self.chest_signals.state,
+                        'pontuacoes':self.chest_signals.scores.copy(),
+                        'altura_hud_detectada':self.chest_signals.detected_hud_height}}
+        self.root.clipboard_clear();self.root.clipboard_append(json.dumps(report,ensure_ascii=False,indent=2))
+        self.session.notice='Diagnóstico copiado. Cole no suporte; não contém imagens, conta ou credenciais.'
+
     def install_browser_connector(self):
         from src.live.browser_connector import register_connector
         try:
@@ -380,6 +405,8 @@ class DesktopApp(CompactPanel):
         self.settings.setdefault("regional",{})[self.package_id]={"categories":sorted(self.session.selected),"layer":self.layer_names[self.layer_var.get()]}
         x,y=self.panel_position()
         self.settings["panel"]={"collapsed":self.panel_collapsed,"detached":self.panel_detached,"x":x,"y":y}
+        self.settings['panel'].update(width=round(self.panel_normal_size[0]/self.ui_scale),
+            height=round(self.panel_normal_size[1]/self.ui_scale),scale=round(self.root._visual_scale*100))
         self.preference_writer.request(self.settings)
 
     def select_categories(self):
@@ -503,7 +530,7 @@ class DesktopApp(CompactPanel):
                 down=self.native.key_down(0x01)
                 outside=(down and not self.menu_mouse_down and not self.marker_menu.contains(x,y))
                 self.menu_mouse_down=down
-                if outside or self.native.key_down(0x1b):
+                if outside or self.marker_menu.escape_key(self.native.key_down(0x1b)):
                     self.close_marker_menu()
             if not self.menu_open and self.input_hwnd:
                 rect=self.native.game();pointer_active=rect.is_found and self.native.foreground(rect)
@@ -702,7 +729,7 @@ class DesktopApp(CompactPanel):
             with (self.user_dir/"live-session-v2.csv").open("a",newline="",encoding="utf-8") as log:
                 writer=csv.writer(log)
                 if log.tell()==0: writer.writerow(["monotonic_s","surface","latency_ms","confidence","p95_px","reason","region","map","layer","selection_epoch"])
-                last_log=-math.inf;last_log_state=None
+                last_log=-math.inf;last_log_state=None;last_capture_check=-math.inf
                 while not self.stop_event.is_set():
                     frame=None
                     started=time.monotonic(); rect=self.native.game()
@@ -747,6 +774,12 @@ class DesktopApp(CompactPanel):
                             logger.exception("Falha no reconhecimento")
                             obs=Observation("hidden",started,reason="Não foi possível reconhecer a tela")
                     elapsed=time.monotonic()-started
+                    if frame is not None and started-last_capture_check>=2:
+                        sample=frame[:max(1,round(frame.shape[0]*.35)):12,::12]
+                        self.capture_quality={'cliente':[rect.width,rect.height],
+                            'media':round(float(sample.mean()),2),'desvio':round(float(sample.std()),2),
+                            'uniforme':bool(float(sample.std())<1)}
+                        last_capture_check=started
                     self._publish((self.rect_key(rect),obs,epoch),frame)
                     current=epoch==self.selection_epoch
                     state=(obs.surface,obs.reason,epoch)
@@ -913,6 +946,7 @@ class DesktopApp(CompactPanel):
             self.candidates.pack_forget();self.confirm_button.pack_forget()
 
     def close(self):
+        if getattr(self,'world_map',None):self.world_map.close()
         try: self.persist_settings()
         except OSError: logger.exception("Falha ao salvar painel")
         self.stop_event.set()

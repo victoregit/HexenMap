@@ -1,0 +1,32 @@
+from pathlib import Path
+import subprocess,sys
+from src.live.panel_layout import fitted_size
+from src.live.storage import read_settings,write_json
+
+
+def test_saved_size_scale_validation_and_small_work_area(tmp_path):
+    path=tmp_path/'settings.json'
+    write_json(path,{'categories':[],'panel':{'width':620,'height':600,'scale':125,'x':-800,'y':0}})
+    settings=read_settings(path)['panel']
+    assert settings['width']==620 and settings['scale']==125 and settings['x']==-800
+    assert fitted_size(100,100,1.,(0,0,1366,728))==(360,440)
+    width,height=fitted_size(9000,9000,1.5,(0,0,1366,728))
+    assert width<=1350 and height<=656
+
+
+def test_real_tk_resize_scale_roundtrip_and_restore():
+    code='''
+from scripts.preview_lunar import PreviewApp
+app=PreviewApp(1.,(1366,768));root=app.root;root.attributes('-alpha',0);root.deiconify();root.update()
+root.geometry('620x620');root.update();assert app.panel_normal_size==(620,620)
+for percent in (125,150,100,125,100):
+ app.panel_scale_var.set(str(percent)+'%');app.change_panel_scale();root.update()
+ assert root.winfo_width()<=1350 and root.winfo_height()<=680
+ assert app.category_browser.font_scale==percent/100
+app.reset_panel_size();root.update();assert app.panel_normal_size==(360,540)
+assert root.resizable()==(1,1)
+app.toggle_panel(save=False);root.update();assert root.resizable()==(0,0)
+app.toggle_panel(save=False);root.update();assert app.panel_normal_size==(360,540)
+app.compact.stop();root.destroy()
+'''
+    subprocess.run([sys.executable,'-c',code],cwd=Path(__file__).resolve().parents[1],capture_output=True,text=True,check=True,timeout=30)

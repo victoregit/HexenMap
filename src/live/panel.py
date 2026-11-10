@@ -9,9 +9,10 @@ from src.live.brand import AnimatedBadge, apply_app_icon, TRANSPARENT
 
 from src.live.theme import (BG, SURFACE as ROW, TEXT, ACCENT as GOLD, MUTED,
                             BORDER, ON_ACCENT, apply_theme, panel_size, place_dialog, Tooltip)
+from src.live.panel_layout import PanelLayout,fitted_size
 
 
-class CompactPanel:
+class CompactPanel(PanelLayout):
     def _panel(self):
         apply_app_icon(self.root)
         self.panel_collapsed = False
@@ -21,13 +22,16 @@ class CompactPanel:
         self.panel_detached=pref.get('detached') is not False
         self.root.overrideredirect(not self.panel_detached)
         self.root.attributes('-topmost', not self.panel_detached)
-        self.root.resizable(False,False)
+        self.root.resizable(self.panel_detached,self.panel_detached)
         self.root.configure(bg=BG, highlightbackground=BORDER, highlightthickness=0)
         left,top,right,bottom=self.panel_desktop_bounds()
         if hasattr(self.native,'work_area'):
             left,top,right,bottom=self.native.work_area(pref.get('x',32),pref.get('y',80))
-        self.ui_scale=self.native.dpi_scale(self.root.winfo_id()) if hasattr(self.native,'dpi_scale') else 1.
-        self.panel_normal_size=panel_size(self.ui_scale,(left,top,right,bottom))
+        self.panel_dpi=self.native.dpi_scale(self.root.winfo_id()) if hasattr(self.native,'dpi_scale') else 1.
+        self.root._visual_scale=pref.get('scale',100)/100
+        self.ui_scale=self.panel_dpi*self.root._visual_scale
+        default_width,default_height=panel_size(self.ui_scale,(left,top,right,bottom))
+        self.panel_normal_size=fitted_size(pref.get('width',default_width/self.ui_scale),pref.get('height',default_height/self.ui_scale),self.ui_scale,(left,top,right,bottom))
         width,height=self.panel_normal_size
         x=max(left,min(pref.get('x',32),right-width))
         y=max(top,min(pref.get('y',80),bottom-height-round(32*self.ui_scale)))
@@ -39,6 +43,7 @@ class CompactPanel:
         self.shell=tk.Frame(self.root,bg=BG);self.shell.pack(fill='both',expand=True)
         header=tk.Frame(self.shell,bg=BG);header.pack(fill='x',padx=14,pady=(8,6))
         emblem=tk.Canvas(header,width=25,height=38,bg=BG,highlightthickness=0)
+        self.brand_emblem=emblem
         emblem.pack(side='left',padx=(0,8))
         emblem.create_polygon(12,3,16,15,24,19,16,23,12,35,8,23,0,19,8,15,fill=GOLD,outline='')
         branding=tk.Frame(header,bg=BG);branding.pack(side='left')
@@ -57,6 +62,15 @@ class CompactPanel:
         self.capture_eye.bind('<space>',lambda e:self.toggle_capture_visibility())
         self.paint_capture_eye()
         Tooltip(self.capture_eye,'Mostrar ou ocultar o overlay no compartilhamento de tela.')
+        self.planet_button=tk.Canvas(header,width=28,height=28,bg=BG,highlightthickness=0,cursor='hand2',takefocus=1)
+        self.planet_button.pack(side='right',padx=2)
+        self.planet_button.create_oval(4,4,24,24,outline=GOLD,width=1.4)
+        self.planet_button.create_oval(10,4,18,24,outline=GOLD,width=1.1)
+        self.planet_button.create_line(4,14,24,14,fill=GOLD,width=1.1)
+        self.planet_button.bind('<Button-1>',lambda event:self.open_world_map())
+        self.planet_button.bind('<Return>',lambda event:self.open_world_map())
+        self.planet_button.bind('<space>',lambda event:self.open_world_map())
+        Tooltip(self.planet_button,'Abrir mapa geral de Teyvat: arraste, aproxime e confira seus coletados.')
         self.tabs=ttk.Notebook(self.shell,style='Compact.TNotebook');self.tabs.pack(fill='both',expand=True,padx=14)
         self.explore=ttk.Frame(self.tabs);self.prefs=ttk.Frame(self.tabs)
         self.tabs.add(self.explore,text='Itens');self.tabs.add(self.prefs,text='Ajustes')
@@ -72,36 +86,15 @@ class CompactPanel:
             self.items_tab.configure(style='Nav.Selected.TButton' if exploring else 'Nav.TButton')
             self.settings_tab.configure(style='Nav.TButton' if exploring else 'Nav.Selected.TButton')
         self.tabs.bind('<<NotebookTabChanged>>',sync_navigation);sync_navigation()
-        scope=ttk.Frame(self.explore);scope.pack(fill='x',pady=(0,2))
         self.region_names={'AppSample':'appsample'}
         self.region_var=tk.StringVar(value='AppSample')
-        self.source_caption=tk.Label(scope,text='◎  Mapa  ⌄',bg=BG,fg=TEXT,font=('Segoe UI',9),anchor='w',pady=7,cursor='hand2',takefocus=1)
-        self.source_caption.pack(side='left',fill='x',expand=True)
-        self.source_caption.bind('<Button-1>',self.open_layers)
-        self.source_caption.bind('<Return>',self.open_layers)
-        Tooltip(self.source_caption,'Selecionar mapa do AppSample. A seleção permanece fixa ao viajar.')
-        layer_caption=tk.Label(scope,text='Superfície',bg=BG,fg=TEXT,font=('Segoe UI',8),cursor='hand2')
-        layer_caption.pack(side='right')
-        layer_caption.bind('<Button-1>',self.open_layers)
-        self.layer_var=tk.StringVar()
-        button=tk.Canvas(scope,width=30,height=30,bg=BG,highlightthickness=0,cursor='hand2');button.pack(side='right',padx=(8,0))
-        for cy in (20,15,10):button.create_polygon(7,cy,15,cy-4,23,cy,15,cy+4,fill=BG,outline=GOLD)
-        button.bind('<Button-1>',self.open_layers)
-        button.configure(takefocus=1);button.bind('<Return>',self.open_layers);button.bind('<space>',self.open_layers)
-        Tooltip(button,'Escolher mapa e camada. A seleção permanece fixa ao viajar.')
-        self.territory_path=tk.StringVar()
-        def show_territory(*args):
-            path=self.territory_path.get().split(' · ',1)
-            name=path[0]
-            self.source_caption.configure(text='◎  '+(name if len(name)<=24 else name[:23]+'…')+'  ⌄')
-            layer=path[1] if len(path)>1 else 'Camada'
-            layer_caption.configure(text=layer if len(layer)<=18 else layer[:17]+'…')
-        self.territory_path.trace_add('write',show_territory)
+        self.layer_var=tk.StringVar();self.territory_path=tk.StringVar()
         search=ttk.Frame(self.explore);search.pack(fill='x')
         self.category_query=tk.StringVar()
         search_box=ttk.Frame(search,style='Input.TFrame',padding=(7,3));search_box.pack(fill='x',expand=True)
         search_entry=ttk.Entry(search_box,textvariable=self.category_query,style='Lunar.TEntry')
         magnifier=tk.Canvas(search_box,width=21,height=23,bg=ROW,highlightthickness=0)
+        self.search_icon=magnifier
         magnifier.pack(side='left',padx=(2,3))
         magnifier.create_oval(3,4,13,14,outline=MUTED);magnifier.create_line(12,13,17,18,fill=MUTED)
         magnifier.bind('<Button-1>',lambda e:search_entry.focus_set())
@@ -161,7 +154,32 @@ class CompactPanel:
         self.root.update_idletasks()
         self.native.panel(self.root.winfo_id())
         self.move_panel_to(x,y)
+        self.setup_panel_resize()
         if pref.get('collapsed'):self.toggle_panel(save=False)
+
+    def build_scope_controls(self,parent):
+        scope=ttk.Frame(parent);scope.pack(fill='x',pady=(0,2))
+        self.source_caption=tk.Label(scope,text='◎  Mapa  ⌄',bg=BG,fg=TEXT,font=('Segoe UI',9),anchor='w',pady=7,cursor='hand2',takefocus=1)
+        self.source_caption.pack(side='left',fill='x',expand=True)
+        self.source_caption.bind('<Button-1>',self.open_layers)
+        self.source_caption.bind('<Return>',self.open_layers)
+        Tooltip(self.source_caption,'Selecionar mapa do AppSample. A seleção permanece fixa ao viajar.')
+        layer_caption=tk.Label(scope,text='Superfície',bg=BG,fg=TEXT,font=('Segoe UI',8),cursor='hand2')
+        layer_caption.pack(side='right')
+        layer_caption.bind('<Button-1>',self.open_layers)
+        button=tk.Canvas(scope,width=30,height=30,bg=BG,highlightthickness=0,cursor='hand2');button.pack(side='right',padx=(8,0))
+        self.layer_button=button
+        for cy in (20,15,10):button.create_polygon(7,cy,15,cy-4,23,cy,15,cy+4,fill=BG,outline=GOLD)
+        button.bind('<Button-1>',self.open_layers)
+        button.configure(takefocus=1);button.bind('<Return>',self.open_layers);button.bind('<space>',self.open_layers)
+        Tooltip(button,'Escolher mapa e camada. A seleção permanece fixa ao viajar.')
+        def show_territory(*args):
+            path=self.territory_path.get().split(' · ',1)
+            name=path[0]
+            self.source_caption.configure(text='◎  '+(name if len(name)<=24 else name[:23]+'…')+'  ⌄')
+            layer=path[1] if len(path)>1 else 'Camada'
+            layer_caption.configure(text=layer if len(layer)<=18 else layer[:17]+'…')
+        self.territory_path.trace_add('write',show_territory);show_territory()
 
     def change_automark(self):
         self.settings['automark']=self.automark_var.get() and self.chest_signals.ready
@@ -189,6 +207,7 @@ class CompactPanel:
         c.create_line(3,14,8,9,14,7,20,9,25,14,20,19,14,21,8,19,3,14,fill=color,smooth=True,width=1.5)
         c.create_oval(11,11,17,17,fill=color,outline='')
         if not visible:c.create_line(5,24,24,5,fill=color,width=2)
+        if hasattr(c,'_icon_scale'):c.scale('all',0,0,c._icon_scale,c._icon_scale)
 
     def toggle_capture_visibility(self):
         value=not self.settings.get('capture_visible',False)
@@ -248,6 +267,7 @@ class CompactPanel:
         self.panel_detached=not self.panel_detached
         self.root.overrideredirect(not self.panel_detached)
         self.root.attributes('-topmost',not self.panel_detached)
+        self.update_panel_constraints()
         self.root.update_idletasks();self.native.panel(self.root.winfo_id())
         self.panel_mode_button.configure(text=self.panel_mode_label())
         self.panel_suspended=False
@@ -270,6 +290,8 @@ class CompactPanel:
             return
         self.panel_position();self.close_layers()
         self.panel_collapsed=not self.panel_collapsed
+        self._layout_busy=True
+        self.update_panel_constraints()
         if self.panel_collapsed:
             self.root.overrideredirect(True)
             self.root.attributes('-topmost',True)
@@ -287,6 +309,7 @@ class CompactPanel:
             self.root.deiconify();self.root.lift()
             if self.panel_detached:self.root.focus_force()
         self.root.update_idletasks();self.native.panel(self.root.winfo_id())
+        self._layout_busy=False
         self.panel_suspended=False
         if save:self.finish_panel_drag()
 

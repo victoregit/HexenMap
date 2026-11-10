@@ -189,17 +189,18 @@ class Session:
         hits.sort(key=lambda p:(math.hypot(p.x-x,p.y-y),p.item.id))
         return [p.item for p in hits]
 
-    def set_collected(self, identifier: str, collected: bool) -> bool:
+    def set_collected(self, identifier: str, collected: bool, *, map_scope=None) -> bool:
         self.collection_epoch+=1
         """Explicit marker menu action; map selection doesn't require proximity."""
-        if identifier not in {i.id for i in self.scoped_items()}:
+        item=self.item_by_id(identifier)
+        allowed=(item is not None and item.map_id==map_scope[0] and map_scope[1] in (item.layer_ids or (item.layer_id,))) if map_scope else identifier in {i.id for i in self.scoped_items()}
+        if not allowed:
             return False
         previous=self.is_collected(identifier)
         if previous==collected:
             return False
         record=self.progress.get_collection_record(identifier)
         if collected:
-            item=next(i for i in self.items if i.id==identifier)
             stamp=self.clock()
             if stamp.tzinfo is None: raise ValueError("Horário da coleta sem fuso")
             stamp=stamp.astimezone(timezone.utc)
@@ -263,9 +264,9 @@ class Session:
         self.notice = "Item marcado como coletado. Você pode desfazer."
         return True
 
-    def undo(self) -> bool:
+    def undo(self, *, map_scope=None) -> bool:
         self.collection_epoch+=1
-        scoped={i.id for i in self.scoped_items()}
+        scoped={i.id for i in self.items if i.map_id==map_scope[0] and map_scope[1] in (i.layer_ids or (i.layer_id,))} if map_scope else {i.id for i in self.scoped_items()}
         index=next((n for n in range(len(self.undo_ids)-1,-1,-1) if self.undo_ids[n] in scoped),None)
         if index is None:
             self.notice = "Nenhuma alteração deste recorte para desfazer."

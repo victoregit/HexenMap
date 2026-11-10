@@ -38,8 +38,14 @@ def apply_theme(root,scale=1.):
     signature=round(max(1.,float(scale)),2)
     if getattr(root,'_lunar_signature',None)==signature:return
     style=ttk.Style(root);style.theme_use('clam')
-    images=[];prefix='Lunar'+str(round(signature*100))
+    images=[];cache=getattr(root,'_lunar_asset_cache',{});root._lunar_asset_cache=cache
+    def create_element(name,*args,**kwargs):
+        if name not in style.element_names():style.element_create(name,*args,**kwargs)
+    prefix='Lunar'+str(round(signature*100))
     def asset(fill,outline=None,radius=CONTROL_RADIUS):
+        key=(signature,fill,outline,radius)
+        if key in cache:
+            photo,r=cache[key];images.append(photo);return photo,r
         r=round(radius*signature);ss=3
         # Tk tiles the center of image elements rather than stretching it.
         # A 3px center caused thousands of alpha blits on wide controls.
@@ -49,12 +55,12 @@ def apply_theme(root,scale=1.):
         draw.rounded_rectangle((ss,ss,(width-1)*ss,(height-1)*ss),radius=r*ss,
             fill=fill,outline=outline,width=ss if outline else 1)
         photo=ImageTk.PhotoImage(img.resize((width,height),Image.Resampling.LANCZOS),master=root)
-        images.append(photo);return photo,r+1
+        images.append(photo);cache[key]=(photo,r+1);return photo,r+1
     def element(name,fill,hover,pressed,outline=None):
         normal,border=asset(fill,outline);active,_=asset(hover,outline)
         down,_=asset(pressed,ACCENT);focus,_=asset(fill,ACCENT);disabled,_=asset(SURFACE,BORDER)
         key=prefix+name
-        style.element_create(key,'image',normal,('disabled',disabled),('pressed',down),('focus',focus),('active',active),border=border,padding=0,width=2*border+1,height=2*border+1,sticky='nsew')
+        create_element(key,'image',normal,('disabled',disabled),('pressed',down),('focus',focus),('active',active),border=border,padding=0,width=2*border+1,height=2*border+1,sticky='nsew')
         return key
     normal=element('Button',SURFACE,HOVER,SELECTED)
     primary=element('Primary',ACCENT,'#C8B6F5','#A28AD7')
@@ -65,20 +71,20 @@ def apply_theme(root,scale=1.):
     for name,key,foreground in [('TButton',normal,TEXT),('Primary.TButton',primary,ON_ACCENT),
                                 ('Quiet.TButton',quiet,MUTED),('Selected.TButton',selected,TEXT)]:
         style.layout(name,button_layout(key));style.configure(name,background=BG,foreground=foreground,
-            font=(FONT,9),padding=(round(10*signature),round(6*signature)),borderwidth=0,width=0)
+            font=(FONT,round(9*getattr(root,'_visual_scale',1.))),padding=(round(10*signature),round(6*signature)),borderwidth=0,width=0)
         style.map(name,foreground=[('disabled','#7D8093'),('active',foreground)],
                   background=[('disabled',BG),('active',BG),('pressed',BG),('focus',BG)])
     style.configure('Section.TButton',anchor='w')
     for name,key in [('Nav.TButton',normal),('Nav.Selected.TButton',selected)]:
         style.layout(name,button_layout(key))
-        style.configure(name,background=SURFACE,foreground=TEXT,font=(FONT,9),padding=(8,6),width=0)
+        style.configure(name,background=SURFACE,foreground=TEXT,font=(FONT,round(9*getattr(root,'_visual_scale',1.))),padding=(8,6),width=0)
         style.map(name,background=[('active',SURFACE),('focus',SURFACE),('pressed',SURFACE)])
     for name,key,foreground in [('Card.TButton',normal,TEXT),('Card.Primary.TButton',primary,ON_ACCENT),('Card.Quiet.TButton',quiet,MUTED)]:
-        style.layout(name,button_layout(key));style.configure(name,background=SURFACE,foreground=foreground,font=(FONT,9),padding=(10,6),width=0)
+        style.layout(name,button_layout(key));style.configure(name,background=SURFACE,foreground=foreground,font=(FONT,round(9*getattr(root,'_visual_scale',1.))),padding=(10,6),width=0)
         style.map(name,background=[('active',SURFACE),('focus',SURFACE),('pressed',SURFACE)],foreground=[('disabled',MUTED)])
     style.configure('TFrame',background=BG,bordercolor=BG,lightcolor=BG,darkcolor=BG)
-    style.configure('TLabel',background=BG,foreground=TEXT,font=(FONT,9))
-    style.configure('TCheckbutton',background=BG,foreground=TEXT,font=(FONT,9),padding=3)
+    style.configure('TLabel',background=BG,foreground=TEXT,font=(FONT,round(9*getattr(root,'_visual_scale',1.))))
+    style.configure('TCheckbutton',background=BG,foreground=TEXT,font=(FONT,round(9*getattr(root,'_visual_scale',1.))),padding=3)
     style.map('TCheckbutton',background=[('active',BG)],foreground=[('disabled',MUTED)])
     style.configure('TScrollbar',background=BORDER,troughcolor=BG,bordercolor=BG,lightcolor=BG,darkcolor=BG,arrowcolor=MUTED,borderwidth=0,arrowsize=10)
     style.configure('TSeparator',background=BORDER)
@@ -92,12 +98,12 @@ def apply_theme(root,scale=1.):
     style.layout('Compact.TNotebook.Tab',[])
     style.layout('Compact.TNotebook',[('Notebook.client',{'sticky':'nswe'})])
     card,r=asset(SURFACE,BORDER,SURFACE_RADIUS);cardkey=prefix+'Card'
-    style.element_create(cardkey,'image',card,border=r,padding=0,width=2*r+1,height=2*r+1,sticky='nsew')
+    create_element(cardkey,'image',card,border=r,padding=0,width=2*r+1,height=2*r+1,sticky='nsew')
     style.layout('Card.TFrame',[(cardkey,{'sticky':'nswe','children':[('Frame.padding',{'sticky':'nswe'})]})])
     style.configure('Card.TFrame',background=BG)
     field,r=asset(SURFACE,BORDER);fieldkey=prefix+'Field'
     focusedfield,_=asset(SURFACE,ACCENT)
-    style.element_create(fieldkey,'image',field,('focus',focusedfield),border=r,padding=0,width=2*r+1,height=2*r+1,sticky='nsew')
+    create_element(fieldkey,'image',field,('focus',focusedfield),border=r,padding=0,width=2*r+1,height=2*r+1,sticky='nsew')
     style.layout('Input.TFrame',[(fieldkey,{'sticky':'nswe','children':[('Frame.padding',{'sticky':'nswe'})]})])
     style.configure('Input.TFrame',background=BG)
     root.configure(bg=BG)

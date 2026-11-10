@@ -13,6 +13,7 @@ a=Analysis(
            (str(root/'data/assets/brand'),'data/assets/brand'),
            (str(root/'data/localization'),'data/localization'),
            (str(root/'data/import'),'data/import'),
+           (str(root/'data/world_map'),'data/world_map'),
            (str(extension_zip.parent/'HexenMapExporter'),'data/exporter')],
     hiddenimports=['PIL._tkinter_finder'],
     excludes=['src.legacy_app'],
