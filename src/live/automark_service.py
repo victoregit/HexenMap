@@ -8,8 +8,17 @@ from src.live.gameplay import GameplayGate
 from src.live.opening_recovery import OpeningRecovery,minimap_frame
 from src.live.motion import follow
 import numpy as np
+import cv2
 
 logger=logging.getLogger(__name__)
+
+
+def normalized_hud(frame,reference_height):
+    """Match HUD templates at their capture scale, not a few coarse factors."""
+    height,width=frame.shape[:2]
+    if height==reference_height:return frame
+    return cv2.resize(frame,(max(1,round(width*reference_height/height)),reference_height),
+                      interpolation=cv2.INTER_AREA if height>reference_height else cv2.INTER_CUBIC)
 
 
 class AutoMarkService:
@@ -49,6 +58,8 @@ class AutoMarkService:
         if key!=self.key:
             self.signals.reset();self.circle=None;self.key=key
             self.gameplay.reset();self.recovery.clear();self.continuity=None
+            logger.info('AutoMark context client=%sx%s reference=%sx%s generation=%s epoch=%s',
+                        rect.width,rect.height,*self.signals.reference_size,generation,epoch)
         self.idle_at=None
         obs=Observation('hidden',now,reason='Aguardando posição válida para AutoMark')
         anchor=None
@@ -65,8 +76,11 @@ class AutoMarkService:
         fraction=min(1.,max(.35,pack.gameplay_ui_roi[1]+pack.gameplay_ui_roi[3])+.01)
         frame=self.native.capture(rect,fraction)
         if frame is None:self.idle('capture_failed',now);return .125
-        hud=(template_visible(frame,pack.gameplay_ui,pack.gameplay_ui_roi)
-             or foreground_ui_visible(frame,pack.gameplay_ui,pack.gameplay_ui_roi))
+        # The installed HUD cues and the qualified chest pack share their
+        # capture resolution. Keep full-size pixels for minimap recovery.
+        hud_frame=normalized_hud(frame,self.signals.reference_size[1])
+        hud=(template_visible(hud_frame,pack.gameplay_ui,pack.gameplay_ui_roi)
+             or foreground_ui_visible(hud_frame,pack.gameplay_ui,pack.gameplay_ui_roi))
         if not hud and self.circle is not None and pointer_shape(frame,self.circle) is not None:
             hud=True
         if not hud and now-self.circle_checked>=1:
@@ -75,7 +89,7 @@ class AutoMarkService:
             if detected is not None:self.circle=steady_circle(detected,self.circle);hud=True
         if self.circle is None:
             self.circle=obs.circle if obs.surface=='minimap' and obs.fresh(now) else confirmed_circle(frame,None)
-        is_map=hasattr(pack,'map_ui') and template_visible(frame,pack.map_ui,pack.map_ui_roi)
+        is_map=hasattr(pack,'map_ui') and template_visible(hud_frame,pack.map_ui,pack.map_ui_roi)
         pointer=self.circle is not None and pointer_shape(frame,self.circle) is not None
         current_frame=minimap_frame(frame,self.circle,now)
         if (not pointer and (hud or 0<=now-self.gameplay.confirmed<=.35)
@@ -84,7 +98,11 @@ class AutoMarkService:
             if 0<now-previous.stamp<=.3 and previous.origin==current_frame.origin:
                 relative=Observation('minimap',previous.stamp,np.eye(2,3),.95,.2,previous.circle)
                 pointer=follow(previous.pixels,current_frame.pixels,relative,now) is not None
-        hud=self.gameplay.accept(now,map_open=is_map,hud=hud,pointer=pointer)
+        # Use the same current visual evidence as the main tracker. A positively
+        # recognized HUD must not be rejected solely because the player glyph
+        # is covered/faint during the chest animation. Position is still proven
+        # independently before any collection can be associated or saved.
+        hud=self.gameplay.accept(now,map_open=is_map,hud=hud,pointer=pointer or hud)
         if not hud:
             self.signals.reset();self.recovery.clear();self.report('not_gameplay',now);return .125
         reading=self.signals.capture_signals(self.native,rect)

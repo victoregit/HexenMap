@@ -69,6 +69,20 @@ class DisplayMotion:
         return replace(observation, world_to_screen=matrix)
 
 
+class TaggedCanvas:
+    """Tag primitives as they are created, without scanning every existing pin."""
+    def __init__(self,canvas,tag):self.canvas,self.tag=canvas,tag;self.created=[]
+    def __getattr__(self,name):
+        method=getattr(self.canvas,name)
+        if not name.startswith('create_'):return method
+        def create(*args,**kwargs):
+            item=method(*args,**kwargs)
+            self.canvas.addtag_withtag(self.tag,item)
+            self.created.append(item)
+            return item
+        return create
+
+
 class MarkerCanvas:
     """Retain each symbol's primitives and only move or replace changed symbols."""
     def __init__(self, canvas, draw):
@@ -79,10 +93,11 @@ class MarkerCanvas:
         if self.entries:self.canvas.delete('all')
         self.entries.clear()
 
-    def render(self, pins, collected):
+    def render(self, pins, collected, budget_ms=None):
+        started=time.perf_counter();drawn=[]
         visible = {p.item.id for p in pins}
         for identifier in self.entries.keys()-visible:
-            self.canvas.delete(self.entries.pop(identifier)[0])
+            self.canvas.delete(*self.entries.pop(identifier)[0])
         for pin in pins:
             identifier = pin.item.id
             geometry=getattr(pin,'geometry',None)
@@ -90,19 +105,24 @@ class MarkerCanvas:
             state = (pin.item.category, collected(identifier),geometry)
             old = self.entries.get(identifier)
             if old and old[3] == state:
-                if (x,y)!=(old[1],old[2]):self.canvas.move(old[0], x-old[1], y-old[2])
+                if (x,y)!=(old[1],old[2]):
+                    for primitive in old[0]:self.canvas.move(primitive,x-old[1],y-old[2])
                 self.entries[identifier] = (old[0], x,y, state)
+                drawn.append(pin)
                 continue
             if old:
-                self.canvas.delete(old[0])
+                self.canvas.delete(*old[0])
+                self.entries.pop(identifier,None)
+            if budget_ms is not None and (time.perf_counter()-started)*1000>=budget_ms:
+                continue
             tag = 'pin:'+identifier
-            before = set(self.canvas.find_all())
             options={'collected':state[1]}
             if geometry is not None:options['geometry']=geometry
-            self.draw(self.canvas, pin.item.category, x,y, **options)
-            for primitive in set(self.canvas.find_all())-before:
-                self.canvas.addtag_withtag(tag, primitive)
-            self.entries[identifier] = (tag, x,y, state)
+            target=TaggedCanvas(self.canvas,tag)
+            self.draw(target, pin.item.category, x,y, **options)
+            self.entries[identifier] = (tuple(target.created), x,y, state)
+            drawn.append(pin)
+        return drawn
 
 
 class DisplayTelemetry:

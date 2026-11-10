@@ -18,8 +18,9 @@ Explore **Genshin Impact** with pins on the minimap and the full-screen map, tra
 | **Chest AutoMark · Beta** | Combines opening and reward signals to record a nearby chest when the association is reliable. |
 | **AppSample progress import** | Reuses your collected items through a preview, merge, and backup workflow. |
 | **Organized resource catalog** | Groups resources into subcategories and supports aliases and accent-insensitive searches. Unidentified categories remain labeled as pending. |
-| **Location photos** | Shows AppSample community images in the item's card when available. |
-| **Independent panel** | Can be moved outside the game area and collapsed into an animated button. |
+| **Location photos** | Click a card photo to enlarge it, zoom, and drag the image. |
+| **Independent panel** | Move, resize using the window borders, or collapse it. Settings offer 125% and 150% text/control scaling. |
+| **Teyvat overview map** | The planet button opens a navigable surface map with shared item filters and progress. It uses installed local images; dense points form clickable groups. |
 
 The application uses external image recognition. It does not read game memory, inject code, or control the character. Recognition may lose alignment; pins are hidden while the position is recovered.
 
@@ -98,14 +99,13 @@ JavaScript extension tests also require Node.js in the development environment.
 
 ```powershell
 python -m pip install pyinstaller
-python scripts/build_exe.py --build-only
-python -m PyInstaller --noconfirm --distpath dist --workpath build/bridge HexenMapBridge.spec
+python scripts/build_release.py
 python scripts/package_exporter.py
 ```
 
-Outputs are written to `dist`: `HexenMap.exe`, `HexenMapBridge.exe`, the loadable `HexenMapExporter` folder, and its versioned ZIP. Load the generated folder; the extension source folder needs the packager to include the shared core.
+The current package is in `dist/atual`, with a versioned ZIP and folder. Extract the complete ZIP; do not move only the executable into an empty folder. Previous deliveries are in `dist/arquivo`. The standalone extension is in `dist/extensoes/<version>`. Load the generated folder; the extension source needs the packager to include the shared core.
 
-`scripts/package_portable.py` assembles a portable package from the executables and verified personal packs in the installation. It does not download or license missing data.
+`scripts/build_release.py` builds binaries in `build/release-staging` and calls `scripts/package_portable.py` to assemble the portable with verified personal packs. Personal progress is excluded. It does not download or license missing data, and does not silently overwrite an existing release.
 
 [Portuguese catalog review](docs/LOCALIZATION.md) · [Photo sources and cache](docs/MARKER_HINTS.md)
 

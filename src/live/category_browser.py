@@ -119,12 +119,13 @@ class CategoryBrowser(tk.Canvas):
     def __init__(self, parent, changed, **kwargs):
         super().__init__(parent,bg=BG,highlightthickness=0,yscrollincrement=36,**kwargs)
         self.ui_scale=getattr(self.winfo_toplevel(),'_lunar_signature',1.)
+        self.font_scale=getattr(self.winfo_toplevel(),'_visual_scale',1.)
         self.HEIGHT=round(36*self.ui_scale);self.configure(yscrollincrement=self.HEIGHT)
         self.changed=changed;self.model=None;self.rows=[];self.selected=set();self.counts={}
         self.collapsed=set(GROUP_ORDER)
         self.collapsed_subgroups=set(RESOURCE_SUBGROUPS)
         self.query='';self.paint_job=None;self.last_range=None
-        self.bind('<Configure>',lambda e:self.schedule_paint())
+        self.bind('<Configure>',lambda e:self.sync_scrollregion())
         self.bind('<Map>',lambda e:self.schedule_paint())
         self.bind('<MouseWheel>',lambda e:self.yview_scroll(-int(e.delta/120),'units'))
         self.bind('<Button-1>',self.click)
@@ -177,8 +178,18 @@ class CategoryBrowser(tk.Canvas):
                         chunk=tiles[offset:offset+4]
                         self.rows.extend((('tiles',chunk,None),('tile-tail',chunk,None)))
                     self.rows.extend(('entry',e,None) for e in entries if e not in tiles)
-        self.configure(scrollregion=(0,0,max(1,self.winfo_width()),max(1,len(self.rows)*self.HEIGHT)))
+        self.sync_scrollregion()
         if reset:self.yview_moveto(0)
+        self.schedule_paint()
+
+    def sync_scrollregion(self):
+        # Tk can snap a short region to a negative row when scrolling upward,
+        # leaving an empty strip above the first group. Always fill the viewport.
+        content=len(self.rows)*self.HEIGHT
+        viewport=max(1,self.winfo_height())
+        self.configure(scrollregion=(0,0,max(1,self.winfo_width()),max(viewport,content)))
+        if content<=viewport or self.canvasy(0)<0:
+            self.yview_moveto(0)
         self.schedule_paint()
 
     def schedule_paint(self):
@@ -206,9 +217,9 @@ class CategoryBrowser(tk.Canvas):
                         if not draw_category_art(self,entry.icon,center,y+22,size=round(30*self.ui_scale)):
                             draw_marker(self,entry.icon,center,y+22,scale=1.2)
                     else:draw_oculus(self,entry,center,y+22,size=round(30*self.ui_scale))
-                    self.create_text(center,y+44,text=CHEST_LABELS.get(entry.icon,entry.label),fill=TEXT,font=('Segoe UI',7 if entry.icon=='remarkable-chest' else 8))
+                    self.create_text(center,y+44,text=CHEST_LABELS.get(entry.icon,entry.label),fill=TEXT,font=('Segoe UI',max(6,round((7 if entry.icon=='remarkable-chest' else 8)*self.font_scale))))
                     count=self.counts.get(entry.key);counter=f'{count[0]:,} / {count[1]:,}'.replace(',','.') if count is not None else '—'
-                    self.create_text(center,y+59,text=counter,fill=GOLD if chosen else MUTED,font=('Segoe UI',8))
+                    self.create_text(center,y+59,text=counter,fill=GOLD if chosen else MUTED,font=('Segoe UI',max(6,round(8*self.font_scale))))
                     if chosen:self.create_text(right-7,y+10,text='✓',fill=GOLD,font=('Segoe UI',8,'bold'))
                 continue
             if kind in {'group','subgroup'}:
@@ -223,8 +234,8 @@ class CategoryBrowser(tk.Canvas):
                 active=sum(bool(e.members & self.selected) for e in entries)
                 label=GROUP_TITLES.get(value,value)
                 self.create_text(26+offset,y+18,text=label+(f' · {active}' if active else ''),
-                                 anchor='w',fill=TEXT,font=('Segoe UI',9,'bold' if kind=='group' else 'normal'))
-                self.create_text(width-53,y+18,text='Todos',fill=MUTED,font=('Segoe UI',8))
+                                 anchor='w',fill=TEXT,font=('Segoe UI',round(9*self.font_scale),'bold' if kind=='group' else 'normal'))
+                self.create_text(width-53,y+18,text='Todos',fill=MUTED,font=('Segoe UI',max(6,round(8*self.font_scale))))
                 self.create_text(width-14,y+18,text='×',fill=MUTED,font=('Segoe UI',12))
                 continue
             entry=value;chosen=bool(entry.members & self.selected)
@@ -235,16 +246,16 @@ class CategoryBrowser(tk.Canvas):
             # Ellipsis keeps counters in their own column; full label remains searchable.
             max_chars=max(12,int((width-126)/6.3))
             if len(label)>max_chars:label=label[:max_chars-1]+'…'
-            self.create_text(36,y+17,text=label,anchor='w',fill=TEXT,font=('Segoe UI',9))
+            self.create_text(36,y+17,text=label,anchor='w',fill=TEXT,font=('Segoe UI',round(9*self.font_scale)))
             count=self.counts.get(entry.key)
             counter=f'{count[0]}/{count[1]}' if count is not None else '—'
             self.create_text(width-34,y+17,text=counter,anchor='e',
-                             fill=MUTED,font=('Segoe UI',8))
+                             fill=MUTED,font=('Segoe UI',max(6,round(8*self.font_scale))))
             self.create_rectangle(width-23,y+11,width-11,y+23,fill=GOLD if chosen else BG,outline=GOLD if chosen else BORDER)
-            if chosen:self.create_text(width-17,y+17,text='✓',fill=BG,font=('Segoe UI',9,'bold'))
+            if chosen:self.create_text(width-17,y+17,text='✓',fill=BG,font=('Segoe UI',round(9*self.font_scale),'bold'))
 
         if not self.rows:
-            self.create_text(width/2,25,text='Carregando catálogo…' if self.model is None else 'Nenhum item encontrado',fill=MUTED,font=('Segoe UI',9))
+            self.create_text(width/2,25,text='Carregando catálogo…' if self.model is None else 'Nenhum item encontrado',fill=MUTED,font=('Segoe UI',round(9*self.font_scale)))
         if self.ui_scale!=1.:self.scale('all',0,0,self.ui_scale,self.ui_scale)
 
     def tooltip_text(self):

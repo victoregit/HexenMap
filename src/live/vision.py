@@ -130,12 +130,18 @@ class TerrainMatcher:
         return (matrix @ world, ratio, error)
 
 
-@lru_cache(maxsize=16)
-def template_variants(shape,dtype,raw):
+@lru_cache(maxsize=64)
+def template_variants(shape,dtype,raw,frame_size=None):
     template=np.frombuffer(raw,dtype=np.dtype(dtype)).reshape(shape)
     source=gray(template)
     silhouettes=[];grays=[]
-    for factor in (.65,.8,1.,1.25,1.5,2.):
+    factors=[.65,.8,1.,1.25,1.5,2.]
+    # Installed legacy HUD templates were captured at 1366x768. Include the
+    # exact client-height and width scale, including windowed 16:10 clients.
+    if frame_size:
+        w,h=frame_size
+        factors=[v for v in (h/768,w/1366) if .5<=v<=4.]+factors
+    for factor in dict.fromkeys(round(v,6) for v in factors):
         resized=cv2.resize(template,None,fx=factor,fy=factor)
         grays.append(cv2.resize(source,None,fx=factor,fy=factor))
         if template.ndim==3:
@@ -147,7 +153,7 @@ def template_visible(frame: np.ndarray, template: np.ndarray, roi: tuple) -> boo
     h,w=frame.shape[:2];x,y,rw,rh=roi
     crop=gray(frame[int(y*h):int((y+rh)*h),int(x*w):int((x+rw)*w)])
     if crop.size==0:return False
-    textured,variants,_=template_variants(template.shape,template.dtype.str,template.tobytes())
+    textured,variants,_=template_variants(template.shape,template.dtype.str,template.tobytes(),(w,h))
     if not textured:return False
     for t in variants:
         if t.shape[0]<=crop.shape[0] and t.shape[1]<=crop.shape[1]:
@@ -161,7 +167,7 @@ def foreground_ui_visible(frame: np.ndarray, template: np.ndarray, roi: tuple) -
     crop=frame[int(y*h):int((y+rh)*h),int(x*w):int((x+rw)*w)]
     if crop.size==0:return False
     crop=cv2.inRange(cv2.cvtColor(crop,cv2.COLOR_BGR2HSV),(0,0,205),(180,70,255))
-    _,_,variants=template_variants(template.shape,template.dtype.str,template.tobytes())
+    _,_,variants=template_variants(template.shape,template.dtype.str,template.tobytes(),(w,h))
     for t in variants:
         if t.shape[0]>crop.shape[0] or t.shape[1]>crop.shape[1]:continue
         fraction=cv2.countNonZero(t)/t.size
@@ -174,9 +180,17 @@ def detect_circle(frame: np.ndarray) -> tuple[float, float, float] | None:
     # The standard desktop HUD is anchored to client height. Validate its
     # native glyph now, rather than allowing a coastline Hough circle to
     # shrink the map. Other layouts retain visual circumference recovery.
-    if w/h>=1.7:
-        standard=(h*.154,h*.115,h*.10)
-        if pointer_shape(frame,standard) is not None:return standard
+    if w/h>=1.45:
+        candidates=[]
+        heights=((h,) if w/h>=1.7 else ())+(min(h,w*768/1366),)
+        for hud_height in dict.fromkeys(heights):
+            standard=(hud_height*.154,hud_height*.115,hud_height*.10)
+            shape=pointer_shape(frame,standard)
+            if shape is not None:
+                x,y,r=standard;margin=max(12,round(r*.27))
+                point=shape[1]+[max(0,round(x)-margin),max(0,round(y)-margin)]
+                candidates.append((math.hypot(point[0]-x,point[1]-y)/r,standard))
+        if candidates:return min(candidates,key=lambda pair:pair[0])[1]
     crop = gray(frame[:int(h*0.35), :int(w*0.28)])
     if crop.size == 0:
         return None

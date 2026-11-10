@@ -31,6 +31,7 @@ class MarkerMenu:
         self.photos=[]
         self.photo_index=0
         self.photo_image=None
+        self.photo_original=None;self.viewer=None;self.escape_consumed=False
         apply_theme(parent.winfo_toplevel(),getattr(parent.winfo_toplevel(),'_lunar_signature',1.))
         self.window=tk.Toplevel(parent)
         self.window.withdraw()
@@ -70,6 +71,8 @@ class MarkerMenu:
             self.photo_canvas=tk.Canvas(card,width=self.photo_size[0],height=self.photo_size[1],
                                         bg=BG,highlightthickness=0)
             self.photo_canvas.pack(pady=6)
+            self.photo_canvas.bind('<Button-1>',lambda event:self.open_photo())
+            Tooltip(self.photo_canvas,'Clique na foto para ampliar. Roda: zoom; arraste para navegar.')
             navigation=tk.Frame(card,bg=SURFACE);navigation.pack(fill='x',pady=(0,6))
             self.previous_photo=ttk.Button(navigation,text='◀ Anterior',style='Card.TButton',command=lambda:self._show_photo(-1),takefocus=False)
             self.previous_photo.pack(side='left')
@@ -136,6 +139,9 @@ class MarkerMenu:
             webbrowser.open(url)
 
     def _photo_message(self,text):
+        self.photo_original=None
+        if self.viewer:self.viewer.close()
+        self.photo_canvas.configure(cursor='')
         self.photo_image=None
         self.photo_canvas.delete('all')
         width,height=self.photo_size
@@ -207,6 +213,7 @@ class MarkerMenu:
             self._photo_message(result.message)
             return
         image=result.image.copy()
+        self.photo_original=result.image.copy();self.photo_canvas.configure(cursor='hand2')
         image.thumbnail(self.photo_size,Image.Resampling.LANCZOS)
         self.photo_image=ImageTk.PhotoImage(image,master=self.window)
         self.photo_canvas.delete('all')
@@ -214,13 +221,29 @@ class MarkerMenu:
         self.photo_canvas.create_image(width/2,height/2,image=self.photo_image)
 
     def contains(self,x,y):
+        if self.viewer and self.viewer.contains(x,y):return True
         left,top,right,bottom=self.bounds
         return left<=x<right and top<=y<bottom
 
     def destroy(self):
+        if self.viewer:self.viewer.close()
         self.hint_generation+=1
         self.photo_generation+=1
         if self.hint_job is not None:
             self.window.after_cancel(self.hint_job)
             self.hint_job=None
         self.window.destroy()
+
+    def open_photo(self):
+        if self.photo_original is None:return
+        if self.viewer:self.viewer.window.lift();return
+        from src.live.photo_viewer import PhotoViewer
+        def closed():self.viewer=None;self.escape_consumed=True
+        self.viewer=PhotoViewer(self.window.master,self.photo_original,closed)
+
+    def escape_key(self,down):
+        if not down:self.escape_consumed=False;return False
+        if self.escape_consumed:return False
+        if self.viewer:
+            self.escape_consumed=True;self.viewer.close();return False
+        return True

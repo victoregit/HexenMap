@@ -24,7 +24,17 @@ def parse_hotkey(value: str) -> tuple[int,int]:
 
 
 def install_dir() -> Path:
-    return Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[2]
+    if not getattr(sys,'frozen',False):return Path(__file__).resolve().parents[2]
+    directory=Path(sys.executable).parent
+    # A developer's dist executable is an update artifact, not a new portable
+    # installation. Resolve only this explicit repository layout; ordinary
+    # portable folders remain independent and never inherit another's progress.
+    repository=directory.parent
+    if (directory.name.casefold()=='dist' and (repository/'.git').exists()
+            and (repository/'HexenMap.spec').is_file()
+            and (repository/'userData/catalogs/appsample/SOURCE.json').is_file()):
+        return repository
+    return directory
 
 
 def bundle_dir() -> Path:
@@ -126,8 +136,9 @@ def read_settings(path: Path) -> dict:
         if isinstance(panel,dict):
             result["panel"]={"collapsed":panel.get("collapsed") is True,
                              "detached":panel.get('detached') is not False}
-            for key in ("x","y"):
+            for key in ("x","y","width","height"):
                 if isinstance(panel.get(key),int): result["panel"][key]=panel[key]
+            if 'scale' in panel:result['panel']['scale']=panel['scale'] if panel['scale'] in (100,125,150) else 100
         regional_data=data.get('regional',{})
         retired=(data.get('package') not in (None,'appsample') or 'last_kongying_package' in data
                  or (isinstance(regional_data,dict) and any(k!='appsample' for k in regional_data)))

@@ -33,6 +33,7 @@ from src.live.budget_vision import BudgetRecognizer
 from src.live.performance import PerformanceTelemetry
 from src.live.identity import WINDOW_TITLE
 from src.live.theme import BG, SURFACE, TEXT, ACCENT, ON_ACCENT, confirm_dialog, place_dialog
+from src.live.input_regions import InputRegions
 from src.live.automark import AutoMark,ChestSignals
 from src.live.automark_service import AutoMarkService
 from src.live.opening_recovery import minimap_frame
@@ -50,8 +51,10 @@ class DesktopApp(CompactPanel):
         if not self.native.acquire_instance():raise OverlayAlreadyRunning()
         self.user_dir=install_dir()/"userData"
         self.user_dir.mkdir(exist_ok=True)
+        from src.live.personal_state import prepare_state_interactive
+        self.state_dir=prepare_state_interactive(install_dir())
         self.marker_hints=HintService(self.user_dir/'cache/marker-hints')
-        self.settings_path=self.user_dir/"settings.json"
+        self.settings_path=self.state_dir/"settings.json"
         self.settings=read_settings(self.settings_path)
         self.native.set_capture_visible(self.settings.get('capture_visible',False))
         self.preference_writer=PreferenceWriter(self.settings_path)
@@ -73,7 +76,7 @@ class DesktopApp(CompactPanel):
         self.selection_epoch=0
         self.counts_at=0.0
         self.session=Session(items,
-                             ProgressManager(str(self.user_dir/"progress.json")))
+                             ProgressManager(str(self.state_dir/"progress.json")))
         self.automark=AutoMark()
         self.chest_signals=ChestSignals(self.user_dir/'automark')
         self.automark_generation=0;self.automark_snapshot=None
@@ -88,6 +91,7 @@ class DesktopApp(CompactPanel):
         self.reference_dir=reference_dir or self.user_dir/"references/appsample/as-map-2/surface"
         self.recognizer=None
         self.reference_error=""
+        self.capture_quality={}
         self.reference_lock=threading.Lock()
         self.reference_build_lock=threading.Lock()
         self.reference_released=threading.Event();self.reference_released.set()
@@ -99,6 +103,8 @@ class DesktopApp(CompactPanel):
         self.overlay_hwnd=None
         self.input_hwnd=None
         self.input_boxes=None
+        self.input_regions=InputRegions()
+        self.input_active=False;self.input_placement=None
         self.overlay_error=""
         self.geometry_key=None
         self.overlay_exclusions=None
@@ -242,6 +248,30 @@ class DesktopApp(CompactPanel):
         except (OSError,ValueError) as exc:
             messagebox.showerror('Pasta da extensão',f'Não foi possível preparar a extensão: {exc}',parent=self.root)
 
+    def open_world_map(self):
+        if getattr(self,'world_map',None):
+            self.world_map.window.deiconify();self.world_map.window.lift();return
+        from src.live.world_map import WorldMap
+        self.world_map=WorldMap(self)
+
+    def copy_diagnostics(self):
+        import json
+        from src.live.identity import VERSION
+        rect=self.native.game();obs=self.session.observation
+        report={'versao':VERSION,'janela_encontrada':rect.is_found,'area_cliente':[rect.width,rect.height],
+            'dpi':self.native.dpi_scale(rect.hwnd) if rect.hwnd else None,
+            'jogo_em_foco':self.native.foreground(rect),'tipos_selecionados':sorted(self.session.selected),
+            'overlay_oculto':self.session.hidden,'mapa':self.session.map_id,'camada':self.session.layer_id,
+            'localizacao':{'superficie':obs.surface,'motivo':obs.reason,'confianca':obs.confidence},
+            'referencias':self.reference_error or self.overlay_error or ('carregadas' if self.recognizer is not None else 'carregando'),
+            'ultimo_quadro_em_foco':self.capture_quality.copy(),
+            'automark':{'ativado':self.settings.get('automark',False),'referencias_prontas':self.chest_signals.ready,
+                        'estado':self.automark_service.status,'fase':self.chest_signals.state,
+                        'pontuacoes':self.chest_signals.scores.copy(),
+                        'altura_hud_detectada':self.chest_signals.detected_hud_height}}
+        self.root.clipboard_clear();self.root.clipboard_append(json.dumps(report,ensure_ascii=False,indent=2))
+        self.session.notice='Diagnóstico copiado. Cole no suporte; não contém imagens, conta ou credenciais.'
+
     def install_browser_connector(self):
         from src.live.browser_connector import register_connector
         try:
@@ -377,6 +407,8 @@ class DesktopApp(CompactPanel):
         self.settings.setdefault("regional",{})[self.package_id]={"categories":sorted(self.session.selected),"layer":self.layer_names[self.layer_var.get()]}
         x,y=self.panel_position()
         self.settings["panel"]={"collapsed":self.panel_collapsed,"detached":self.panel_detached,"x":x,"y":y}
+        self.settings['panel'].update(width=round(self.panel_normal_size[0]/self.ui_scale),
+            height=round(self.panel_normal_size[1]/self.ui_scale),scale=round(self.root._visual_scale*100))
         self.preference_writer.request(self.settings)
 
     def select_categories(self):
@@ -494,11 +526,13 @@ class DesktopApp(CompactPanel):
             self.control_down=control
             if changed:
                 logger.info("Overlay interaction Ctrl=%s",control)
+                if not control:
+                    self.input_regions.cancel();self.input_active=False;self.input_placement=None
             if self.menu_open:
                 down=self.native.key_down(0x01)
                 outside=(down and not self.menu_mouse_down and not self.marker_menu.contains(x,y))
                 self.menu_mouse_down=down
-                if outside or self.native.key_down(0x1b):
+                if outside or self.marker_menu.escape_key(self.native.key_down(0x1b)):
                     self.close_marker_menu()
             if not self.menu_open and self.input_hwnd:
                 rect=self.native.game();pointer_active=rect.is_found and self.native.foreground(rect)
@@ -517,6 +551,7 @@ class DesktopApp(CompactPanel):
         self.root.after(10 if self.control_down or self.menu_open or pointer_active else 80,self._poll_pointer)
 
     def close_marker_menu(self, event=None, restore_focus=True):
+        self.input_active=False;self.input_placement=None
         was_open=self.menu_open
         self.menu_open=False
         if self.marker_menu:
@@ -539,16 +574,24 @@ class DesktopApp(CompactPanel):
         if not self.control_down or not self.visible_pins or not self.session.observation.fresh(time.monotonic()):
             self.native.interactive(self.input_hwnd,False)
             self.native.hide(self.input_hwnd)
+            self.input_active=False;self.input_placement=None
             return
-        boxes=tuple(box for p in self.visible_pins
-                    for box in getattr(p,'geometry',LEGACY).rectangles(p.x,p.y))
-        if boxes!=self.input_boxes:
-            self.native.input_region(self.input_hwnd,list(boxes))
-            self.input_boxes=boxes
-        self.input_canvas.configure(width=rect.width,height=rect.height)
-        self.native.interactive(self.input_hwnd,True)
-        self.native.place(self.input_hwnd,rect)
-        self.input_canvas.configure(cursor="hand2")
+        placements=tuple((round(p.x),round(p.y),getattr(p,'geometry',LEGACY)) for p in self.visible_pins)
+        key=(self.rect_key(rect),self.selection_epoch,placements)
+        if key!=self.input_boxes:
+            raw=self.input_regions.get(key,placements,scope=key[:2])
+            if raw is None:
+                self.native.interactive(self.input_hwnd,False);self.native.hide(self.input_hwnd)
+                self.input_active=False;self.input_placement=None
+                return
+            if self.input_regions.ready_key!=self.input_boxes:
+                self.native.input_region_data(self.input_hwnd,raw)
+                self.input_boxes=self.input_regions.ready_key
+        placement=self.rect_key(rect)
+        if not self.input_active or self.input_placement!=placement:
+            self.input_canvas.configure(width=rect.width,height=rect.height,cursor='hand2')
+            self.native.interactive(self.input_hwnd,True);self.native.place(self.input_hwnd,rect)
+            self.input_active=True;self.input_placement=placement
 
     def change_marker_state(self, identifier, collected):
         try:
@@ -688,7 +731,7 @@ class DesktopApp(CompactPanel):
             with (self.user_dir/"live-session-v2.csv").open("a",newline="",encoding="utf-8") as log:
                 writer=csv.writer(log)
                 if log.tell()==0: writer.writerow(["monotonic_s","surface","latency_ms","confidence","p95_px","reason","region","map","layer","selection_epoch"])
-                last_log=-math.inf;last_log_state=None
+                last_log=-math.inf;last_log_state=None;last_capture_check=-math.inf
                 while not self.stop_event.is_set():
                     frame=None
                     started=time.monotonic(); rect=self.native.game()
@@ -733,6 +776,12 @@ class DesktopApp(CompactPanel):
                             logger.exception("Falha no reconhecimento")
                             obs=Observation("hidden",started,reason="Não foi possível reconhecer a tela")
                     elapsed=time.monotonic()-started
+                    if frame is not None and started-last_capture_check>=2:
+                        sample=frame[:max(1,round(frame.shape[0]*.35)):12,::12]
+                        self.capture_quality={'cliente':[rect.width,rect.height],
+                            'media':round(float(sample.mean()),2),'desvio':round(float(sample.std()),2),
+                            'uniforme':bool(float(sample.std())<1)}
+                        last_capture_check=started
                     self._publish((self.rect_key(rect),obs,epoch),frame)
                     current=epoch==self.selection_epoch
                     state=(obs.surface,obs.reason,epoch)
@@ -827,10 +876,15 @@ class DesktopApp(CompactPanel):
             now=time.monotonic()
             display=self.display_motion.present(self.session.observation,now)
             self.session.marker_dpi=self.native.dpi_scale(rect.hwnd) if rect.hwnd else 1.
-            pins=self.session.pins(rect.width,rect.height,now,include_collected=self.control_down,
+            pins=self.session.pins(rect.width,rect.height,now,include_collected=True,
                                    observation=display) if foreground and not self.overlay_error and not self.region_loading else []
             controls=self.control_rectangles(rect)
             pins=outside_controls(pins,controls)
+            if pins and not self.control_down:
+                placements=tuple((round(p.x),round(p.y),getattr(p,'geometry',LEGACY)) for p in pins)
+                self.input_regions.get((self.rect_key(rect),self.selection_epoch,placements),placements,
+                                       scope=(self.rect_key(rect),self.selection_epoch))
+                pins=[p for p in pins if not self.session.is_collected(p.item.id)]
             exclusion_key=(rect.width,rect.height,tuple(controls))
             if self.overlay_hwnd and rect.width>0 and rect.height>0 and exclusion_key!=self.overlay_exclusions:
                 self.native.exclude_controls(self.overlay_hwnd,rect.width,rect.height,controls)
@@ -842,7 +896,8 @@ class DesktopApp(CompactPanel):
                 self.native.place(self.overlay_hwnd,rect)
                 if getattr(self,'canvas_size',None)!=(rect.width,rect.height):
                     self.canvas.configure(width=rect.width,height=rect.height);self.canvas_size=(rect.width,rect.height)
-                self.renderer.render(pins,self.session.is_collected)
+                pins=self.renderer.render(pins,self.session.is_collected,budget_ms=6.)
+                self.visible_pins=pins
             elif self.overlay_hwnd:
                 self.native.hide(self.overlay_hwnd)
                 self.renderer.clear()
@@ -893,12 +948,16 @@ class DesktopApp(CompactPanel):
             self.candidates.pack_forget();self.confirm_button.pack_forget()
 
     def close(self):
+        transition=getattr(self,'_panel_transition',None)
+        if transition:transition.cancel();self._panel_transition=None
+        if getattr(self,'world_map',None):self.world_map.close()
         try: self.persist_settings()
         except OSError: logger.exception("Falha ao salvar painel")
         self.stop_event.set()
         self.catalog_loader.close()
         self.catalog_source.close()
         self.count_indices.close()
+        self.input_regions.close()
         if not self.preference_writer.close():logger.error('Preferências pendentes não puderam ser salvas ao encerrar')
         self.close_layers()
         self.close_marker_menu(restore_focus=False)

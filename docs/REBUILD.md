@@ -49,3 +49,13 @@ A revisão versionada confirma 717 das 757 categorias; 40 permanecem em Identifi
 ## Estabilidade em validação
 
 Não há mais bússola ou alvo de busca. Aberturas sem posição podem aguardar até três segundos para reconstrução geométrica do instante original, com recortes em memória limitados a 16 MiB. A posição posterior não autoriza uma coleta. [STABILITY.md](STABILITY.md) registra os contratos, os testes e os critérios ainda pendentes de aceite real.
+# Pendências de distribuição — registradas em 10/11/2026
+
+Implementação local autorizada em 10/11/2026. O instalador e o launcher estão prontos para teste; publicação no GitHub continua pendente. Detalhes em [UPDATES.md](UPDATES.md).
+
+- [x] **Launcher com atualização ao abrir:** consulta Releases públicas, compara versões, baixa automaticamente o Setup e verifica SHA-256 antes de instalar. Bloqueia atualização com overlay aberto e mantém a versão instalada disponível quando a consulta falha. Há recuperação local da versão anterior.
+- [x] **Build instalável para Windows:** instalador por usuário, atalho no menu Iniciar apontando para o launcher e registro em Aplicativos instalados. Arquivos existentes de `userData` não são sobrescritos, inclusive nas reinstalações, nem removidos na desinstalação.
+- [x] **Validação automatizada e teste real isolado:** instalação limpa, atalho, registro de desinstalação, upgrade, recuperação e preservação de coletas/preferências fictícias depois da desinstalação. Falhas de download e respostas GitHub são cobertas por testes.
+- [ ] **Aceite final:** conferir manualmente a busca do Windows e a experiência do launcher no PC de teste; validar o download ponta a ponta quando existir uma próxima Release publicada.
+
+Decisões adotadas: Inno Setup, instalação em `%LOCALAPPDATA%\Programs\Hexen Map`, dados locais em `userData`, canal conforme a versão instalada (beta ou estável) e atualização automática ao abrir, consultando `victoregit/HexenMap-Releases`. O launcher é uma abertura com animação giratória, sem botões: confere, atualiza quando necessário e abre o aplicativo; falha de consulta segue com a versão instalada. O conteúdo autorizado para a release pública ainda precisa de revisão.

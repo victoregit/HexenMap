@@ -1,0 +1,13 @@
+{
+  "map_id": "as-map-2",
+  "layer": "surface",
+  "coordinate_system": "appsample-webmercator-z14",
+  "dataset": "appsample-teyvat-v72",
+  "tile_size": 256,
+  "base_zoom": 12,
+  "bounds_base_tiles": [-8, -11, 7, 6],
+  "source": "https://game-cdn.appsample.com/gim/map-teyvat/v72-rc1",
+  "reference": "https://genshin-impact-map.appsample.com/help/embed/",
+  "checked_at": "2026-11-10",
+  "usage": "Existing personal local tiles only. Embed documentation is not a general redistribution license. No downloads at runtime; private test packages only."
+}

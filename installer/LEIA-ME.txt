@@ -1,0 +1,46 @@
+HEXEN MAP — INSTALAÇÃO E MARCAÇÕES
+
+Windows 10/11 de 64 bits. Abra Hexen Map pelo menu Iniciar.
+O launcher pede administrador, verifica atualizações e abre o aplicativo.
+
+IMPORTANTE: SEUS ITENS SALVOS
+
+A partir da versão 1.0.1, coletas e preferências ficam em:
+%LOCALAPPDATA%\HexenMap\state
+
+Essa pasta é separada do programa e não é removida pelo desinstalador.
+O arquivo progress.json contém suas coletas; settings.json guarda preferências.
+Faça uma cópia dessa pasta, com o overlay fechado, para um backup independente.
+Não há backup em nuvem. Arquivos apagados só podem ser recuperados se houver cópia.
+
+Se você usava uma versão anterior, não apague a userData antiga.
+O aplicativo procura saves em locais conhecidos e migra com backup.
+Se perguntar se você já usava o app, escolha Sim e selecione seu progress.json
+antigo ou um backup. Só escolha Não se quiser um perfil novo sem marcações.
+Se houver conflito, corrupção ou save ausente, a gravação é bloqueada para
+evitar substituir suas marcações por um perfil vazio.
+
+A pasta userData junto do executável continua contendo mapas, recursos e caches.
+Ela NÃO é a pasta principal das coletas a partir da 1.0.1.
+Para mudar de PC, leve a pasta pessoal state e os pacotes de recursos necessários.
+
+F8 abre/recolhe o painel. Ctrl+clique no marcador abre fotos e marca/desmarca.
+F9 confirma uma coleta próxima. F10 desfaz a última coleta da sessão.
+AutoMark continua beta e desligado por padrão. Confira suas marcações.
+
+Projeto independente, sem afiliação com HoYoverse ou AppSample.
+Dados e imagens de terceiros mantêm seus créditos e condições de uso.
+Créditos e licenças acompanham a pasta creditos.
+
+ENGLISH
+
+Starting with 1.0.1, saves and preferences live outside the app folder:
+%LOCALAPPDATA%\HexenMap\state
+
+Back up this folder while the overlay is closed. Updates and uninstallation
+do not delete it. There is no cloud backup. Keep the old userData when upgrading
+from an older build. If prompted, select your old progress.json or backup;
+only confirm a new profile if you want to start with no collected markers.
+The userData beside the executable now contains resources, not the main save.
+
+Download and support: https://github.com/victoregit/HexenMap-Releases

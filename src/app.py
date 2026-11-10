@@ -24,7 +24,8 @@ def main() -> int:
     if args.diagnose:
         try:
             catalogs=RegionalCatalog(bundle_dir()/"data/community",install_dir()/'userData/catalogs')
-            settings=read_settings(install_dir()/"userData/settings.json")
+            from src.live.personal_state import state_directory
+            settings=read_settings(state_directory()/"settings.json")
             package=settings.get('package',catalogs.default_package(install_dir()/'userData/references'))
             if not catalogs.accepts(package): package='appsample'
             items,region,space=catalogs.load(package)

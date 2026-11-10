@@ -1,0 +1,21 @@
+{
+  "approved_assets": {
+    "overlay": "electro-rift-spin-v3",
+    "launcher": "traveler-viator-transparent-v3"
+  },
+  "origin": {
+    "rift-master.png": "Textura criada com image_gen a partir do GIF fornecido pelo usuário.",
+    "electro-symbol-master.png": "Símbolo Electro separado do GIF fornecido pelo usuário.",
+    "traveler-hydro.png": "Captura da constelação Viator de Genshin Impact; referência aprovada pelo usuário."
+  },
+  "reference_urls": [
+    "https://gamewith.net/genshin-impact/article/show/29673",
+    "https://wiki.hoyolab.com/pc/genshin/entry/19?lang=en-us"
+  ],
+  "files": {
+    "electro-symbol-master.png": "a162febce76a94751dbe337481ae4a8ef02d55b1e2fab3aca7390bca5ad898de",
+    "rift-imagegen-prompt.txt": "03a4d4ec7ddf58f8f7a6ce83db897bceb248883bc72ec644a266acfa9253f176",
+    "rift-master.png": "1b32eb7c07d3bddda80cfd9de3ffdc6af95e3322162f097db0bc369d288ecf5b",
+    "traveler-hydro.png": "aae582acb8e8e9da4a0e9bcbde09270ac67dd75b517d1223c7bad25aa2e9cd5d"
+  }
+}

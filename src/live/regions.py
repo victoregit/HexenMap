@@ -42,7 +42,7 @@ class RegionalCatalog:
 
     def load_package(self,identifier):
         if identifier!='appsample':raise ValueError('A única fonte operacional é AppSample')
-        if not self.appsample_available:raise ValueError('Catálogo pessoal AppSample não instalado; nenhuma fonte alternativa será carregada')
+        if not self.appsample_available:raise ValueError('Catálogo AppSample não encontrado nesta pasta. Para uma instalação nova, extraia o ZIP portátil completo e execute HexenMap.exe dentro dele. Para atualizar, substitua apenas o executável na pasta da instalação anterior e mantenha userData, que contém suas coletas. Não apague seu progresso.')
         path=self.personal_root/'appsample'
         source=json.loads((path/'SOURCE.json').read_text(encoding='utf-8'))
         if source.get('coordinate_system')!=SPACE:raise ValueError('Sistema de coordenadas AppSample incompatível')

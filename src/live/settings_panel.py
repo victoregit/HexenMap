@@ -51,6 +51,14 @@ def build_settings(app, parent, *, bg, muted):
         state['button'].configure(text=('▾ ' if state['open'] else '▸ ')+title)
 
     appearance=section('Painel e compartilhamento')
+    app.panel_scale_var=tk.StringVar(value=str(app.settings.get('panel',{}).get('scale',100))+'%')
+    ttk.Label(appearance,text='Tamanho dos textos e controles').pack(anchor='w')
+    scale_box=ttk.Combobox(appearance,textvariable=app.panel_scale_var,values=['100%','125%','150%'],state='readonly',width=10)
+    scale_box.pack(fill='x',pady=3);scale_box.bind('<<ComboboxSelected>>',app.change_panel_scale)
+    ttk.Button(appearance,text='Restaurar tamanho padrão',command=app.reset_panel_size).pack(fill='x',pady=3)
+    note(appearance,'Puxe as bordas da janela para aumentar o painel. No modo fixado, use a alça no canto inferior direito. Tamanho e escala são salvos.')
+    ttk.Label(appearance,text='Mapa e camada do rastreamento').pack(anchor='w',pady=(6,0))
+    app.build_scope_controls(appearance)
     app.panel_mode_button=ttk.Button(appearance,text=app.panel_mode_label(),command=app.toggle_panel_mode)
     app.panel_mode_button.pack(fill='x',pady=3)
     note(appearance,'Janela independente: mova o painel para fora da área do jogo. Fixado ao jogo: acompanha o foco do Genshin.')
@@ -101,6 +109,7 @@ def build_settings(app, parent, *, bg, muted):
     note(shortcuts,'Funcionam com o jogo em foco. Ctrl + clique abre o cartão de coleta; segurar Ctrl revela os itens já pegos em cinza.')
 
     diagnostics=section('Diagnóstico · avançado')
+    ttk.Button(diagnostics,text='Copiar diagnóstico para suporte',command=app.copy_diagnostics).pack(fill='x',pady=3)
     note(diagnostics,'Use estas opções se os marcadores não reaparecerem após voltar ao jogo.')
     ttk.Button(diagnostics,text='Recarregar reconhecimento',command=app.reload_reference).pack(fill='x',pady=3)
     note(diagnostics,'Reinicia a localização visual sem alterar coletas ou filtros.')

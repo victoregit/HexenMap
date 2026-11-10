@@ -6,13 +6,14 @@ import json
 import logging
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageOps, ImageTk
+from PIL import Image, ImageDraw, ImageOps, ImageTk,ImageFilter
 
 from src.live.storage import bundle_dir, install_dir
 from src.live.image_cache import image_lru,cached_photo
 
 LOG=logging.getLogger(__name__)
 CHESTS=frozenset(('common-chest','exquisite-chest','precious-chest','luxurious-chest','remarkable-chest'))
+OCULI=frozenset(('anemoculus','geoculus','electroculus','dendroculus','hydroculus','pyroculus','lunoculus','cryoculus'))
 
 
 def chest_art(category):
@@ -48,6 +49,7 @@ class MarkerGeometry:
     # Nonempty rows mean an asymmetric artwork pin, anchored at its tip.
     rows: tuple=()
     size: tuple=()
+    visual_rows: tuple=()
 
     def bounds(self,x,y):
         x,y=round(x),round(y)
@@ -69,7 +71,7 @@ class MarkerGeometry:
         # Check actual opaque row endpoints, not the transparent square corners.
         x,y=round(x),round(y)
         return all((x+dx-cx)**2+(y+dy-cy)**2<=radius**2
-                   for a,c,b,d in self.rows for dx in (a,b-1) for dy in (c,d-1))
+                   for a,c,b,d in self.visual_rows or self.rows for dx in (a,b-1) for dy in (c,d-1))
 
 
 LEGACY=MarkerGeometry()
@@ -135,15 +137,33 @@ def map_art(category):
 def icon_geometry(category,size):
     image=pin_image(category,size,size)
     if image is None:return LEGACY
-    alpha=image.getchannel('A');left=top=-(size//2);rows=[]
-    for y in range(size):
+    left=top=-(size//2)
+    visual=alpha_rows(image,left,top)
+    if category in OCULI:image=icon_base(category,size,size)
+    rows=alpha_rows(image,left,top)
+    return MarkerGeometry(left,top,left+size,top+size,rows,(size,size),visual) if rows else LEGACY
+
+
+def alpha_rows(image,left,top):
+    alpha=image.getchannel('A');rows=[];width,height=image.size
+    for y in range(height):
         start=None
-        for x in range(size+1):
-            opaque=x<size and alpha.getpixel((x,y))>0
+        for x in range(width+1):
+            opaque=x<width and alpha.getpixel((x,y))>0
             if opaque and start is None:start=x
             if not opaque and start is not None:
                 rows.append((left+start,top+y,left+x,top+y+1));start=None
-    return MarkerGeometry(left,top,left+size,top+size,tuple(rows),(size,size)) if rows else LEGACY
+    return tuple(rows)
+
+
+def icon_base(category,width,height):
+    source=map_art(category)
+    if source is None:return None
+    margin=4 if category in OCULI else 0
+    icon=ImageOps.contain(source,(width-margin,height-margin),Image.Resampling.LANCZOS)
+    image=Image.new('RGBA',(width,height));image.alpha_composite(icon,((width-icon.width)//2,(height-icon.height)//2))
+    image.putalpha(image.getchannel('A').point(lambda a:255 if a>=128 else 0))
+    return image
 
 
 @image_lru(16*1024**2,1536)
@@ -156,10 +176,12 @@ def pin_image(category,width,height,collected=False):
         image.alpha_composite(icon,((width-icon.width)//2,(width-icon.height)//2))
         image.putalpha(pin_shell(width,height).getchannel('A'))
     else:
-        icon=ImageOps.contain(source,(width,height),Image.Resampling.LANCZOS)
-        image=Image.new('RGBA',(width,height))
-        image.alpha_composite(icon,((width-icon.width)//2,(height-icon.height)//2))
-        image.putalpha(image.getchannel('A').point(lambda a:255 if a>=128 else 0))
+        image=icon_base(category,width,height)
+        if category in OCULI:
+            alpha=image.getchannel('A');halo=Image.new('RGBA',image.size,'#55516C')
+            halo.putalpha(alpha.filter(ImageFilter.MaxFilter(5)))
+            edge=Image.new('RGBA',image.size,'#F0EDF7');edge.putalpha(alpha.filter(ImageFilter.MaxFilter(3)))
+            halo.alpha_composite(edge);halo.alpha_composite(image);image=halo
     if collected:
         alpha=image.getchannel('A')
         image=ImageOps.colorize(ImageOps.grayscale(image),'#18252e','#a6adb0').convert('RGBA')

@@ -31,6 +31,7 @@ MANIFEST
 *.spec
 !HexenMap.spec
 !HexenMapBridge.spec
+!HexenMapLauncher.spec
 *.exe
 
 # Installer logs
@@ -63,6 +64,7 @@ venv.bak/
 
 # User progress data (user saves should not be committed to repo)
 userData/
+state-dir.txt
 *.progress.json
 *.progress.json.bak
 *.progress.tmp
@@ -77,3 +79,6 @@ Desktop.ini
 backups/
 *.exe.new
 .test-deps/
+
+# Generated visual previews and packaged art; approved masters live in data/source/brand.
+/artifacts/

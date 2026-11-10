@@ -38,6 +38,7 @@ class ChestSignals:
         self.templates={};self.ready=False;self.reference_size=DESIGN_SIZE;self.anchors={}
         self.methods={};self.alternatives={};self.scores={};self.state='idle'
         self.hud_scale=1.
+        self.layout_size=None;self.detected_hud_height=None
         self.reason='Aguardando conferência de uma abertura real de baú.'
         self.phase=None;self.token=0;self.quiet=None;self.last_stamp=None
         self.opening_count=0;self.loot_seen=-math.inf;self.gem_seen=-math.inf;self.exp_seen=-math.inf
@@ -85,10 +86,10 @@ class ChestSignals:
         self.opening_count=0;self.loot_seen=-math.inf;self.gem_seen=-math.inf;self.exp_seen=-math.inf
         self.state='idle'
 
-    def region(self,role,roi,width,height):
+    def region(self,role,roi,width,height,hud_height=None):
         """Uniform HUD scaling, with side/center anchoring for wider displays."""
         rw,rh=self.reference_size
-        scale=height/rh
+        scale=(height if hud_height is None else hud_height)/rh
         anchor=self.anchors.get(role,'center' if role=='opening' else 'left')
         offset=(width-rw*scale)*{'left':0.,'center':.5,'right':1.}[anchor]
         x,y,w,h=roi
@@ -120,19 +121,30 @@ class ChestSignals:
         return self.score_crop(crop,template,height)>=threshold
 
     def read_signals(self,width,height,get_crop):
-        self.hud_scale=height/DESIGN_SIZE[1];self.scores={};result={};crops={}
+        if self.layout_size!=(width,height):
+            self.layout_size=(width,height);self.detected_hud_height=None
+        self.hud_scale=(self.detected_hud_height or height)/DESIGN_SIZE[1];self.scores={};result={};crops={}
+        heights=[self.detected_hud_height] if self.detected_hud_height else [height]
+        width_height=width*self.reference_size[1]/self.reference_size[0]
+        if self.detected_hud_height is None and width_height<height*.98:heights.append(width_height)
         for role,(template,roi,threshold) in self.templates.items():
             result[role]=False;self.scores[role]=0.
             entries=[(template,roi,threshold,self.methods.get(role,'grayscale')),*self.alternatives.get(role,[])]
             for template,roi,threshold,method in entries:
-                box=self.region(role,roi,width,height)
-                if box not in crops:
-                    crop=get_crop(box) if min(box[2:])>0 else None
-                    # A native capture slot may be reused by the next rectangle.
-                    crops[box]=crop.copy() if crop is not None else None
-                score=self.score_crop(crops[box],template,height,method)
+                scores=[]
+                for hud_height in heights:
+                    box=self.region(role,roi,width,height,hud_height)
+                    if box not in crops:
+                        crop=get_crop(box) if min(box[2:])>0 else None
+                        crops[box]=crop.copy() if crop is not None else None
+                    scores.append((self.score_crop(crops[box],template,hud_height,method),hud_height))
+                score,hud_height=max(scores)
                 self.scores[role]=max(self.scores[role],score)
-                if score>=threshold:result[role]=True;break
+                if score>=threshold:
+                    result[role]=True
+                    if role=='opening':
+                        self.detected_hud_height=hud_height;self.hud_scale=hud_height/DESIGN_SIZE[1]
+                    break
         return result
 
     def measure(self,frame):

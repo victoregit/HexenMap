@@ -218,6 +218,27 @@ class Windows:
         hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
         self.u.SetWindowPos(hwnd,None,x,y,0,0,0x01|0x04|0x10)
 
+    def panel_mask(self,child_hwnd,bounds=None):
+        """Clip our own live panel during collapse; None restores its full shape."""
+        hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
+        if bounds is None:
+            if not self.u.SetWindowRgn(hwnd,None,True):raise ct.WinError(ct.get_last_error())
+            return
+        region=self.g.CreateRectRgn(*map(round,bounds))
+        if not region:raise ct.WinError(ct.get_last_error())
+        try:
+            if not self.u.SetWindowRgn(hwnd,region,True):raise ct.WinError(ct.get_last_error())
+            region=None  # Ownership transfers to Windows after a successful call.
+        finally:
+            if region:self.g.DeleteObject(region)
+
+    def transition_panel(self,child_hwnd):
+        """The temporary visual never activates or adds a taskbar button."""
+        hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
+        ct.set_last_error(0)
+        self.set_style(hwnd,-20,self.get_style(hwnd,-20)|0x80|0x8000000)
+        if ct.get_last_error():raise ct.WinError(ct.get_last_error())
+
     def control_bounds(self, child_hwnd, occluder=None):
         hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
         if not self.u.IsWindowVisible(hwnd) or self.u.IsIconic(hwnd):return None
@@ -309,24 +330,11 @@ class Windows:
         except AttributeError:return 1.
 
     def input_region(self, hwnd: int, boxes: list[tuple[int,int,int,int]]) -> None:
-        # RGNDATA accepts a sorted, non-overlapping set of rectangles. Merge
-        # scanline spans in Python and transfer the entire mask in one GDI call.
-        rows={}
-        for left,top,right,bottom in boxes:
-            if right<=left:continue
-            for y in range(top,bottom):rows.setdefault(y,[]).append((left,right))
-        rectangles=[]
-        for y,spans in sorted(rows.items()):
-            end=None
-            for left,right in sorted(spans):
-                if end is None:start,end=left,right
-                elif left<=end:end=max(end,right)
-                else:rectangles.append((start,y,end,y+1));start,end=left,right
-            if end is not None:rectangles.append((start,y,end,y+1))
-        if rectangles:
-            data=np.asarray(rectangles,dtype=np.int32)
-            bounds=(int(data[:,0].min()),int(data[:,1].min()),int(data[:,2].max()),int(data[:,3].max()))
-            raw=struct.pack('<IIIIiiii',32,1,len(rectangles),data.nbytes,*bounds)+data.tobytes()
+        from src.live.input_regions import region_data
+        self.input_region_data(hwnd,region_data(boxes))
+
+    def input_region_data(self,hwnd,raw):
+        if raw:
             buffer=ct.create_string_buffer(raw)
             create=self.g.ExtCreateRegion
             create.argtypes=[ct.c_void_p,wt.DWORD,ct.c_void_p];create.restype=wt.HANDLE
