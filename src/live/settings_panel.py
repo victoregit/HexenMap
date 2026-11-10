@@ -50,6 +50,10 @@ def build_settings(app, parent, *, bg, muted):
         state=content.section_state;state['title']=title
         state['button'].configure(text=('▾ ' if state['open'] else '▸ ')+title)
 
+    if hasattr(app,'profile_store'):
+        from src.live.profile_controls import build_profile_controls
+        build_profile_controls(app,section('Perfis'),note)
+
     appearance=section('Painel e compartilhamento')
     app.panel_scale_var=tk.StringVar(value=str(app.settings.get('panel',{}).get('scale',100))+'%')
     ttk.Label(appearance,text='Tamanho dos textos e controles').pack(anchor='w')

@@ -54,19 +54,17 @@ Source: "{#PackageDir}\creditos\*"; DestDir: "{app}\creditos"; Flags: ignorevers
 Source: "{#PackageDir}\userData\*"; DestDir: "{app}\userData"; Flags: onlyifdoesntexist uninsneveruninstall recursesubdirs createallsubdirs
 Source: "Restore-Previous.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Restaurar versao anterior.cmd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Start-HexenMap.cmd"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{userprograms}\Hexen Map{#TestSuffix}"; Filename: "{app}\HexenMapLauncher.exe"; WorkingDir: "{app}"; IconFilename: "{app}\HexenMap.exe"; AppUserModelID: "HexenMap.Launcher{#TestSuffix}"
 Name: "{userdesktop}\Hexen Map{#TestSuffix}"; Filename: "{app}\HexenMapLauncher.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\HexenMapLauncher.exe"; Description: "Abrir Hexen Map"; Flags: nowait postinstall skipifsilent shellexec; Check: ShouldLaunch
-Filename: "{app}\HexenMapLauncher.exe"; Flags: nowait runascurrentuser; Check: IsUpdate
+Filename: "{cmd}"; Parameters: "/D /C .\Start-HexenMap.cmd"; WorkingDir: "{app}"; Description: "Abrir Hexen Map"; Flags: nowait postinstall skipifsilent runhidden; Check: ShouldLaunch
+Filename: "{cmd}"; Parameters: "/D /C .\Start-HexenMap.cmd"; WorkingDir: "{app}"; Flags: nowait runascurrentuser runhidden; Check: IsUpdate
 
 [Code]
-function SetChildEnvironment(Name, Value: String): Boolean;
-  external 'SetEnvironmentVariableW@kernel32.dll stdcall';
-
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var Owner: AnsiString;
 begin
@@ -112,10 +110,6 @@ begin
     end;
   end;
   if CurStep = ssPostInstall then begin
-    // The updater's onefile parent may already be gone when the new launcher
-    // starts. Create an independent, freshly extracted application instance.
-    if not SetChildEnvironment('PYINSTALLER_RESET_ENVIRONMENT', '1') then
-      RaiseException('Não foi possível preparar a inicialização independente do launcher.');
     SaveStringToFile(ExpandConstant('{app}\installed-version.txt'), '{#AppVersion}', False);
     if not FileExists(ExpandConstant('{app}\installed-user.txt')) then
       SaveStringToFile(ExpandConstant('{app}\installed-user.txt'), GetUserNameString, False);

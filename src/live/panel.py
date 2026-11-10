@@ -1,5 +1,6 @@
 """Compact exploration controls with user-supplied branding."""
 import tkinter as tk
+import webbrowser
 from tkinter import ttk
 
 from src.live.catalog import CATEGORIES, CATEGORY_GROUPS
@@ -7,6 +8,8 @@ from src.live.category_browser import CategoryBrowser, CategoryModel
 from src.live.identity import DISPLAY_NAME, VERSION
 from src.live.brand import AnimatedBadge, apply_app_icon, TRANSPARENT
 from src.live.support import report_problem
+from src.live.nation_map_button import NationMapButton
+from src.live.control_icons import draw_elemental_sight
 
 from src.live.theme import (BG, SURFACE as ROW, TEXT, ACCENT as GOLD, MUTED,
                             BORDER, ON_ACCENT, apply_theme, panel_size, place_dialog, Tooltip)
@@ -43,14 +46,13 @@ class CompactPanel(PanelLayout):
         apply_theme(self.root,self.ui_scale)
         self.shell=tk.Frame(self.root,bg=BG);self.shell.pack(fill='both',expand=True)
         header=tk.Frame(self.shell,bg=BG);header.pack(fill='x',padx=14,pady=(8,6))
-        emblem=tk.Canvas(header,width=25,height=38,bg=BG,highlightthickness=0)
-        self.brand_emblem=emblem
-        emblem.pack(side='left',padx=(0,8))
-        emblem.create_polygon(12,3,16,15,24,19,16,23,12,35,8,23,0,19,8,15,fill=GOLD,outline='')
         branding=tk.Frame(header,bg=BG);branding.pack(side='left')
         title=tk.Label(branding,text=DISPLAY_NAME,bg=BG,fg=TEXT,font=('Segoe UI',14,'bold'),anchor='w');title.pack(fill='x')
         subtitle=tk.Label(branding,text='Seu companheiro de exploração',bg=BG,fg=MUTED,font=('Segoe UI',8),anchor='w');subtitle.pack(fill='x')
-        for widget in (header,emblem,branding,title,subtitle):
+        self.profile_caption=subtitle
+        if hasattr(self,'profile_store'):
+            name=self.profile_store.name();subtitle.configure(text='Perfil: '+(name if len(name)<=24 else name[:23]+'…'))
+        for widget in (header,branding,title,subtitle):
             widget.bind('<Button-1>',self.start_panel_drag)
             widget.bind('<B1-Motion>',self.drag_panel)
             widget.bind('<ButtonRelease-1>',self.finish_panel_drag)
@@ -63,14 +65,8 @@ class CompactPanel(PanelLayout):
         self.capture_eye.bind('<space>',lambda e:self.toggle_capture_visibility())
         self.paint_capture_eye()
         Tooltip(self.capture_eye,'Mostrar ou ocultar o overlay no compartilhamento de tela.')
-        self.planet_button=tk.Canvas(header,width=28,height=28,bg=BG,highlightthickness=0,cursor='hand2',takefocus=1)
+        self.planet_button=NationMapButton(header,self.open_world_map,bg=BG)
         self.planet_button.pack(side='right',padx=2)
-        self.planet_button.create_oval(4,4,24,24,outline=GOLD,width=1.4)
-        self.planet_button.create_oval(10,4,18,24,outline=GOLD,width=1.1)
-        self.planet_button.create_line(4,14,24,14,fill=GOLD,width=1.1)
-        self.planet_button.bind('<Button-1>',lambda event:self.open_world_map())
-        self.planet_button.bind('<Return>',lambda event:self.open_world_map())
-        self.planet_button.bind('<space>',lambda event:self.open_world_map())
         Tooltip(self.planet_button,'Abrir mapa geral de Teyvat: arraste, aproxime e confira seus coletados.')
         self.tabs=ttk.Notebook(self.shell,style='Compact.TNotebook');self.tabs.pack(fill='both',expand=True,padx=14)
         self.explore=ttk.Frame(self.tabs);self.prefs=ttk.Frame(self.tabs)
@@ -134,8 +130,6 @@ class CompactPanel(PanelLayout):
         self.notice=tk.StringVar()
         notice_label=tk.Label(information,textvariable=self.notice,bg=BG,fg=GOLD,font=('Segoe UI',8),wraplength=325,anchor='w')
         footer=ttk.Frame(information);footer.pack(fill='x',pady=(7,0))
-        self.visibility_button=ttk.Button(footer,text='Ocultar ícones',style='Quiet.TButton',command=self.toggle_visibility);self.visibility_button.pack(side='left')
-        ttk.Button(footer,text='Desfazer',style='Quiet.TButton',command=self.panel_undo).pack(side='left')
         play=ttk.Button(footer,text='Jogar',style='Primary.TButton',width=7,command=self.collapse_to_game)
         play.pack(side='right');Tooltip(play,'Recolher o painel e devolver o foco ao Genshin.')
         bottom=tk.Frame(information,bg=BG);bottom.pack(fill='x',pady=(3,0))
@@ -143,11 +137,12 @@ class CompactPanel(PanelLayout):
                                      bg=BG,fg=GOLD,activebackground=BG,activeforeground=GOLD,
                                      relief='flat',borderwidth=0,font=('Segoe UI',8,'underline'),cursor='hand2',padx=0)
         self.report_button.pack(side='left')
-        self.support_button=tk.Button(bottom,text='Support us',state='disabled',
-                                      bg=BG,fg=MUTED,disabledforeground=MUTED,
-                                      relief='flat',borderwidth=0,font=('Segoe UI',8,'underline'),padx=0)
+        self.support_button=tk.Button(bottom,text='Buy Me a Coffee',
+                                      command=lambda:webbrowser.open('https://buymeacoffee.com/victorsilva'),
+                                      bg=BG,fg=GOLD,activebackground=BG,activeforeground=GOLD,
+                                      relief='flat',borderwidth=0,font=('Segoe UI',8,'underline'),cursor='hand2',padx=0)
         self.support_button.pack(side='left',padx=(12,0))
-        Tooltip(self.support_button,'Link de apoio em breve.')
+        Tooltip(self.support_button,'Apoiar o Hexen Map no Buy Me a Coffee.')
         self.version_label=tk.Label(bottom,text=f'v{VERSION}',bg=BG,fg=MUTED,
                                     font=('Segoe UI',8),anchor='e')
         self.version_label.pack(side='right')
@@ -218,10 +213,7 @@ class CompactPanel(PanelLayout):
     def paint_capture_eye(self):
         c=self.capture_eye;c.delete('all');visible=self.settings.get('capture_visible',False)
         color=GOLD if visible else MUTED
-        c.create_line(3,14,8,9,14,7,20,9,25,14,20,19,14,21,8,19,3,14,fill=color,smooth=True,width=1.5)
-        c.create_oval(11,11,17,17,fill=color,outline='')
-        if not visible:c.create_line(5,24,24,5,fill=color,width=2)
-        if hasattr(c,'_icon_scale'):c.scale('all',0,0,c._icon_scale,c._icon_scale)
+        draw_elemental_sight(c,color,BG,visible,getattr(c,'_icon_scale',1.))
 
     def toggle_capture_visibility(self):
         value=not self.settings.get('capture_visible',False)

@@ -10,6 +10,7 @@ from src.live.icons import draw_marker
 from src.live.labels import SOURCE_PT, INTERNAL, GROUP_ORDER, normalized, portuguese_label
 from src.live.oculus_art import ORDER,category_for,draw_oculus
 from src.live.category_art import draw_category_art
+from src.live.group_art import draw_group_art
 from src.live.localization import PENDING,RESOURCE_SUBGROUPS
 
 from src.live.theme import BG, SURFACE as ROW, TEXT, ACCENT as GOLD, MUTED, BORDER, SELECTED, rounded, Tooltip
@@ -227,13 +228,14 @@ class CategoryBrowser(tk.Canvas):
                 offset=0 if kind=='group' else 10
                 if kind=='group':
                     self.create_line(2,y,width-2,y,fill=BORDER)
-                    self.create_text(10,y+18,text=GROUP_SYMBOLS.get(value,'◇'),fill=MUTED,font=('Segoe UI Symbol',12))
+                    if not draw_group_art(self,value,12,y+18,size=round(22*self.ui_scale)):
+                        self.create_text(12,y+18,text=GROUP_SYMBOLS.get(value,'◇'),fill=MUTED,font=('Segoe UI Symbol',12))
                 elif value in collapsed and not self.query:
                     self.create_polygon(offset+8,y+14,offset+13,y+18,offset+8,y+22,fill=GOLD,outline='')
                 else:self.create_polygon(offset+7,y+15,offset+15,y+15,offset+11,y+21,fill=GOLD,outline='')
                 active=sum(bool(e.members & self.selected) for e in entries)
                 label=GROUP_TITLES.get(value,value)
-                self.create_text(26+offset,y+18,text=label+(f' · {active}' if active else ''),
+                self.create_text((29 if kind=='group' else 26)+offset,y+18,text=label+(f' · {active}' if active else ''),
                                  anchor='w',fill=TEXT,font=('Segoe UI',round(9*self.font_scale),'bold' if kind=='group' else 'normal'))
                 self.create_text(width-53,y+18,text='Todos',fill=MUTED,font=('Segoe UI',max(6,round(8*self.font_scale))))
                 self.create_text(width-14,y+18,text='×',fill=MUTED,font=('Segoe UI',12))

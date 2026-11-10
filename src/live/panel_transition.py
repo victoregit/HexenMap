@@ -1,5 +1,6 @@
 """Short non-blocking transition from the real panel into its approved rift badge."""
 from functools import lru_cache
+import math
 import time
 import tkinter as tk
 
@@ -24,6 +25,56 @@ def handoff_frame():
     return frames[index].copy()
 
 
+def sword_cut(size,center,panel_width,p):
+    """A tapered travelling blade opens into two Electro eyelids, then dissolves."""
+    power=ease(0,.045,p)*(1-ease(.40,.63,p))
+    layer=Image.new('RGBA',size)
+    if power<=0:return layer
+    width=panel_width*.97
+    reveal=ease(.015,.22,p)
+    opening=ease(.19,.43,p)*(1-ease(.43,.64,p))
+    # Small local surface: bloom never blurs a full window-sized image.
+    padding=14;local_width=math.ceil(width)+padding*2
+    local_height=max(100,math.ceil(width*.25+64))
+    glow=Image.new('RGBA',(local_width,local_height));core=Image.new('RGBA',glow.size)
+    aura=ImageDraw.Draw(glow);ink=ImageDraw.Draw(core)
+    def point(u,side=0):
+        x=padding+width*u
+        taper=math.sin(math.pi*u)**1.2
+        bend=side*18*opening*taper
+        return x,local_height/2-(u-.5)*width*.25+bend
+    steps=max(2,round(100*reveal))
+    for side in (-1,1):
+        for index in range(steps):
+            a=index/100;b=min(reveal,(index+1)/100)
+            if b<=a:continue
+            taper=math.sin(math.pi*(a+b)/2)**.65
+            alpha=round(255*power*taper)
+            points=[point(a,side),point(b,side)]
+            aura.line(points,fill=(111,44,255,alpha),width=max(1,round(8*taper)))
+            ink.line(points,fill=(177,113,255,alpha),width=max(1,round(3*taper)))
+            ink.line(points,fill=(249,239,255,alpha),width=1)
+    # The white blade head moves with the cut; there is no stationary flash.
+    if .015<p<.26:
+        x,y=point(reveal)
+        head=round(255*power*(1-ease(.21,.26,p)))
+        aura.ellipse((x-7,y-4,x+7,y+4),fill=(167,88,255,head))
+        ink.line([(x-10,y),(x+4,y)],fill=(255,248,255,head),width=2)
+    # A few anchored splinters read as a tear in space, rather than confetti.
+    for u,side,delay in ((.22,-1,.20),(.70,1,.24),(.82,-1,.27)):
+        energy=ease(delay,delay+.055,p)*(1-ease(delay+.10,delay+.23,p))
+        if energy<=0:continue
+        x,y=point(u,side);length=13*energy
+        branch=[(x,y),(x+4,y+side*length*.45),(x+2,y+side*length)]
+        aura.line(branch,fill=(133,62,255,round(200*energy)),width=3)
+        ink.line(branch,fill=(214,172,255,round(200*energy)),width=1)
+    bloom=glow.filter(ImageFilter.GaussianBlur(4.5))
+    bloom=Image.alpha_composite(bloom,glow.filter(ImageFilter.GaussianBlur(1.3)))
+    effect=Image.alpha_composite(bloom,core)
+    layer.alpha_composite(effect,(round(center[0]-local_width/2),round(center[1]-local_height/2)))
+    return layer
+
+
 def transition_frame(snapshot,poster,progress,size,source_origin,target_center,compact_size,source_size=None):
     """Draw one frame in overlay coordinates without touching live widgets."""
     p=max(0.,min(1.,progress))
@@ -42,19 +93,10 @@ def transition_frame(snapshot,poster,progress,size,source_origin,target_center,c
         opacity=1-ease(.51,.67,p)
         if opacity<1:body.putalpha(body.getchannel('A').point(lambda alpha:round(alpha*opacity)))
         canvas.alpha_composite(body,(round(start[0]-width/2),round(start[1]-height/2)))
-    # The sword cut crosses the panel before its upper/lower halves collapse.
-    cut_opacity=ease(0,.06,p)*(1-ease(.34,.65,p))
-    if cut_opacity>0:
-        light=Image.new('RGBA',size);draw=ImageDraw.Draw(light)
-        span=w*.95
-        end=-span/2+span*ease(0,.25,p)
-        def point(x):return center[0]+x,center[1]-x*.11
-        left=point(-span/2);right=point(end)
-        draw.line([left,right],fill=(133,62,255,round(220*cut_opacity)),width=7)
-        light=light.filter(ImageFilter.GaussianBlur(3.0))
-        draw=ImageDraw.Draw(light)
-        draw.line([left,right],fill=(235,213,255,round(255*cut_opacity)),width=2)
-        canvas=Image.alpha_composite(canvas,light)
+    # The blade is confined to the pre-collapse accent. The approved eye and
+    # final badge are composited below without altering their pixels or timing.
+    if 0<p<.64:
+        canvas=Image.alpha_composite(canvas,sword_cut(size,center,w,p))
     opacity=ease(.32,.62,p)
     if opacity>0:
         side=max(1,round(w+(compact_size-w)*shrink))
