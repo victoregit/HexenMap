@@ -24,7 +24,17 @@ def parse_hotkey(value: str) -> tuple[int,int]:
 
 
 def install_dir() -> Path:
-    return Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[2]
+    if not getattr(sys,'frozen',False):return Path(__file__).resolve().parents[2]
+    directory=Path(sys.executable).parent
+    # A developer's dist executable is an update artifact, not a new portable
+    # installation. Resolve only this explicit repository layout; ordinary
+    # portable folders remain independent and never inherit another's progress.
+    repository=directory.parent
+    if (directory.name.casefold()=='dist' and (repository/'.git').exists()
+            and (repository/'HexenMap.spec').is_file()
+            and (repository/'userData/catalogs/appsample/SOURCE.json').is_file()):
+        return repository
+    return directory
 
 
 def bundle_dir() -> Path:
