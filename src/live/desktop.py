@@ -33,6 +33,7 @@ from src.live.budget_vision import BudgetRecognizer
 from src.live.performance import PerformanceTelemetry
 from src.live.identity import WINDOW_TITLE
 from src.live.theme import BG, SURFACE, TEXT, ACCENT, ON_ACCENT, confirm_dialog, place_dialog
+from src.live.input_regions import InputRegions
 from src.live.automark import AutoMark,ChestSignals
 from src.live.automark_service import AutoMarkService
 from src.live.opening_recovery import minimap_frame
@@ -99,6 +100,8 @@ class DesktopApp(CompactPanel):
         self.overlay_hwnd=None
         self.input_hwnd=None
         self.input_boxes=None
+        self.input_regions=InputRegions()
+        self.input_active=False;self.input_placement=None
         self.overlay_error=""
         self.geometry_key=None
         self.overlay_exclusions=None
@@ -494,6 +497,8 @@ class DesktopApp(CompactPanel):
             self.control_down=control
             if changed:
                 logger.info("Overlay interaction Ctrl=%s",control)
+                if not control:
+                    self.input_regions.cancel();self.input_active=False;self.input_placement=None
             if self.menu_open:
                 down=self.native.key_down(0x01)
                 outside=(down and not self.menu_mouse_down and not self.marker_menu.contains(x,y))
@@ -517,6 +522,7 @@ class DesktopApp(CompactPanel):
         self.root.after(10 if self.control_down or self.menu_open or pointer_active else 80,self._poll_pointer)
 
     def close_marker_menu(self, event=None, restore_focus=True):
+        self.input_active=False;self.input_placement=None
         was_open=self.menu_open
         self.menu_open=False
         if self.marker_menu:
@@ -539,16 +545,24 @@ class DesktopApp(CompactPanel):
         if not self.control_down or not self.visible_pins or not self.session.observation.fresh(time.monotonic()):
             self.native.interactive(self.input_hwnd,False)
             self.native.hide(self.input_hwnd)
+            self.input_active=False;self.input_placement=None
             return
-        boxes=tuple(box for p in self.visible_pins
-                    for box in getattr(p,'geometry',LEGACY).rectangles(p.x,p.y))
-        if boxes!=self.input_boxes:
-            self.native.input_region(self.input_hwnd,list(boxes))
-            self.input_boxes=boxes
-        self.input_canvas.configure(width=rect.width,height=rect.height)
-        self.native.interactive(self.input_hwnd,True)
-        self.native.place(self.input_hwnd,rect)
-        self.input_canvas.configure(cursor="hand2")
+        placements=tuple((round(p.x),round(p.y),getattr(p,'geometry',LEGACY)) for p in self.visible_pins)
+        key=(self.rect_key(rect),self.selection_epoch,placements)
+        if key!=self.input_boxes:
+            raw=self.input_regions.get(key,placements,scope=key[:2])
+            if raw is None:
+                self.native.interactive(self.input_hwnd,False);self.native.hide(self.input_hwnd)
+                self.input_active=False;self.input_placement=None
+                return
+            if self.input_regions.ready_key!=self.input_boxes:
+                self.native.input_region_data(self.input_hwnd,raw)
+                self.input_boxes=self.input_regions.ready_key
+        placement=self.rect_key(rect)
+        if not self.input_active or self.input_placement!=placement:
+            self.input_canvas.configure(width=rect.width,height=rect.height,cursor='hand2')
+            self.native.interactive(self.input_hwnd,True);self.native.place(self.input_hwnd,rect)
+            self.input_active=True;self.input_placement=placement
 
     def change_marker_state(self, identifier, collected):
         try:
@@ -827,10 +841,15 @@ class DesktopApp(CompactPanel):
             now=time.monotonic()
             display=self.display_motion.present(self.session.observation,now)
             self.session.marker_dpi=self.native.dpi_scale(rect.hwnd) if rect.hwnd else 1.
-            pins=self.session.pins(rect.width,rect.height,now,include_collected=self.control_down,
+            pins=self.session.pins(rect.width,rect.height,now,include_collected=True,
                                    observation=display) if foreground and not self.overlay_error and not self.region_loading else []
             controls=self.control_rectangles(rect)
             pins=outside_controls(pins,controls)
+            if pins and not self.control_down:
+                placements=tuple((round(p.x),round(p.y),getattr(p,'geometry',LEGACY)) for p in pins)
+                self.input_regions.get((self.rect_key(rect),self.selection_epoch,placements),placements,
+                                       scope=(self.rect_key(rect),self.selection_epoch))
+                pins=[p for p in pins if not self.session.is_collected(p.item.id)]
             exclusion_key=(rect.width,rect.height,tuple(controls))
             if self.overlay_hwnd and rect.width>0 and rect.height>0 and exclusion_key!=self.overlay_exclusions:
                 self.native.exclude_controls(self.overlay_hwnd,rect.width,rect.height,controls)
@@ -842,7 +861,8 @@ class DesktopApp(CompactPanel):
                 self.native.place(self.overlay_hwnd,rect)
                 if getattr(self,'canvas_size',None)!=(rect.width,rect.height):
                     self.canvas.configure(width=rect.width,height=rect.height);self.canvas_size=(rect.width,rect.height)
-                self.renderer.render(pins,self.session.is_collected)
+                pins=self.renderer.render(pins,self.session.is_collected,budget_ms=6.)
+                self.visible_pins=pins
             elif self.overlay_hwnd:
                 self.native.hide(self.overlay_hwnd)
                 self.renderer.clear()
@@ -899,6 +919,7 @@ class DesktopApp(CompactPanel):
         self.catalog_loader.close()
         self.catalog_source.close()
         self.count_indices.close()
+        self.input_regions.close()
         if not self.preference_writer.close():logger.error('Preferências pendentes não puderam ser salvas ao encerrar')
         self.close_layers()
         self.close_marker_menu(restore_focus=False)

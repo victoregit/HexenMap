@@ -79,12 +79,13 @@ def test_surface_change_rebuilds_pin_but_motion_reuses_it(artwork):
     class Canvas:
         def __init__(self):self.items={};self.n=0;self.moves=[]
         def find_all(self):return tuple(self.items)
+        def create_image(self,*args,**kwargs):self.n+=1;self.items[self.n]=None;return self.n
         def addtag_withtag(self,tag,i):self.items[i]=tag
-        def delete(self,tag):self.items={i:t for i,t in self.items.items() if t!=tag}
+        def delete(self,tag):self.items={i:t for i,t in self.items.items() if t!=tag and i!=tag}
         def move(self,*args):self.moves.append(args)
     canvas=Canvas();draws=[]
-    def draw(*args,**kwargs):
-        canvas.n+=1;canvas.items[canvas.n]=None;draws.append(kwargs)
+    def draw(target,*args,**kwargs):
+        target.create_image(0,0);draws.append(kwargs)
     renderer=MarkerCanvas(canvas,draw)
     pin=SimpleNamespace(item=SimpleNamespace(id='chest',category='common-chest'),x=100.4,y=100.4,
                         geometry=art.marker_geometry('common-chest','minimap'))

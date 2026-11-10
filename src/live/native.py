@@ -309,24 +309,11 @@ class Windows:
         except AttributeError:return 1.
 
     def input_region(self, hwnd: int, boxes: list[tuple[int,int,int,int]]) -> None:
-        # RGNDATA accepts a sorted, non-overlapping set of rectangles. Merge
-        # scanline spans in Python and transfer the entire mask in one GDI call.
-        rows={}
-        for left,top,right,bottom in boxes:
-            if right<=left:continue
-            for y in range(top,bottom):rows.setdefault(y,[]).append((left,right))
-        rectangles=[]
-        for y,spans in sorted(rows.items()):
-            end=None
-            for left,right in sorted(spans):
-                if end is None:start,end=left,right
-                elif left<=end:end=max(end,right)
-                else:rectangles.append((start,y,end,y+1));start,end=left,right
-            if end is not None:rectangles.append((start,y,end,y+1))
-        if rectangles:
-            data=np.asarray(rectangles,dtype=np.int32)
-            bounds=(int(data[:,0].min()),int(data[:,1].min()),int(data[:,2].max()),int(data[:,3].max()))
-            raw=struct.pack('<IIIIiiii',32,1,len(rectangles),data.nbytes,*bounds)+data.tobytes()
+        from src.live.input_regions import region_data
+        self.input_region_data(hwnd,region_data(boxes))
+
+    def input_region_data(self,hwnd,raw):
+        if raw:
             buffer=ct.create_string_buffer(raw)
             create=self.g.ExtCreateRegion
             create.argtypes=[ct.c_void_p,wt.DWORD,ct.c_void_p];create.restype=wt.HANDLE

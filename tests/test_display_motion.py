@@ -92,13 +92,15 @@ def test_canvas_retains_primitives_until_state_or_membership_changes():
     class Canvas:
         def __init__(self): self.items={};self.moves=[];self.deleted=[];self.n=0
         def find_all(self): return list(self.items)
+        def create_image(self,*args,**kwargs):self.n+=1;self.items[self.n]=None;return self.n
         def addtag_withtag(self,tag,i): self.items[i]=tag
         def move(self,*args): self.moves.append(args)
         def delete(self,tag):
             self.deleted.append(tag)
+            self.items.pop(tag,None)
             self.items={i:t for i,t in self.items.items() if t!=tag and tag!='all'}
     canvas=Canvas()
-    def draw(*args,**kwargs): canvas.n+=1;canvas.items[canvas.n]=None
+    def draw(target,*args,**kwargs):target.create_image(0,0)
     renderer=MarkerCanvas(canvas,draw)
     pin=SimpleNamespace(item=SimpleNamespace(id='a',category='common-chest'),x=100,y=100)
     renderer.render([pin],lambda i:False)
