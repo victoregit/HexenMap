@@ -16,8 +16,9 @@ Explore o **Genshin Impact** com pins sobre o minimapa e o mapa M, acompanhe sua
 | **AutoMark de baús · Beta** | Combina sinais de abertura e recompensas para registrar um baú próximo quando a associação é confiável. |
 | **Importação do AppSample** | Aproveita seus coletados com prévia, mesclagem e backup, sem precisar marcar tudo novamente. |
 | **Catálogo em português** | Organiza recursos em subgrupos e permite buscar por nomes, aliases e texto sem acentos. Categorias ainda não identificadas ficam sinalizadas. |
-| **Fotos dos pontos** | Exibe imagens da comunidade AppSample no cartão do item, quando disponíveis. |
-| **Painel independente** | Pode ser movido, recolhido em um botão animado e mantido fora da área do jogo. |
+| **Fotos dos pontos** | Clique na foto do cartão para ampliar, usar zoom e arrastar a imagem. |
+| **Painel independente** | Pode ser movido, redimensionado pelas bordas e recolhido. Em Ajustes, aumente textos e controles para 125% ou 150%. |
+| **Mapa geral de Teyvat** | O planetinha abre uma janela navegável da superfície, com zoom, filtros e coletas compartilhados. Usa imagens locais instaladas; muitos pontos próximos formam grupos clicáveis. |
 
 O aplicativo usa reconhecimento de imagem externo. Não lê memória do jogo, não injeta código e não controla o personagem. O reconhecimento pode perder o alinhamento; nessas situações, os pins são ocultados enquanto a posição é recuperada.
 
@@ -96,14 +97,13 @@ Os testes JavaScript da extensão também precisam de Node.js no ambiente de des
 
 ```powershell
 python -m pip install pyinstaller
-python scripts/build_exe.py --build-only
-python -m PyInstaller --noconfirm --distpath dist --workpath build/bridge HexenMapBridge.spec
+python scripts/build_release.py
 python scripts/package_exporter.py
 ```
 
-As saídas ficam em `dist`: `HexenMap.exe`, `HexenMapBridge.exe`, a pasta carregável `HexenMapExporter` e seu ZIP versionado. Carregue a pasta gerada; a pasta-fonte da extensão depende do empacotador para incluir o núcleo compartilhado.
+O pacote atual fica em `dist/atual`, com versão no nome do ZIP e da pasta. Extraia o ZIP completo; não mova só o executável para uma pasta vazia. Entregas anteriores ficam em `dist/arquivo`. A extensão separada fica em `dist/extensoes/<versão>`. Carregue a pasta gerada; a pasta-fonte depende do empacotador para incluir o núcleo compartilhado.
 
-`scripts/package_portable.py` monta o pacote portátil usando os executáveis e os pacotes pessoais conferidos da instalação. Não baixa nem licencia dados ausentes.
+`scripts/build_release.py` gera os executáveis em `build/release-staging` e chama `scripts/package_portable.py` para montar o portátil com os pacotes pessoais conferidos. Não inclui progresso pessoal, não baixa nem licencia dados ausentes. Uma versão já entregue não é sobrescrita silenciosamente.
 
 [Catálogo em português](docs/LOCALIZATION.md) · [Origem e cache das fotos](docs/MARKER_HINTS.md)
 

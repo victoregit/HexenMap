@@ -9,7 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 FILES = ('manifest.json', 'capture.js', 'bridge.js', 'popup.html', 'popup.css', 'popup.js')
 
 def package(output=None):
-    output = Path(output or ROOT / 'dist')
+    version = json.loads((ROOT/'extensions/hexen-map-exporter/manifest.json').read_text(encoding='utf-8-sig'))['version']
+    output = Path(output or ROOT / 'dist/extensoes' / version)
     output.mkdir(parents=True, exist_ok=True)
     folder = output / 'HexenMapExporter'
     folder.mkdir(exist_ok=True)
