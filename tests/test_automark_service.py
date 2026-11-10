@@ -9,6 +9,20 @@ from src.live.automark_service import AutoMarkService
 from src.live.vision import Observation
 
 
+@pytest.mark.parametrize('size',[(1366,768),(1920,1080),(2560,1440)])
+def test_gameplay_cue_is_compared_at_qualified_capture_scale(size):
+    import cv2
+    from src.live.automark_service import normalized_hud
+    from src.live.vision import template_visible
+    base=np.full((768,1366,3),30,np.uint8)
+    cv2.putText(base,'HUD',(12,55),cv2.FONT_HERSHEY_SIMPLEX,1.,(255,255,255),2,cv2.LINE_AA)
+    template=base[25:65,5:100].copy()
+    frame=cv2.resize(base,size,interpolation=cv2.INTER_CUBIC)
+    hud=normalized_hud(frame,768)
+    assert hud.shape[0]==768
+    assert template_visible(hud,template,(0,0,.12,.15))
+
+
 def service(tmp_path,monkeypatch):
     import src.live.automark_service as module
     clock=[10.];snapshot=[None];enabled=[True];epoch=[1];focused=[True];output=[]
@@ -60,6 +74,24 @@ def test_disabled_worker_allocates_no_capture_and_focus_loss_cancels_sequence(tm
     focused[0]=False;tick(10.375,{})
     focused[0]=True;tick(10.5,{'loot':True,'adventure_exp':True})
     assert not events
+
+
+def test_positive_current_hud_survives_missing_player_glyph_during_opening(tmp_path,monkeypatch):
+    worker,signals,tick,events,*_=service(tmp_path,monkeypatch)
+    monkeypatch.setattr('src.live.automark_service.pointer_shape',lambda *a:None)
+    tick(10,{'opening':True});tick(10.125,{'opening':True})
+    tick(10.25,{'loot':True,'adventure_exp':True})
+    assert len(events)==1
+
+
+def test_missing_hud_and_pointer_never_qualify_chest_even_with_old_position(tmp_path,monkeypatch):
+    worker,signals,tick,events,*_=service(tmp_path,monkeypatch)
+    monkeypatch.setattr('src.live.automark_service.pointer_shape',lambda *a:None)
+    monkeypatch.setattr('src.live.automark_service.confirmed_circle',lambda *a:None)
+    monkeypatch.setattr('src.live.automark_service.template_visible',lambda *a:False)
+    monkeypatch.setattr('src.live.automark_service.foreground_ui_visible',lambda *a:False)
+    tick(10,{'opening':True});tick(10.125,{'opening':True});tick(10.25,{'loot':True,'adventure_exp':True})
+    assert not events and signals.phase is None
 
 
 @pytest.mark.parametrize('changed_scope',[False,True])
