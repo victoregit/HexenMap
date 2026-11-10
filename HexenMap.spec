@@ -10,6 +10,8 @@ a=Analysis(
     [str(root/'src/app.py')],pathex=[str(root)],binaries=[],
     datas=[(str(root/'data/assets/chests'),'data/assets/chests'),
            (str(root/'data/assets/oculi'),'data/assets/oculi'),
+           (str(root/'data/assets/groups'),'data/assets/groups'),
+           (str(root/'data/assets/nations'),'data/assets/nations'),
            (str(root/'data/assets/brand'),'data/assets/brand'),
            (str(root/'data/localization'),'data/localization'),
            (str(root/'data/import'),'data/import'),

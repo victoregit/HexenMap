@@ -40,9 +40,15 @@ def test_app_gets_independent_bootloader_environment_without_mutating_launcher(t
 
 
 def test_installer_resets_inherited_bootloader_before_restarting_launcher():
-    script=(Path(__file__).resolve().parents[1]/'installer/HexenMap.iss').read_text(encoding='utf-8')
-    post=script.split('if CurStep = ssPostInstall then begin',1)[1]
-    assert "SetChildEnvironment('PYINSTALLER_RESET_ENVIRONMENT', '1')" in post
+    folder=Path(__file__).resolve().parents[1]/'installer'
+    script=(folder/'HexenMap.iss').read_text(encoding='utf-8')
+    wrapper=(folder/'Start-HexenMap.cmd').read_text()
+    assert 'set "PYINSTALLER_RESET_ENVIRONMENT=1"' in wrapper
+    assert '"%~dp0HexenMapLauncher.exe"' in wrapper
+    runs=script.split('[Run]',1)[1].split('[Code]',1)[0].splitlines()
+    for line in (line for line in runs if line.startswith('Filename:')):
+        assert 'Start-HexenMap.cmd' in line and 'runhidden' in line
+        assert 'WorkingDir: "{app}"' in line
 
 
 def test_offline_opens_installed_app_without_clicks(tmp_path,monkeypatch):

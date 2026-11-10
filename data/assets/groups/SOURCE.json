@@ -1,0 +1,50 @@
+{
+  "source": "HoYoLAB Teyvat Interactive Map public label tree",
+  "catalog_url": "https://sg-public-api.hoyolab.com/common/map_user/ys_obc/v1/map/label/tree?map_id=2&app_sn=ys_obc&lang=en-us",
+  "checked_at": "2026-11-10",
+  "attribution": "Genshin Impact artwork belongs to HoYoverse. Hexen Map is an unofficial fan project.",
+  "icons": {
+    "anemoculus": {
+      "file": "anemoculus.png",
+      "label": "Anemoculus",
+      "label_id": 5,
+      "url": "https://act.hoyoverse.com/map_manage/20221111/ae38e52b6e4af57a84a6cbce325973e2_7240507367130463540.png",
+      "sha256": "9ad72476aa84bcc41062cec4a32ab77e77c97076a7603a64bbef46621c65f1d0"
+    },
+    "common-chest": {
+      "file": "common-chest.png",
+      "label": "Common Chest",
+      "label_id": 17,
+      "url": "https://act-webstatic.hoyoverse.com/map_manage/20240726/35cf41aad7620ce6d5dc516defb967f7_7806440070871726330.png",
+      "sha256": "405ecac8090d3b9e4238be262bdd01b0aac6a6767c2eaddc29995ffdb77808c8"
+    },
+    "time-trial": {
+      "file": "time-trial.png",
+      "label": "Time Trial Challenge",
+      "label_id": 64,
+      "url": "https://act.hoyoverse.com/map_manage/20221124/80fb45f0539e8a30bebc49674f7d4624_4924044601209939106.png",
+      "sha256": "5da23b71cc339cd7eb56212872d6296dd00c7203d3ae5fa893197a6d1c0d9150"
+    },
+    "sweet-flower": {
+      "file": "sweet-flower.png",
+      "label": "Sweet\u00a0Flower",
+      "label_id": 160,
+      "url": "https://act.hoyoverse.com/map_manage/20221111/fe24f3f4a006b643db66d94ab6699292_7138432858176083519.png",
+      "sha256": "36c937a0299d6e9beb7dab96a1e87dbe5ea8cb74a7d3270a9feebe07ae71f88f"
+    },
+    "teleport-waypoint": {
+      "file": "teleport-waypoint.png",
+      "label": "Teleport Waypoint",
+      "label_id": 3,
+      "url": "https://act-webstatic.hoyoverse.com/map_manage/20240726/7d650757c10b70cb42189f7fca0c9778_7547860493386240880.png",
+      "sha256": "6ae6ddc20858093455844bd8f24f3bc14e95cfe5ff88656a194579b618c44067"
+    },
+    "slime": {
+      "file": "slime.png",
+      "label": "Slime",
+      "label_id": 59,
+      "url": "https://act-webstatic.hoyoverse.com/map_manage/20240726/1fa215326de3094ac81f509479056809_5482169204620521279.png",
+      "sha256": "ea2793bc2ebf9326fafb7672ca7593c03bfdd2cac693bd3bf961284f444ce910"
+    }
+  }
+}

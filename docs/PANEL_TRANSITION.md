@@ -2,12 +2,16 @@
 
 Ao usar **Jogar**, o botão **—** do painel ou **F8**, o app executa uma transição de 820 ms:
 
-1. Um corte luminoso cruza o painel real.
+1. Um corte branco-violeta de pontas afiladas cruza o painel real, com a luz acompanhando a ponta da lâmina. Ele abre duas bordas curvas inclinadas como o olho Electro; poucas descargas saem dessas bordas antes de desaparecer.
 2. Uma máscara Win32 fecha a janela do topo e da base em direção ao centro.
 3. A fenda aprovada aparece sobre o corte e se desloca/encolhe até a posição da miniatura.
 4. O controle compacto assume a reprodução no instante 3000 ms do ciclo aprovado de 5 segundos, evitando reiniciar num quadro vazio.
 
 A janela não é capturada nem seus widgets são redimensionados durante a animação. A máscara recorta os controles reais; os efeitos são desenhados em uma janela temporária com a mesma preferência de captura. Essa janela usa o estilo Win32 NOACTIVATE e não cria botão na barra de tarefas. O foco só retorna ao jogo ao concluir o recolhimento.
+
+O refinamento altera somente o corte de entrada. O olho aprovado da miniatura,
+o símbolo, a rotação e a fase de entrega permanecem inalterados. O brilho do
+corte é calculado numa faixa local, sem desfoque da janela inteira.
 
 A transição usa `after` e tempo monotônico. Não há espera bloqueante. O tamanho normal e a posição persistida são preservados. O estado salvo recolhido é restaurado imediatamente ao iniciar, sem repetir a transição. Ao clicar ou acionar novamente durante o efeito, ele conclui uma única vez. Ao fechar o app, a janela temporária e sua máscara são limpas.
 

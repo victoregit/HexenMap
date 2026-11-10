@@ -39,12 +39,13 @@ from src.live.automark_service import AutoMarkService
 from src.live.opening_recovery import minimap_frame
 from src.overlay.global_hotkeys import GlobalHotkeyListener, MOD_NOREPEAT
 from src.overlay.control_key import ControlKeyListener
-from src.progress.progress_manager import ProgressManager
+from src.live.profiles import ProfileStore
+from src.live.profile_controls import ProfileControls
 
 logger=logging.getLogger(__name__)
 
 
-class DesktopApp(CompactPanel):
+class DesktopApp(ProfileControls,CompactPanel):
     def __init__(self, reference_dir: Path | None = None):
         self.native=Windows()
         self.native.enable_dpi()
@@ -53,6 +54,7 @@ class DesktopApp(CompactPanel):
         self.user_dir.mkdir(exist_ok=True)
         from src.live.personal_state import prepare_state_interactive
         self.state_dir=prepare_state_interactive(install_dir())
+        self.profile_store=ProfileStore(self.state_dir)
         self.marker_hints=HintService(self.user_dir/'cache/marker-hints')
         self.settings_path=self.state_dir/"settings.json"
         self.settings=read_settings(self.settings_path)
@@ -75,8 +77,7 @@ class DesktopApp(CompactPanel):
         self.coordinate_system=coordinate_system
         self.selection_epoch=0
         self.counts_at=0.0
-        self.session=Session(items,
-                             ProgressManager(str(self.state_dir/"progress.json")))
+        self.session=Session(items,self.profile_store.open_progress())
         self.automark=AutoMark()
         self.chest_signals=ChestSignals(self.user_dir/'automark')
         self.automark_generation=0;self.automark_snapshot=None
@@ -326,8 +327,13 @@ class DesktopApp(CompactPanel):
             if path.suffix=='.processing':payload=validated_payload(payload)
             ids,_=parse_marker_ids(payload)
             records,missing,key=import_records(ids,self.session.items)
-            if not confirm_dialog('Importar coletados',f'{len(records)} itens encontrados no catálogo.\n{len(missing)} IDs ausentes serão preservados no arquivo original.\n\nMesclar com o progresso atual, criando backup?',parent=self.root):return
-            result=self.session.progress.merge_imported_records(records,key,'appsample')
+            progress=self.session.progress
+            profile=getattr(self,'profile_store',None)
+            caption=f'Perfil: {profile.name()}\n' if profile else ''
+            if not confirm_dialog('Importar coletados',caption+f'{len(records)} itens encontrados no catálogo.\n{len(missing)} IDs ausentes serão preservados no arquivo original.\n\nMesclar com o progresso atual, criando backup?',parent=self.root):return
+            if self.session.progress is not progress:
+                self.session.notice='Perfil alterado; importação cancelada. Abra a prévia novamente.';return
+            result=progress.merge_imported_records(records,key,'appsample')
             self.refresh_counts();self.session.notice=f"AppSample: {result['added']} novos coletados; {len(missing)} IDs sem posição nesta versão."
         except Exception as exc:
             logger.exception('Importação AppSample não aplicada');self.session.notice=f'Falha na importação: {exc}'
@@ -507,7 +513,6 @@ class DesktopApp(CompactPanel):
 
     def toggle_visibility(self):
         self.session.hidden=not self.session.hidden
-        self.visibility_button.configure(text="Mostrar overlay" if self.session.hidden else "Ocultar overlay")
 
     def confirm_candidate(self):
         index=self.candidates.current()

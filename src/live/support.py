@@ -6,20 +6,26 @@ import threading
 import time
 import socket
 import ssl
+import webbrowser
 import tkinter as tk
 from tkinter import ttk
 from urllib.request import Request,urlopen
 from urllib.error import HTTPError,URLError
+from urllib.parse import urlencode,quote
 from src.live.identity import DISPLAY_NAME,SUPPORT_EMAIL,VERSION
 from src.live.theme import BG,SURFACE,TEXT,MUTED,ACCENT,SUCCESS,FONT,place_dialog
 
 ENDPOINT=f'https://formsubmit.co/ajax/{SUPPORT_EMAIL}'
 MAX_MESSAGE=5000
+NETWORK_TIMEOUT=8
+CONFIRMATION_TIMEOUT=10
 
 
 def transport_error(exc):
     reason=exc.reason if isinstance(exc,URLError) else exc
     if isinstance(exc,HTTPError):
+        if exc.code==403:
+            return 'O serviço bloqueou a conexão (HTTP 403). Use “Enviar por e-mail”.'
         return f'O serviço recusou o envio (HTTP {exc.code}). Tente novamente mais tarde.'
     if isinstance(reason,ssl.SSLCertVerificationError):
         return 'Não foi possível validar o certificado da conexão. Confira a data do Windows e a conexão.'
@@ -53,7 +59,7 @@ def send_report(email,message,opener=urlopen):
                              'User-Agent':f'HexenMap/{VERSION}',
                              'Referer':data['_url']},method='POST')
     try:
-        with opener(request,timeout=15) as response:raw=response.read(65537)
+        with opener(request,timeout=NETWORK_TIMEOUT) as response:raw=response.read(65537)
         if len(raw)>65536:raise ValueError('Resposta muito grande')
         result=json.loads(raw)
     except (OSError,ValueError) as exc:
@@ -90,6 +96,8 @@ class ReportDialog:
         self.close_button=ttk.Button(actions,text='Cancelar',command=self.close);self.close_button.pack(side='left')
         self.send_button=ttk.Button(actions,text='Enviar',style='Primary.TButton',command=self.submit)
         self.send_button.pack(side='right')
+        self.email_button=ttk.Button(actions,text='Enviar por e-mail',command=self.open_email)
+        self.email_button.pack(side='right',padx=(0,8))
         window.protocol('WM_DELETE_WINDOW',self.close);window.bind('<Escape>',lambda event:self.close())
         window.update_idletasks();scale=getattr(parent,'_lunar_signature',1.)
         place_dialog(window,parent,(420,max(400,window.winfo_reqheight()/scale)))
@@ -102,12 +110,16 @@ class ReportDialog:
         except ValueError as exc:self.status.set(str(exc));return
         if time.monotonic()<self.next_send:
             self.status.set('Aguarde alguns segundos antes de tentar novamente.');return
-        self.next_send=time.monotonic()+20;self.busy=True
+        self.next_send=time.monotonic()+3;self.busy=True
+        self.deadline=time.monotonic()+CONFIRMATION_TIMEOUT
+        # Each attempt owns its queue: a late reply cannot confirm a newer report.
+        self.results=queue.Queue();results=self.results
         self.status.set('Enviando…');self.send_button.state(['disabled']);self.close_button.state(['disabled'])
+        self.email_button.state(['disabled'])
         self.email.state(['disabled']);self.message.configure(state='disabled')
         def worker():
-            try:send_report(email,message);self.results.put(None)
-            except Exception as exc:self.results.put(str(exc) if isinstance(exc,RuntimeError) else 'Falha no envio. Sua mensagem foi mantida.')
+            try:send_report(email,message);results.put(None)
+            except Exception as exc:results.put(str(exc) if isinstance(exc,RuntimeError) else 'Falha no envio. Sua mensagem foi mantida.')
         threading.Thread(target=worker,daemon=True,name='HexenMapReport').start()
         self.poll_job=self.window.after(80,self.poll)
 
@@ -115,14 +127,32 @@ class ReportDialog:
         self.poll_job=None
         try:error=self.results.get_nowait()
         except queue.Empty:
-            self.poll_job=self.window.after(80,self.poll);return
+            if time.monotonic()<self.deadline:
+                self.poll_job=self.window.after(80,self.poll);return
+            error='O serviço não respondeu em 10 segundos. Não foi possível confirmar o envio. Sua mensagem foi mantida; use “Enviar por e-mail”.'
         self.busy=False;self.close_button.state(['!disabled'])
+        self.email_button.state(['!disabled'])
         if error:
             self.status.set(error);self.send_button.state(['!disabled'])
             self.email.state(['!disabled']);self.message.configure(state='normal')
         else:
             self.sent=True;self.status_label.configure(foreground=SUCCESS)
-            self.status.set('Mensagem enviada. Obrigado pelo feedback!');self.close_button.configure(text='Fechar')
+            self.status.set('O serviço confirmou o recebimento da mensagem. Obrigado pelo feedback!');self.close_button.configure(text='Fechar')
+
+    def open_email(self):
+        if self.busy:return
+        email=self.email.get();message=self.message.get('1.0','end-1c')
+        try:data=report_payload(email,message)
+        except ValueError as exc:self.status.set(str(exc));return
+        body=f'{message.strip()}\n\n{DISPLAY_NAME} {VERSION}'
+        if email.strip():body+=f'\nResponder para: {email.strip()}'
+        url=f'mailto:{SUPPORT_EMAIL}?'+urlencode({'subject':data['_subject'],'body':body},quote_via=quote)
+        try:
+            opened=webbrowser.open(url)
+        except OSError:
+            opened=False
+        self.status.set('Conclua o envio no aplicativo de e-mail que foi aberto. A mensagem continua aqui.' if opened else
+                        f'Não foi possível abrir o aplicativo de e-mail. Copie sua mensagem e envie para {SUPPORT_EMAIL}.')
 
     def close(self):
         if self.busy:self.status.set('Aguarde a confirmação do envio…');return
