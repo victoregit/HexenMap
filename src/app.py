@@ -73,18 +73,16 @@ def main() -> int:
                         format="%(asctime)s %(levelname)s %(name)s %(message)s")
     from src.live.desktop import DesktopApp
     from src.live.native import OverlayAlreadyRunning
+    from src.live.personal_state import OpeningCancelled
     try:
         DesktopApp(args.references).run()
         return 0
-    except OverlayAlreadyRunning:
+    except (OverlayAlreadyRunning,OpeningCancelled):
         return 0
     except Exception as exc:
         logging.exception("Não foi possível iniciar")
-        import tkinter as tk
-        from tkinter import messagebox
-        root = tk.Tk(); root.withdraw()
-        messagebox.showerror(DISPLAY_NAME, f"Não foi possível iniciar: {exc}", parent=root)
-        root.destroy()
+        from src.live.alerts import showerror
+        showerror(DISPLAY_NAME, f"Não foi possível iniciar: {exc}\n\nO aplicativo será encerrado. Nenhum progresso vazio substituirá suas marcações.")
         return 1
 
 

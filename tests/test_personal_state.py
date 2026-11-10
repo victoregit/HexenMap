@@ -104,3 +104,48 @@ def test_corruption_during_session_cannot_destroy_good_backup(tmp_path):
     path.write_text('{}')
     with pytest.raises(ProgressStorageError):manager.save()
     assert backup.read_bytes()==before and path.read_text()=='{}'
+
+
+def test_clean_first_download_starts_without_import_dialog(tmp_path,monkeypatch):
+    from unittest.mock import patch
+    from src.live.personal_state import prepare_state_interactive
+    monkeypatch.setenv('LOCALAPPDATA',str(tmp_path/'local'))
+    with patch('tkinter.Tk',side_effect=AssertionError('No prompt on clean install')):
+        state=prepare_state_interactive(tmp_path/'app')
+    assert ProgressManager(str(state/'progress.json')).get_collected_ids()==set()
+    assert (state/'progress.json.bak').exists()
+
+
+def test_existing_install_migrates_automatically_without_dialog(tmp_path,monkeypatch):
+    from unittest.mock import patch
+    from src.live.personal_state import prepare_state_interactive
+    monkeypatch.setenv('LOCALAPPDATA',str(tmp_path/'local'))
+    source=tmp_path/'app/userData/progress.json';save(source,['a','b'])
+    before=source.read_bytes()
+    with patch('tkinter.Tk',side_effect=AssertionError('No prompt for a unique save')):
+        state=prepare_state_interactive(tmp_path/'app')
+    assert ProgressManager(str(state/'progress.json')).get_collected_ids()=={'a','b'}
+    assert source.read_bytes()==before
+
+
+@pytest.mark.parametrize('trace',['profiles.json','settings.json','progress.json.daily-2026-11-09.bak'])
+def test_prior_personal_files_prevent_automatic_empty_save(tmp_path,trace):
+    state=tmp_path/'state';state.mkdir();(state/trace).write_text('{}')
+    with pytest.raises(StateRecoveryRequired):
+        prepare_state(tmp_path,destination=state,legacy_roots=[],allow_new=True)
+    assert not (state/'progress.json').exists()
+
+
+def test_legacy_daily_backup_is_recovered_before_creating_empty_state(tmp_path):
+    old=tmp_path/'old';save(old/'progress.json.daily-2026-11-09.bak',['a'])
+    state=prepare_state(tmp_path,destination=tmp_path/'state',legacy_roots=[old],allow_new=True)
+    assert ProgressManager(str(state/'progress.json')).get_collected_ids()=={'a'}
+
+
+def test_different_legacy_daily_backups_never_silently_choose_one(tmp_path):
+    old=tmp_path/'old'
+    save(old/'progress.json.daily-2026-11-09.bak',['a'])
+    save(old/'progress.json.daily-2026-11-10.bak',['a','b'])
+    with pytest.raises(StateRecoveryRequired):
+        prepare_state(tmp_path,destination=tmp_path/'state',legacy_roots=[old],allow_new=True)
+    assert not (tmp_path/'state/progress.json').exists()

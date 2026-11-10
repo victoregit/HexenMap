@@ -17,7 +17,7 @@ a=Analysis(
            (str(root/'data/import'),'data/import'),
            (str(root/'data/world_map'),'data/world_map'),
            (str(extension_zip.parent/'HexenMapExporter'),'data/exporter')],
-    hiddenimports=['PIL._tkinter_finder'],
+    hiddenimports=['PIL._tkinter_finder','pystray._win32'],
     excludes=['src.legacy_app'],
     noarchive=False,
 )

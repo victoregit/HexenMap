@@ -3,6 +3,7 @@ import logging
 import queue
 import tkinter as tk
 from tkinter import ttk,simpledialog
+from src.live.alerts import showerror,foreground
 
 
 class ProfileControls:
@@ -32,6 +33,7 @@ class ProfileControls:
         except Exception as exc:
             logging.getLogger(__name__).exception('Troca de perfil não aplicada')
             self.profile_status.set(f'Não foi possível trocar: {exc}')
+            showerror('Não foi possível trocar de perfil',str(exc)+'\n\nO perfil anterior continua ativo.',parent=self.root)
             self.sync_profile_controls();return False
         self.session.progress=progress
         self.session.undo_ids.clear();self.session.undo_records.clear()
@@ -57,16 +59,18 @@ class ProfileControls:
         try:
             identifier=self.profile_store.create(self.new_profile_name.get())
         except Exception as exc:
-            self.profile_status.set(str(exc));return
+            self.profile_status.set(str(exc));showerror('Não foi possível criar o perfil',str(exc),parent=self.root);return
         self.new_profile_name.set('');self.sync_profile_controls()
         self.change_profile(identifier)
 
     def rename_profile(self):
-        name=simpledialog.askstring('Renomear perfil','Nome do perfil ativo:',
-                                   initialvalue=self.profile_store.name(),parent=self.root)
+        with foreground(self.root) as owner:
+            name=simpledialog.askstring('Renomear perfil','Nome do perfil ativo:',
+                                       initialvalue=self.profile_store.name(),parent=owner)
         if name is None:return
         try:self.profile_store.rename(self.profile_store.active,name)
-        except Exception as exc:self.profile_status.set(str(exc));return
+        except Exception as exc:
+            self.profile_status.set(str(exc));showerror('Não foi possível renomear o perfil',str(exc),parent=self.root);return
         self.sync_profile_controls();self.profile_status.set('Perfil renomeado.')
 
 

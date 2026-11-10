@@ -10,7 +10,8 @@ import queue
 import threading
 import time
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
+from src.live import alerts as messagebox
 
 from src.live.catalog import CATEGORIES, CATEGORY_GROUPS, load_catalog
 from src.live.regions import RegionalCatalog
@@ -118,6 +119,7 @@ class DesktopApp(ProfileControls,CompactPanel):
         self.menu_geometry=None
         self.menu_mouse_down=False
         self.root=tk.Tk()
+        self.root.report_callback_exception=self.callback_error
         self.root.title(WINDOW_TITLE)
         self.root.geometry("470x710")
         self.root.minsize(440,690)
@@ -161,6 +163,8 @@ class DesktopApp(ProfileControls,CompactPanel):
         self.root.after(16,self._tick)
         self.root.after(10,self._poll_pointer)
         self.root.after(1000,self.poll_browser_imports)
+        from src.live.tray import AppTray
+        self.tray=AppTray(self)
 
     def populate_region_controls(self):
         region=self.session.region_id
@@ -266,6 +270,9 @@ class DesktopApp(ProfileControls,CompactPanel):
             'localizacao':{'superficie':obs.surface,'motivo':obs.reason,'confianca':obs.confidence},
             'referencias':self.reference_error or self.overlay_error or ('carregadas' if self.recognizer is not None else 'carregando'),
             'ultimo_quadro_em_foco':self.capture_quality.copy(),
+            'captura':{'metodo':getattr(self.native,'capture_backend','ainda não capturado'),
+                       'erro':getattr(self.native,'capture_error',''),
+                       'erro_grafico':getattr(self.native,'graphics_error','')},
             'automark':{'ativado':self.settings.get('automark',False),'referencias_prontas':self.chest_signals.ready,
                         'estado':self.automark_service.status,'fase':self.chest_signals.state,
                         'pontuacoes':self.chest_signals.scores.copy(),
@@ -772,6 +779,8 @@ class DesktopApp(ProfileControls,CompactPanel):
                                 frame=self.native.capture(rect,fraction)
                                 if frame is not None and template_visible(frame,p.map_ui,p.map_ui_roi):frame=self.native.capture(rect)
                             obs=motion.observe(frame,started)
+                            if frame is None and getattr(self.native,'capture_error',''):
+                                obs=Observation('hidden',started,reason=self.native.capture_error)
                         except MemoryError:
                             if self.settings.get('performance_mode')=='global':self.events.put(('performance_fallback',epoch,True))
                             obs=Observation('hidden',started,reason='Memória insuficiente para a referência atual')
@@ -809,6 +818,7 @@ class DesktopApp(ProfileControls,CompactPanel):
             if motion: motion.close(wait=True)
             if active_recognizer is not None and hasattr(active_recognizer,'close'):active_recognizer.close()
             self.native.close_capture()
+            self.native.close_graphics_capture()
             if performance is not None:performance.close()
             self.reference_released.set()
 
@@ -936,7 +946,9 @@ class DesktopApp(ProfileControls,CompactPanel):
             if self.input_hwnd:
                 self.native.interactive(self.input_hwnd,False);self.native.hide(self.input_hwnd)
             if self.overlay_hwnd: self.native.hide(self.overlay_hwnd)
-            self.session.invalidate("Overlay pausado após uma falha"); self.session.notice=str(exc)
+            self.session.invalidate("Overlay pausado após uma falha")
+            self.fatal_error(exc)
+            return
         self.root.after(16 if foreground else 100,self._tick)
 
     def sync_pending_candidates(self):
@@ -952,7 +964,29 @@ class DesktopApp(ProfileControls,CompactPanel):
         else:
             self.candidates.pack_forget();self.confirm_button.pack_forget()
 
+    def callback_error(self,kind,error,traceback):
+        logger.error('Falha não tratada na interface',exc_info=(kind,error,traceback))
+        self.fatal_error(error)
+
+    def fatal_error(self,error):
+        if getattr(self,'_fatal_error',False):return
+        self._fatal_error=True
+        if getattr(self,'stop_event',None):self.stop_event.set()
+        for handle in (getattr(self,'input_hwnd',None),getattr(self,'overlay_hwnd',None)):
+            if handle:self.native.hide(handle)
+        try:
+            messagebox.showerror('Hexen Map — erro ao continuar',
+                f'{error}\n\nNão é seguro continuar. O aplicativo será encerrado. Seus arquivos de progresso serão preservados.',parent=self.root)
+        finally:
+            try:self.close()
+            except Exception:
+                logger.exception('Falha durante encerramento após erro')
+                try:self.root.destroy()
+                finally:self.native.release_instance()
+
     def close(self):
+        tray=getattr(self,'tray',None)
+        if tray:tray.close()
         transition=getattr(self,'_panel_transition',None)
         if transition:transition.cancel();self._panel_transition=None
         if getattr(self,'world_map',None):self.world_map.close()

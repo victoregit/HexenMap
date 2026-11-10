@@ -16,6 +16,10 @@ class NewProfileRequired(StateRecoveryRequired):
     pass
 
 
+class OpeningCancelled(RuntimeError):
+    """An explicit cancellation ends startup without creating a save."""
+
+
 class AmbiguousProfilesRequired(StateRecoveryRequired):
     pass
 
@@ -62,11 +66,23 @@ def prepare_state(home=None, destination=None, legacy_roots=None, allow_new=Fals
         # ProgressManager validates/recoveries it; do not resurrect old installations.
         if not marker.exists():write_json(marker,{'version':1})
         return target
-    if marker.exists():
+    if any(target.iterdir()):
         raise StateRecoveryRequired(f'O save pessoal está ausente em {target}. Restaure um backup; não será criado um progresso vazio.')
     roots=list(legacy_roots) if legacy_roots is not None else [home/'userData']
     if legacy_roots is None and os.environ.get('LOCALAPPDATA'):
         roots.append(Path(os.environ['LOCALAPPDATA'])/'Programs'/'Hexen Map'/'userData')
+    # Daily/import backups are also evidence of prior use. Never hide them behind
+    # a newly created empty profile when the primary and immediate backup vanished.
+    expanded=[]
+    for root in (Path(p) for p in roots):
+        if root.is_dir() and not any((root/name).exists() for name in ('progress.json','progress.json.bak')):
+            backups=sorted(root.glob('progress.json*.bak'))
+            if backups:
+                expanded.extend(backups);continue
+            if any((root/name).exists() for name in ('initialized.json','profiles.json','profiles.json.bak')):
+                raise StateRecoveryRequired(f'Há sinais de uso anterior em {root}, mas o save está ausente. Recupere um backup antes de continuar.')
+        expanded.append(root)
+    roots=expanded
     candidates=[]
     for root in dict.fromkeys(Path(p).resolve() for p in roots):
         primary=root/'progress.json'
@@ -112,26 +128,19 @@ def prepare_state(home=None, destination=None, legacy_roots=None, allow_new=Fals
 
 def prepare_state_interactive(home=None):
     try:
-        return prepare_state(home)
-    except (NewProfileRequired,AmbiguousProfilesRequired) as recovery:
+        # A clean first download needs no import question. Existing saves and all
+        # signs of previous use are checked before automatic initialization.
+        return prepare_state(home,allow_new=True)
+    except AmbiguousProfilesRequired as recovery:
         import tkinter as tk
-        from tkinter import filedialog,messagebox
+        from src.live import alerts as messagebox
         root=tk.Tk();root.withdraw()
         try:
-            if isinstance(recovery,AmbiguousProfilesRequired):
-                messagebox.showinfo('Saves diferentes encontrados',str(recovery),parent=root)
-                choice=True
-            else:
-                choice=messagebox.askyesnocancel('Suas marcações do Hexen Map',
-                    'Você já usava o Hexen Map?\n\nSim: selecionar seu progress.json antigo ou um backup.\nNão: iniciar um perfil novo sem coletas.\nCancelar: sair sem criar um save vazio.',parent=root)
-            if choice is None:
-                raise StateRecoveryRequired('Abertura cancelada. Nenhum save vazio foi criado.')
-            if choice:
-                selected=filedialog.askopenfilename(parent=root,title='Selecione progress.json da pasta userData antiga',
-                                                    filetypes=[('Progresso e backups','*.json *.bak'),('Todos','*.*')])
-                if not selected:
-                    raise StateRecoveryRequired('Recuperação cancelada. Nenhum save vazio foi criado.')
-                return prepare_state(home,legacy_roots=[Path(selected)])
-            return prepare_state(home,allow_new=True)
+            messagebox.showinfo('Saves diferentes encontrados',
+                str(recovery)+'\n\nSelecione o progresso correto. Cancelar encerra o aplicativo sem modificar suas marcações.',parent=root)
+            selected=messagebox.select_progress(root)
+            if not selected:
+                raise OpeningCancelled('Recuperação cancelada. Nenhum save vazio foi criado.')
+            return prepare_state(home,legacy_roots=[Path(selected)])
         finally:
             root.destroy()
