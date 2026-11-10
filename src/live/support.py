@@ -4,14 +4,33 @@ import queue
 import re
 import threading
 import time
+import socket
+import ssl
 import tkinter as tk
 from tkinter import ttk
 from urllib.request import Request,urlopen
+from urllib.error import HTTPError,URLError
 from src.live.identity import DISPLAY_NAME,SUPPORT_EMAIL,VERSION
 from src.live.theme import BG,SURFACE,TEXT,MUTED,ACCENT,SUCCESS,FONT,place_dialog
 
 ENDPOINT=f'https://formsubmit.co/ajax/{SUPPORT_EMAIL}'
 MAX_MESSAGE=5000
+
+
+def transport_error(exc):
+    reason=exc.reason if isinstance(exc,URLError) else exc
+    if isinstance(exc,HTTPError):
+        return f'O serviço recusou o envio (HTTP {exc.code}). Tente novamente mais tarde.'
+    if isinstance(reason,ssl.SSLCertVerificationError):
+        return 'Não foi possível validar o certificado da conexão. Confira a data do Windows e a conexão.'
+    if isinstance(reason,(TimeoutError,socket.timeout)):
+        return 'O serviço demorou para responder. Não foi possível confirmar o envio.'
+    if isinstance(reason,socket.gaierror):
+        return 'Não foi possível localizar o serviço. Confira sua conexão com a internet.'
+    if isinstance(exc,ValueError):
+        return 'O serviço retornou uma resposta inesperada. Tente novamente mais tarde.'
+    code=getattr(reason,'winerror',None) or getattr(reason,'errno',None)
+    return f'Falha de conexão com o serviço{f" (código {code})" if code else ""}.'
 
 
 def report_payload(email,message):
@@ -38,7 +57,7 @@ def send_report(email,message,opener=urlopen):
         if len(raw)>65536:raise ValueError('Resposta muito grande')
         result=json.loads(raw)
     except (OSError,ValueError) as exc:
-        raise RuntimeError('Não foi possível confirmar o envio. Sua mensagem foi mantida; confira a conexão e tente novamente.') from exc
+        raise RuntimeError(transport_error(exc)+' Sua mensagem foi mantida.') from exc
     if isinstance(result,dict) and 'needs activation' in str(result.get('message','')).lower():
         raise RuntimeError('O canal de reports aguarda ativação pelo desenvolvedor. Sua mensagem foi mantida.')
     if not isinstance(result,dict) or result.get('success') not in (True,'true'):

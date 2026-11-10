@@ -171,7 +171,9 @@ class Launcher:
     def open_app(self):
         path = self.home/'HexenMap.exe'
         try:
-            subprocess.Popen([str(path)],cwd=str(self.home))
+            # The app outlives this launcher and must unpack as a fresh instance.
+            subprocess.Popen([str(path)],cwd=str(self.home),
+                             env={**os.environ,'PYINSTALLER_RESET_ENVIRONMENT':'1'})
         except OSError as exc:
             self.log_error(exc)
             self.status.set('Não foi possível abrir o Hexen Map. Reinstale o aplicativo.')
