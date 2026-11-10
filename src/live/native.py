@@ -375,10 +375,75 @@ class Windows:
         self._capture_slots={}
 
     def capture(self, rect: GameWindowRect, fraction=1., region=None) -> np.ndarray | None:
+        """Retry a blank desktop capture against the game's client DC."""
+        if not self.foreground(rect):return None
+        key=(rect.hwnd,rect.width,rect.height,getattr(self,'capture_visible',False))
+        if getattr(self,'_capture_backend_key',None)!=key:
+            self._capture_backend_key=key;self._capture_client_fallback=False;self._prefer_graphics=False
+        height=int(region[3]) if region is not None else max(1,min(rect.height,round(rect.height*fraction)))
+        if self._prefer_graphics:
+            frame=self._capture_graphics(rect,fraction,region)
+            if not self._blank_capture(frame,height):
+                self.capture_backend='Windows Graphics Capture';self.capture_error=''
+                return frame
+        client=region is not None or getattr(self,'capture_visible',False) or self._capture_client_fallback
+        source=rect.hwnd if client else None
+        frame=self._capture_frame(rect,fraction,region,source)
+        if not self._blank_capture(frame,height):
+            self.capture_backend='janela' if client else 'tela'
+            self.capture_error=''
+            return frame
+        if source is None:
+            frame=self._capture_frame(rect,fraction,region,rect.hwnd)
+            if not self._blank_capture(frame,height):
+                self._capture_client_fallback=True
+                self.capture_backend='janela (recuperação automática)';self.capture_error=''
+                return frame
+        frame=self._capture_graphics(rect,fraction,region)
+        if not self._blank_capture(frame,height):
+            self._prefer_graphics=True
+            self.capture_backend='Windows Graphics Capture';self.capture_error=''
+            return frame
+        self.capture_backend='GDI e Windows Graphics Capture'
+        self.capture_error='Captura do jogo indisponível ou inteiramente branca/preta. '+getattr(self,'graphics_error','')
+        return None
+
+    def _capture_graphics(self,rect,fraction,region):
+        key=(rect.hwnd,rect.width,rect.height)
+        try:
+            if getattr(self,'_graphics_key',None)!=key:
+                self.close_graphics_capture();self._graphics_key=key
+                from src.live.graphics_capture import WindowGraphicsCapture
+                self._graphics=WindowGraphicsCapture(rect.hwnd)
+            if getattr(self,'_graphics',None) is None:return None
+            bounds=wt.RECT()
+            dwm=ct.WinDLL('dwmapi')
+            function=dwm.DwmGetWindowAttribute
+            function.argtypes=[wt.HWND,wt.DWORD,ct.c_void_p,wt.DWORD];function.restype=ct.c_long
+            if function(rect.hwnd,9,ct.byref(bounds),ct.sizeof(bounds))!=0:
+                if not self.u.GetWindowRect(rect.hwnd,ct.byref(bounds)):return None
+            frame=self._graphics.read(rect,(bounds.left,bounds.top,bounds.right,bounds.bottom),fraction,region)
+            self.graphics_error=self._graphics.error or ('Aguardando imagem gráfica recente com dimensões válidas.' if frame is None else '')
+            return frame
+        except Exception as exc:
+            self.graphics_error=f'Captura gráfica: {type(exc).__name__}: {exc}'
+            return None
+
+    def close_graphics_capture(self):
+        graphics=getattr(self,'_graphics',None);self._graphics=None
+        if graphics is not None:graphics.close()
+
+    @staticmethod
+    def _blank_capture(frame,height):
+        if frame is None:return True
+        sample=frame[:height:8,::8]
+        if not sample.size:return True
+        return bool(sample.max()<5 or sample.min()>250)
+
+    def _capture_frame(self, rect, fraction, region, source):
         """Reusable output; synchronous consumer must copy before handing it to a future."""
         if not self.foreground(rect):return None
         from src.capture.win32_capture import BITMAPINFO, BITMAPINFOHEADER
-        source=rect.hwnd if region is not None or getattr(self,'capture_visible',False) else None
         sx,sy=(0,0) if source else (rect.x,rect.y)
         width=rect.width;height=max(1,min(rect.height,round(rect.height*fraction)))
         output_height=rect.height

@@ -80,8 +80,10 @@ Não há bússola ou busca guiada. AutoMark é beta, desligado por padrão e qua
 Modo Leve padrão. Modo Global opcional consome mais memória.
 Desde a 1.0.1, progresso e preferências ficam em %LOCALAPPDATA%\HexenMap\state.
 Faça backup dessa pasta com o app fechado. userData contém recursos e caches.
-Se já usava uma versão antiga, não apague a userData anterior. Se solicitado,
-importe o progress.json antigo em vez de confirmar um perfil novo vazio.
+O app procura saves nas pastas conhecidas e recupera um save anterior único com backup.
+No primeiro uso, sem sinais de progresso anterior, abre direto sem perguntar sobre importação.
+Não apague a userData anterior. Saves conflitantes exigem selecionar o progress.json correto;
+dados inválidos ou sinais de um save desaparecido bloqueiam a criação de progresso vazio.
 
 Esta cópia começa sem coletas, sem conta e sem preferências pessoais do autor.
 Não exige login no AppSample para usar o catálogo incluído. Importar progresso é opcional,
@@ -103,6 +105,8 @@ Não envie cookies, tokens, HAR ou dados de login.
     (package/'LEIA-ME.txt').write_text(readme,encoding='utf-8-sig')
     for name in ('NOTICE.md','THIRD_PARTY_LICENSES.txt'):
         copy(ROOT/'data/localization'/name,Path('creditos')/name)
+    for path in (ROOT/'data/licenses').glob('*'):
+        if path.is_file():copy(path,Path('creditos/runtime')/path.name)
     if (ROOT/'docs/STABILITY.md').exists():copy(ROOT/'docs/STABILITY.md',Path('ESTABILIDADE.md'))
     if (ROOT/'docs/HOTFIX_CTRL_AUTOMARK.md').exists():copy(ROOT/'docs/HOTFIX_CTRL_AUTOMARK.md',Path('HOTFIX_CTRL_AUTOMARK.md'))
     if (ROOT/'docs/EXPLORATION_UI.md').exists():copy(ROOT/'docs/EXPLORATION_UI.md',Path('PAINEL_E_MAPA.md'))

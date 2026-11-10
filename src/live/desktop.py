@@ -163,6 +163,8 @@ class DesktopApp(ProfileControls,CompactPanel):
         self.root.after(16,self._tick)
         self.root.after(10,self._poll_pointer)
         self.root.after(1000,self.poll_browser_imports)
+        from src.live.tray import AppTray
+        self.tray=AppTray(self)
 
     def populate_region_controls(self):
         region=self.session.region_id
@@ -268,6 +270,9 @@ class DesktopApp(ProfileControls,CompactPanel):
             'localizacao':{'superficie':obs.surface,'motivo':obs.reason,'confianca':obs.confidence},
             'referencias':self.reference_error or self.overlay_error or ('carregadas' if self.recognizer is not None else 'carregando'),
             'ultimo_quadro_em_foco':self.capture_quality.copy(),
+            'captura':{'metodo':getattr(self.native,'capture_backend','ainda não capturado'),
+                       'erro':getattr(self.native,'capture_error',''),
+                       'erro_grafico':getattr(self.native,'graphics_error','')},
             'automark':{'ativado':self.settings.get('automark',False),'referencias_prontas':self.chest_signals.ready,
                         'estado':self.automark_service.status,'fase':self.chest_signals.state,
                         'pontuacoes':self.chest_signals.scores.copy(),
@@ -774,6 +779,8 @@ class DesktopApp(ProfileControls,CompactPanel):
                                 frame=self.native.capture(rect,fraction)
                                 if frame is not None and template_visible(frame,p.map_ui,p.map_ui_roi):frame=self.native.capture(rect)
                             obs=motion.observe(frame,started)
+                            if frame is None and getattr(self.native,'capture_error',''):
+                                obs=Observation('hidden',started,reason=self.native.capture_error)
                         except MemoryError:
                             if self.settings.get('performance_mode')=='global':self.events.put(('performance_fallback',epoch,True))
                             obs=Observation('hidden',started,reason='Memória insuficiente para a referência atual')
@@ -811,6 +818,7 @@ class DesktopApp(ProfileControls,CompactPanel):
             if motion: motion.close(wait=True)
             if active_recognizer is not None and hasattr(active_recognizer,'close'):active_recognizer.close()
             self.native.close_capture()
+            self.native.close_graphics_capture()
             if performance is not None:performance.close()
             self.reference_released.set()
 
@@ -977,6 +985,8 @@ class DesktopApp(ProfileControls,CompactPanel):
                 finally:self.native.release_instance()
 
     def close(self):
+        tray=getattr(self,'tray',None)
+        if tray:tray.close()
         transition=getattr(self,'_panel_transition',None)
         if transition:transition.cancel();self._panel_transition=None
         if getattr(self,'world_map',None):self.world_map.close()
