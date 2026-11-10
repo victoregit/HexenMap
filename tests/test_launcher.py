@@ -26,6 +26,23 @@ def test_no_release_opens_installed_app(tmp_path,monkeypatch):
     monkeypatch.setattr(launcher.subprocess,'Popen',lambda args,**kwargs:opened.append((args[0],kwargs)))
     obj.events.put(('current',None));obj.poll()
     assert opened[0][0]==str(tmp_path/'HexenMap.exe') and obj.closed
+    assert opened[0][1]['env']['PYINSTALLER_RESET_ENVIRONMENT']=='1'
+
+
+def test_app_gets_independent_bootloader_environment_without_mutating_launcher(tmp_path,monkeypatch):
+    obj=app(tmp_path);opened=[]
+    monkeypatch.setenv('_PYI_APPLICATION_HOME_DIR','old-extraction')
+    monkeypatch.setenv('PYINSTALLER_RESET_ENVIRONMENT','0')
+    monkeypatch.setattr(launcher.subprocess,'Popen',lambda args,**kwargs:opened.append(kwargs))
+    obj.open_app()
+    assert opened[0]['env']['PYINSTALLER_RESET_ENVIRONMENT']=='1'
+    assert launcher.os.environ['PYINSTALLER_RESET_ENVIRONMENT']=='0'
+
+
+def test_installer_resets_inherited_bootloader_before_restarting_launcher():
+    script=(Path(__file__).resolve().parents[1]/'installer/HexenMap.iss').read_text(encoding='utf-8')
+    post=script.split('if CurStep = ssPostInstall then begin',1)[1]
+    assert "SetChildEnvironment('PYINSTALLER_RESET_ENVIRONMENT', '1')" in post
 
 
 def test_offline_opens_installed_app_without_clicks(tmp_path,monkeypatch):

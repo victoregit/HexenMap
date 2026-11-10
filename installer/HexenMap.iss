@@ -64,6 +64,9 @@ Filename: "{app}\HexenMapLauncher.exe"; Description: "Abrir Hexen Map"; Flags: n
 Filename: "{app}\HexenMapLauncher.exe"; Flags: nowait runascurrentuser; Check: IsUpdate
 
 [Code]
+function SetChildEnvironment(Name, Value: String): Boolean;
+  external 'SetEnvironmentVariableW@kernel32.dll stdcall';
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var Owner: AnsiString;
 begin
@@ -109,6 +112,10 @@ begin
     end;
   end;
   if CurStep = ssPostInstall then begin
+    // The updater's onefile parent may already be gone when the new launcher
+    // starts. Create an independent, freshly extracted application instance.
+    if not SetChildEnvironment('PYINSTALLER_RESET_ENVIRONMENT', '1') then
+      RaiseException('Não foi possível preparar a inicialização independente do launcher.');
     SaveStringToFile(ExpandConstant('{app}\installed-version.txt'), '{#AppVersion}', False);
     if not FileExists(ExpandConstant('{app}\installed-user.txt')) then
       SaveStringToFile(ExpandConstant('{app}\installed-user.txt'), GetUserNameString, False);

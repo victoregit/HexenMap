@@ -2,10 +2,24 @@ import io
 import json
 import threading
 import time
+import socket
+import ssl
+from urllib.error import HTTPError,URLError
 from unittest.mock import patch
 
 import pytest
-from src.live.support import report_payload,send_report,report_problem
+from src.live.support import report_payload,send_report,report_problem,transport_error
+
+
+@pytest.mark.parametrize('error,expected',[
+    (HTTPError('https://formsubmit.co',403,'Forbidden',{},None),'HTTP 403'),
+    (URLError(ssl.SSLCertVerificationError('certificate verify failed')),'certificado'),
+    (URLError(TimeoutError()),'demorou'),
+    (URLError(socket.gaierror()),'localizar'),
+    (ValueError(),'resposta inesperada'),
+])
+def test_transport_errors_explain_cause_without_exposing_message(error,expected):
+    assert expected in transport_error(error)
 
 
 def test_report_only_sends_written_fields_and_version():
