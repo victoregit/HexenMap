@@ -179,7 +179,8 @@ def confirm_dialog(title,message,*,parent,bounds=None):
     dialog.update_idletasks();height=dialog.winfo_reqheight()
     x=max(left,min(parent.winfo_rootx(),right-width));y=max(top,min(parent.winfo_rooty()+40,bottom-height-32))
     dialog.geometry(f'{width}x{height}{x:+d}{y:+d}')
-    dialog.deiconify()
+    dialog.attributes('-topmost',True)
+    dialog.deiconify();dialog.lift()
     if native:
         native.panel(dialog.winfo_id());native.move_panel(dialog.winfo_id(),x,y)
     dialog.grab_set();cancel.focus_set();parent.wait_window(dialog)

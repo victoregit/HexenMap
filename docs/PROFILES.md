@@ -1,5 +1,12 @@
 # Perfis locais
 
+Na primeira abertura, o app verifica a pasta pessoal de saves e as pastas
+conhecidas de instalações anteriores. Um save anterior único é recuperado
+automaticamente, preservando o original e criando backup de migração. Uma
+instalação sem sinais de uso anterior começa diretamente, sem perguntar sobre
+importação. Saves conflitantes exigem seleção; arquivos inválidos ou sinais de
+um save desaparecido bloqueiam a abertura em vez de criar progresso vazio.
+
 Em **Ajustes → Perfis**, selecione um perfil e clique em **Usar perfil**.
 Para outra conta do jogo, informe um nome e use **Criar e usar**. O novo perfil
 começa sem coletas. **Renomear perfil ativo** muda apenas o nome de exibição.

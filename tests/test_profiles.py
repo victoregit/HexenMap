@@ -109,6 +109,9 @@ def test_switch_clears_old_actions_and_undo_and_saves_correct_account(tmp_path):
 
 def test_failed_save_or_index_write_does_not_switch_profile(tmp_path,monkeypatch):
     store=store_at(tmp_path);second=store.create('Conta 2');obj=controller(store)
+    obj.root=None
+    alerts=[]
+    monkeypatch.setattr('src.live.profile_controls.showerror',lambda *a,**kw:alerts.append(a))
     old=obj.session.progress
     def fail(*a,**kw):raise OSError('disk unavailable')
     with monkeypatch.context() as patch:
@@ -119,6 +122,7 @@ def test_failed_save_or_index_write_does_not_switch_profile(tmp_path,monkeypatch
         patch.setattr('src.live.profiles.write_json',fail)
         assert not obj.change_profile(second)
     assert ProfileStore(tmp_path).active=='default' and obj.session.progress is old
+    assert len(alerts)==2
 
 
 def test_settings_profile_ui_creates_and_switches_accounts(tmp_path):

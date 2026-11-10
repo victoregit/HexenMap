@@ -10,7 +10,8 @@ import queue
 import threading
 import time
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
+from src.live import alerts as messagebox
 
 from src.live.catalog import CATEGORIES, CATEGORY_GROUPS, load_catalog
 from src.live.regions import RegionalCatalog
@@ -118,6 +119,7 @@ class DesktopApp(ProfileControls,CompactPanel):
         self.menu_geometry=None
         self.menu_mouse_down=False
         self.root=tk.Tk()
+        self.root.report_callback_exception=self.callback_error
         self.root.title(WINDOW_TITLE)
         self.root.geometry("470x710")
         self.root.minsize(440,690)
@@ -936,7 +938,9 @@ class DesktopApp(ProfileControls,CompactPanel):
             if self.input_hwnd:
                 self.native.interactive(self.input_hwnd,False);self.native.hide(self.input_hwnd)
             if self.overlay_hwnd: self.native.hide(self.overlay_hwnd)
-            self.session.invalidate("Overlay pausado após uma falha"); self.session.notice=str(exc)
+            self.session.invalidate("Overlay pausado após uma falha")
+            self.fatal_error(exc)
+            return
         self.root.after(16 if foreground else 100,self._tick)
 
     def sync_pending_candidates(self):
@@ -951,6 +955,26 @@ class DesktopApp(ProfileControls,CompactPanel):
             self.candidates.set("");self.candidates.pack(fill='x');self.confirm_button.pack(fill='x')
         else:
             self.candidates.pack_forget();self.confirm_button.pack_forget()
+
+    def callback_error(self,kind,error,traceback):
+        logger.error('Falha não tratada na interface',exc_info=(kind,error,traceback))
+        self.fatal_error(error)
+
+    def fatal_error(self,error):
+        if getattr(self,'_fatal_error',False):return
+        self._fatal_error=True
+        if getattr(self,'stop_event',None):self.stop_event.set()
+        for handle in (getattr(self,'input_hwnd',None),getattr(self,'overlay_hwnd',None)):
+            if handle:self.native.hide(handle)
+        try:
+            messagebox.showerror('Hexen Map — erro ao continuar',
+                f'{error}\n\nNão é seguro continuar. O aplicativo será encerrado. Seus arquivos de progresso serão preservados.',parent=self.root)
+        finally:
+            try:self.close()
+            except Exception:
+                logger.exception('Falha durante encerramento após erro')
+                try:self.root.destroy()
+                finally:self.native.release_instance()
 
     def close(self):
         transition=getattr(self,'_panel_transition',None)
