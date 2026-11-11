@@ -21,6 +21,7 @@ LABELS={"common-chest":"Baú comum","exquisite-chest":"Baú sofisticado",
 class MarkerMenu:
     def __init__(self,parent,native,game,items,progress,on_change,on_close,x,y,hints=None):
         self.items=items
+        self.native=native;self.game=game
         self.progress=progress
         self.on_change=on_change
         self.index=0
@@ -55,11 +56,11 @@ class MarkerMenu:
         if len(items)>1:
             tk.Label(card,text="Há itens sobrepostos. Escolha qual alterar:",bg=SURFACE,fg=MUTED,
                      font=("Segoe UI",9)).pack(anchor="w",pady=(10,4))
-            selector=ttk.Combobox(card,state="readonly",width=34,
-                                 values=[f"{i+1}. {LABELS.get(item.category,CATEGORIES.get(item.category,(item.name,))[0])}" for i,item in enumerate(items)])
-            selector.pack(fill="x")
-            selector.current(0)
-            selector.bind("<<ComboboxSelected>>",lambda event:self.select(selector.current()))
+            selector=ttk.Frame(card);selector.pack(fill='x')
+            ttk.Button(selector,text='◀ Item anterior',takefocus=False,
+                       command=lambda:self.select((self.index-1)%len(self.items))).pack(side='left')
+            ttk.Button(selector,text='Próximo item ▶',takefocus=False,
+                       command=lambda:self.select((self.index+1)%len(self.items))).pack(side='right')
         tk.Frame(card,bg=BORDER,height=1).pack(fill="x",pady=12)
         self.action=self._button(card)
         if hints is not None:
@@ -101,6 +102,8 @@ class MarkerMenu:
         self.bounds=(x,y,x+width,y+height)
         self.window.geometry(f"{width}x{height}{x:+d}{y:+d}")
         self.window.update_idletasks()
+        from src.live.noactivate import materialize_controls
+        materialize_controls(self.window)
         self.hwnd=native.popup(self.window.winfo_id(),game)
         from src.overlay.window_tracker import GameWindowRect
         native.place(self.hwnd,GameWindowRect(x,y,width,height))
@@ -239,7 +242,7 @@ class MarkerMenu:
         if self.viewer:self.viewer.window.lift();return
         from src.live.photo_viewer import PhotoViewer
         def closed():self.viewer=None;self.escape_consumed=True
-        self.viewer=PhotoViewer(self.window.master,self.photo_original,closed)
+        self.viewer=PhotoViewer(self.window,self.photo_original,closed,native=self.native,game=self.game)
 
     def escape_key(self,down):
         if not down:self.escape_consumed=False;return False

@@ -106,6 +106,7 @@ class Windows:
         return True
 
     def release_instance(self):
+        if hasattr(self,'_noactivate'):self._noactivate.close()
         if self.instance_handle:
             for handle in getattr(self,'instance_handles',[self.instance_handle]):self.k.CloseHandle(handle)
             self.instance_handles=[];self.instance_handle=None
@@ -289,7 +290,13 @@ class Windows:
         if not self.u.SetLayeredWindowAttributes(hwnd,0,255,2):
             raise ct.WinError(ct.get_last_error())
         self.interactive(hwnd,True)
+        self.prevent_activation(hwnd)
         return hwnd
+
+    def prevent_activation(self,hwnd):
+        from src.live.noactivate import NoActivate
+        if not hasattr(self,'_noactivate'):self._noactivate=NoActivate()
+        self._noactivate.install(hwnd)
 
     def overlay(self, child_hwnd: int) -> int:
         hwnd=self.u.GetAncestor(child_hwnd,2) or child_hwnd
@@ -320,6 +327,7 @@ class Windows:
         hwnd=self.overlay(child_hwnd)
         if not self.u.SetLayeredWindowAttributes(hwnd,0,2,2):
             raise ct.WinError(ct.get_last_error())
+        self.prevent_activation(hwnd)
         return hwnd
 
     def dpi_scale(self, hwnd: int) -> float:

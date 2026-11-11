@@ -75,7 +75,7 @@ def check(scale,screen):
         assert button.winfo_rooty()+button.winfo_height()<=root.winfo_rooty()+height
     assert app.category_browser.winfo_height()>=45
     app.show_settings();root.update_idletasks()
-    assert len(app.settings_sections)==5 and all(not s['open'] for s in app.settings_sections)
+    assert len(app.settings_sections)==4 and all(not s['open'] for s in app.settings_sections)
     for section in app.settings_sections:
         section['button'].invoke();root.update_idletasks()
         assert sum(s['open'] for s in app.settings_sections)==1

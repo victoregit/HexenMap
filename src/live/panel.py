@@ -120,7 +120,8 @@ class CompactPanel(PanelLayout):
         self.candidates=ttk.Combobox(self.explore,state='readonly')
         self.confirm_button=ttk.Button(self.explore,text='Confirmar selecionado',command=self.confirm_candidate)
         self.progress_text=tk.StringVar();self.progress_value=tk.DoubleVar()
-        information=tk.Frame(self.shell,bg=BG);information.pack(side='bottom',fill='x',before=self.tabs,padx=16,pady=(7,10))
+        information=tk.Frame(self.shell,bg=BG);information.pack(side='bottom',fill='x',before=self.tabs,padx=16,pady=(5,5))
+        self.build_automark_controls(information)
         tk.Frame(information,bg=BORDER,height=1).pack(fill='x',pady=(0,5))
         tk.Label(information,textvariable=self.progress_text,bg=BG,fg=MUTED,font=('Segoe UI',8),wraplength=325,anchor='w').pack(fill='x')
         self.status=tk.StringVar(value='Procurando o Genshin…');summary=tk.StringVar()
@@ -132,20 +133,16 @@ class CompactPanel(PanelLayout):
         footer=ttk.Frame(information);footer.pack(fill='x',pady=(7,0))
         play=ttk.Button(footer,text='Jogar',style='Primary.TButton',width=7,command=self.collapse_to_game)
         play.pack(side='right');Tooltip(play,'Recolher o painel e devolver o foco ao Genshin.')
-        bottom=tk.Frame(information,bg=BG);bottom.pack(fill='x',pady=(3,0))
-        self.report_button=tk.Button(bottom,text='Report',command=lambda:report_problem(self.root),
-                                     bg=BG,fg=GOLD,activebackground=BG,activeforeground=GOLD,
-                                     relief='flat',borderwidth=0,font=('Segoe UI',8,'underline'),cursor='hand2',padx=0)
+        bottom=tk.Frame(footer,bg=BG);bottom.pack(side='left',fill='x',expand=True)
+        self.report_button=ttk.Button(bottom,text='Report',style='Quiet.TButton',command=lambda:report_problem(self.root))
         self.report_button.pack(side='left')
-        self.support_button=tk.Button(bottom,text='Buy Me a Coffee',
-                                      command=lambda:webbrowser.open('https://buymeacoffee.com/victorsilva'),
-                                      bg=BG,fg=GOLD,activebackground=BG,activeforeground=GOLD,
-                                      relief='flat',borderwidth=0,font=('Segoe UI',8,'underline'),cursor='hand2',padx=0)
-        self.support_button.pack(side='left',padx=(12,0))
+        self.support_button=ttk.Button(bottom,text='Apoiar',style='Quiet.TButton',
+                                      command=lambda:webbrowser.open('https://buymeacoffee.com/victorsilva'))
+        self.support_button.pack(side='left',padx=(2,0))
         Tooltip(self.support_button,'Apoiar o Hexen Map no Buy Me a Coffee.')
-        self.version_label=tk.Label(bottom,text=f'v{VERSION}',bg=BG,fg=MUTED,
+        self.version_label=tk.Label(information,text=f'v{VERSION}',bg=BG,fg=MUTED,
                                     font=('Segoe UI',8),anchor='e')
-        self.version_label.pack(side='right')
+        self.version_label.pack(fill='x',pady=(2,0))
         def show_notice(*args):
             if self.notice.get():notice_label.pack(fill='x',before=footer)
             else:notice_label.pack_forget()
@@ -190,6 +187,54 @@ class CompactPanel(PanelLayout):
             layer_caption.configure(text=layer if len(layer)<=18 else layer[:17]+'…')
         self.territory_path.trace_add('write',show_territory);show_territory()
 
+    def build_automark_controls(self,parent):
+        from PIL import Image,ImageDraw,ImageTk
+        scale=self.ui_scale;style=ttk.Style(self.root)
+        element='AutoMarkSwitch'+str(round(scale*100))
+        images=[]
+        for active,disabled in ((False,False),(True,False),(False,True)):
+            w=max(28,round(34*scale));h=max(16,round(18*scale));ss=3
+            image=Image.new('RGBA',(w*ss,h*ss));draw=ImageDraw.Draw(image)
+            draw.rounded_rectangle((0,0,w*ss-1,h*ss-1),radius=h*ss/2,
+                                   fill=BORDER if disabled else GOLD if active else '#3C4054')
+            r=h*ss/2-3*ss;cx=w*ss-h*ss/2 if active else h*ss/2;cy=h*ss/2
+            draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=MUTED if disabled else '#F3EEFC')
+            images.append(ImageTk.PhotoImage(image.resize((w,h),Image.Resampling.LANCZOS),master=self.root))
+        self.root._automark_switch_images=images
+        if element not in style.element_names():
+            style.element_create(element,'image',images[0],('disabled',images[2]),('selected',images[1]),sticky='e')
+        style.layout('AutoMark.TCheckbutton',[('Checkbutton.padding',{'sticky':'nswe','children':[
+            (element,{'side':'right','sticky':'e'}),('Checkbutton.label',{'side':'left','sticky':'w'})]})])
+        style.configure('AutoMark.TCheckbutton',background=ROW,foreground=TEXT,
+                        font=('Segoe UI',round(9*self.root._visual_scale),'bold'),padding=(0,3))
+        style.map('AutoMark.TCheckbutton',background=[('active',ROW)],foreground=[('disabled',MUTED),('focus',GOLD)])
+        self.automark_card=ttk.Frame(parent,style='Card.TFrame',padding=(11,8))
+        self.automark_card.pack(fill='x',pady=(0,8))
+        row=tk.Frame(self.automark_card,bg=ROW);row.pack(fill='x')
+        self.automark_var=tk.BooleanVar(value=self.settings.get('automark',False))
+        self.automark_toggle=ttk.Checkbutton(row,text='AutoMark de baús · Beta',style='AutoMark.TCheckbutton',
+            variable=self.automark_var,command=self.change_automark)
+        self.automark_toggle.pack(side='left',fill='x',expand=True)
+        self.automark_resync_button=ttk.Button(row,text='↻',width=3,style='Card.Quiet.TButton',command=self.resync_automark)
+        self.automark_resync_button.pack(side='right',padx=(4,0))
+        Tooltip(self.automark_resync_button,'Sincronizar novamente a tela e a posição do AutoMark.')
+        Tooltip(self.automark_toggle,'Reconhece a abertura e as recompensas para marcar um baú próximo sem ambiguidade. Use Desfazer para corrigir uma coleta.')
+        self.automark_sync_text=tk.StringVar(value='Volte ao Genshin para sincronizar a tela e a posição.'
+            if self.settings.get('automark') else 'AutoMark desligado.')
+        self.automark_sync_label=tk.Label(self.automark_card,textvariable=self.automark_sync_text,
+            bg=ROW,fg=MUTED,anchor='w',justify='left',wraplength=260,font=('Segoe UI',8))
+        self.automark_sync_label.bind('<Configure>',lambda event:self.automark_sync_label.configure(wraplength=max(100,event.width))
+            if int(self.automark_sync_label.cget('wraplength'))!=max(100,event.width) else None)
+        def refresh(*args):
+            ready=self.chest_signals.ready;enabled=self.automark_var.get() and ready
+            self.automark_resync_button.state(['!disabled'] if enabled else ['disabled'])
+            if enabled or not ready:self.automark_sync_label.pack(fill='x',pady=(3,0))
+            else:self.automark_sync_label.pack_forget()
+            if not ready:
+                self.automark_toggle.state(['disabled'])
+                self.automark_sync_text.set('Indisponível: confira as referências em Ajustes → Diagnóstico.')
+        self.automark_var.trace_add('write',refresh);refresh()
+
     def change_automark(self):
         self.settings['automark']=self.automark_var.get() and self.chest_signals.ready
         self.resync_automark()
@@ -203,7 +248,8 @@ class CompactPanel(PanelLayout):
 
     def update_automark_sync(self):
         from src.live.automark_service import synchronization_message
-        if not self.settings.get('automark'):text='AutoMark desligado.'
+        if not self.chest_signals.ready:text='Indisponível: confira as referências em Ajustes → Diagnóstico.'
+        elif not self.settings.get('automark'):text='AutoMark desligado.'
         elif self.session.hidden:text='Mostre o overlay para sincronizar o AutoMark.'
         elif self.region_loading:text='Carregando referências…'
         elif self.automark_service.sync_context!=(self.automark_generation,self.selection_epoch):
