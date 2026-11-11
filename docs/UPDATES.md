@@ -1,5 +1,29 @@
 # Launcher e instalador Windows
 
+## Em desenvolvimento — mapas separados e mapa global
+
+- Registro compartilhado dos sete mapas permanentes, com nomes PT/EN, limites
+  publicados e 44 camadas próprias dos mapas separados. IDs e coletas permanecem
+  no catálogo AppSample original; cavernas de Teyvat não foram ampliadas.
+- Modo Automático recupera mapas pelo minimapa e pelo M. Após cinco segundos sem
+  localização válida e evidência de transição, busca em segundo plano, no máximo um candidato por segundo,
+  e exige três quadros válidos e distintos. Resultados de contextos antigos são
+  rejeitados e AutoMark é ressicronizado nas transições.
+- O caminho estável de Teyvat continua usando o mesmo reconhecedor. Índices de
+  recuperação são limitados a 1.200 descritores por mapa, incluindo seus andares;
+  somente o mapa ativo e um candidato usam reconhecimento detalhado simultâneo.
+- Mapa global permite escolher mapa/camada independentemente do jogo. Coletas e
+  Desfazer usam o escopo consultado; Área atual volta ao contexto reconhecido.
+  Imagens e índices do mapa anterior são liberados ao trocar de área.
+- Preparação reproduzível: `scripts/prepare_separate_maps.py` e
+  `scripts/prepare_map_layers.py`. Auditoria: `scripts/audit_map_expansion.py`.
+  Capturas, logs e caches de reconhecimento não entram nos pacotes.
+- Medição local de 55 quadros estáveis de Teyvat: acréscimo médio de 0,0055 ms
+  (0,07%). Índice de recuperação: aproximadamente 15 MiB. Esses números não
+  representam validação em todas as áreas, resoluções ou condições de jogo.
+- Aceite em jogo dos mapas novos, em janela/fullscreen, permanece pendente.
+  A release pública anterior não foi substituída.
+
 ## Em desenvolvimento — português e inglês
 
 - Instalador oferece seleção de idioma. Ajustes do painel principal mostram

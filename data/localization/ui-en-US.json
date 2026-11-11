@@ -1203,5 +1203,11 @@
   "Automático": "Automatic",
   "Identificando mapa…": "Identifying map…",
   "Escolher detecção automática ou fixar um mapa do AppSample.": "Choose automatic detection or lock an AppSample map.",
-  "Escolher mapa e camada, ou reconhecer automaticamente ao viajar.": "Choose a map and layer, or detect automatically when traveling."
+  "Escolher mapa e camada, ou reconhecer automaticamente ao viajar.": "Choose a map and layer, or detect automatically when traveling.",
+  "Mapa geral · Hexen Map": "World map · Hexen Map",
+  "Ver mapa inteiro": "Fit entire map",
+  "Área atual": "Current area",
+  "Localização atual ainda não reconhecida.": "Your current location has not been recognized yet.",
+  "Abrir mapa global: escolha a área, arraste, aproxime e confira seus coletados.": "Open the world map: choose an area, pan, zoom and review collected items.",
+  "Voltar ao último mapa reconhecido no jogo, sem alterar o rastreamento.": "Return to the last map recognized in game without changing tracking."
 }

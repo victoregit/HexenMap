@@ -20,13 +20,29 @@ Explore **Genshin Impact** with pins on the minimap and the full-screen map, tra
 | **Organized resource catalog** | Groups resources into subcategories and supports aliases and accent-insensitive searches. Unidentified categories remain labeled as pending. |
 | **Location photos** | Click a card photo to enlarge it, zoom, and drag the image. |
 | **Independent panel** | Move, resize using the window borders, or collapse it. Settings offer 125% and 150% text/control scaling. |
-| **Teyvat overview map** | The planet button opens a navigable surface map with shared item filters and progress. It uses installed local images; dense points form clickable groups. |
+| **World map and separate areas** | Browse Teyvat, the six permanent separate maps and their installed floors with shared filters, photos and progress. Browsing does not change game tracking. |
 
 The application uses external image recognition. It does not read game memory, inject code, or control the character. Recognition may lose alignment; pins are hidden while the position is recovered.
 
 Choose **Português (Brasil)** or **English** during installation or under **Settings → Idioma / Language** in the main panel. Reopen the application to apply a change. The preference is shared across profiles and preserved by automatic updates.
 
 Changing the application language does not change Genshin. The current **AutoMark references require the Portuguese game HUD**, including when the application uses English. The AutoMark switch is above the main panel footer.
+
+## Maps and automatic detection
+
+The local test expansion includes **Enkanomiya, The Chasm: Underground Mines,
+Sea of Bygone Eras, Ancient Sacred Mountain, Temple of Space and Frost Moon**,
+in addition to Teyvat. Choose **Automatic · Detect map** to recover your area from
+the minimap or in-game map after tracking is lost, or select a fixed map/floor.
+Markers stay hidden when the current location cannot be confirmed.
+
+The planet window opens on the recognized area or the last browsed map. Explore
+freely without changing game tracking; **Current area** returns to the recognized
+context. The separate maps include their 44 published floors. Expanding Teyvat's
+cave coverage and temporary event maps is outside this stage.
+
+Installed images work offline and load on demand. The expansion remains a local
+test build: technical checks do not replace in-game acceptance before release.
 
 ## Start playing
 

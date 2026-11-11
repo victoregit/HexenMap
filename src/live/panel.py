@@ -68,7 +68,7 @@ class CompactPanel(PanelLayout):
         Tooltip(self.capture_eye,_tr('Mostrar ou ocultar o overlay no compartilhamento de tela.'))
         self.planet_button=NationMapButton(header,self.open_world_map,bg=BG)
         self.planet_button.pack(side='right',padx=2)
-        Tooltip(self.planet_button,_tr('Abrir mapa geral de Teyvat: arraste, aproxime e confira seus coletados.'))
+        Tooltip(self.planet_button,_tr('Abrir mapa global: escolha a área, arraste, aproxime e confira seus coletados.'))
         self.tabs=ttk.Notebook(self.shell,style='Compact.TNotebook');self.tabs.pack(fill='both',expand=True,padx=14)
         self.explore=ttk.Frame(self.tabs);self.prefs=ttk.Frame(self.tabs)
         self.tabs.add(self.explore,text=_tr('Itens'));self.tabs.add(self.prefs,text=_tr('Ajustes'))

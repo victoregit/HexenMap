@@ -117,8 +117,30 @@ def test_search_waits_for_loss_and_rejects_stale_context_and_old_frames(tmp_path
     finally:search.close()
 
 
+def test_atlas_scope_keeps_coordinates_and_collections_separate(tmp_path):
+    items=[Item('a','Chest','common-chest',10,10,map_id='as-map-2'),
+           Item('b','Chest','common-chest',10,10,map_id='as-map-7')]
+    session=Session(items,ProgressManager(str(tmp_path/'progress.json')))
+    session.map_id='as-map-2';session.layer_id='surface'
+    a=WorldIndex(items,'as-map-2');b=WorldIndex(items,'as-map-7')
+    assert [i.id for i in a.items]==['a'] and [i.id for i in b.items]==['b']
+    assert not session.set_collected('a',True,map_scope=('as-map-7','surface'))
+    assert session.set_collected('b',True,map_scope=('as-map-7','surface'))
+    assert session.map_id=='as-map-2' and not session.is_collected('a')
+    assert not session.undo(map_scope=('as-map-2','surface'))
+    assert session.undo(map_scope=('as-map-7','surface'))
 
 
+def test_tracking_mode_and_independent_atlas_survive_settings_roundtrip(tmp_path):
+    path=tmp_path/'settings.json'
+    write_json(path,{'categories':[],'tracking_mode':'manual','resolved_scope':['as-map-9','surface'],
+                     'world_map':{'scope':['as-map-7','surface']}})
+    settings=read_settings(path)
+    assert settings['tracking_mode']=='manual'
+    assert settings['resolved_scope']==['as-map-9','surface']
+    assert settings['world_map']['scope']==['as-map-7','surface']
+    write_json(path,{'categories':[]})
+    assert read_settings(path)['tracking_mode']=='auto'
 
 
 def test_map_change_rejects_old_epoch_and_resets_collection_context(tmp_path,monkeypatch):
@@ -143,6 +165,22 @@ def test_map_change_rejects_old_epoch_and_resets_collection_context(tmp_path,mon
     assert not desktop.DesktopApp.accept_discovered_map(app,3,('as-map-9','surface'))
 
 
+def test_floor_overlay_uses_its_own_world_bounds_and_releases_cache(tmp_path,monkeypatch):
+    from PIL import Image
+    from src.live import world_tiles
+    directory=tmp_path/'userData/references/appsample/as-map-7/floor'
+    directory.mkdir(parents=True)
+    Image.new('RGBA',(64,64),(255,0,0,255)).save(directory/'overlay.png')
+    monkeypatch.setattr(world_tiles,'install_dir',lambda:tmp_path)
+    tiles=WorldTiles(tmp_path/'empty')
+    tiles.meta.update(map_id='as-map-7',layer='floor',overlay={'bounds':{}})
+    tiles.bounds=(0,0,256,256)
+    try:
+        image=tiles.load((14,0,0,64))
+        assert image.getpixel((32,32))==(255,0,0)
+        assert tiles.overlay is not None
+    finally:tiles.close()
+    assert tiles.overlay is None and not tiles.cache
 
 
 def test_many_floors_do_not_multiply_routing_descriptor_budget(tmp_path):
@@ -158,3 +196,51 @@ def test_many_floors_do_not_multiply_routing_descriptor_budget(tmp_path):
         (directory/'manifest.json').write_text(json.dumps({'routing':{'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}}))
     router=MapRouter(scopes,tmp_path)
     assert Counter(s[0] for s in router.owners)['as-map-7']<=1200
+
+
+def test_atlas_browsing_is_independent_and_releases_previous_map(tmp_path):
+    code=f'''
+import gc;gc.disable()
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from scripts.preview_lunar import PreviewApp
+from src.live import world_map
+from src.live.catalog import Item
+from src.live.session import Session
+from src.live.vision import Observation
+from src.progress.progress_manager import ProgressManager
+import numpy as np,time
+closed=[]
+class Tiles:
+ def __init__(self,**kw):
+  self.scope=(kw['map_id'],kw['layer']);self.bounds=(-100,-100,100,100)
+  self.pool=ThreadPoolExecutor(max_workers=1);self.levels=[];self.pending={{}}
+ def get(self,key):return None
+ def poll(self):return False
+ def close(self):closed.append(self.scope);self.pool.shutdown(wait=True,cancel_futures=True)
+world_map.WorldTiles=Tiles
+world_map.installed_scopes=lambda:[('as-map-2','surface'),('as-map-7','surface')]
+world_map.place_dialog=lambda window,parent,size:window.withdraw()
+app=PreviewApp();app.persist_settings=lambda:None
+app.settings['world_map']={{'scope':['as-map-7','surface']}}
+app.session=Session([Item('a','A','common-chest',0,0,map_id='as-map-2'),Item('b','B','common-chest',0,0,map_id='as-map-7')],ProgressManager({str(tmp_path/'progress.json')!r}))
+app.session.map_id='as-map-2';app.session.layer_id='surface'
+view=world_map.WorldMap(app);view.window.withdraw()
+assert view.scope==('as-map-7','surface')
+view.select_scope(('as-map-2','surface'))
+assert closed==[('as-map-7','surface')]
+view.select_scope(('as-map-7','surface'))
+assert app.session.map_id=='as-map-2'
+app.session.observation=Observation('map',time.monotonic(),np.eye(2,3),.9,.1,map_id='as-map-2',layer_id='surface')
+view.current_area()
+assert view.scope==('as-map-2','surface') and app.session.map_id=='as-map-2'
+view.select_scope(('as-map-7','surface'))
+app.session.observation=Observation('hidden',time.monotonic())
+app.last_recognized_scope=('as-map-2','surface')
+view.current_area()
+assert view.scope==('as-map-2','surface') and app.session.map_id=='as-map-2'
+view.close();assert closed[-1]==('as-map-2','surface')
+app.compact.stop();app.root.destroy()
+'''
+    subprocess.run([sys.executable,'-c',code],cwd=Path(__file__).resolve().parents[1],
+                   text=True,capture_output=True,check=True,timeout=25)

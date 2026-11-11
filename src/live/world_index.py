@@ -4,8 +4,8 @@ import numpy as np
 
 
 class WorldIndex:
-    def __init__(self,items):
-        self.items=[i for i in items if i.map_id=='as-map-2' and 'surface' in (i.layer_ids or (i.layer_id,))]
+    def __init__(self,items,map_id='as-map-2',layer='surface'):
+        self.items=[i for i in items if i.map_id==map_id and layer in (i.layer_ids or (i.layer_id,))]
         self.xy=np.asarray([(i.x,i.y) for i in self.items],dtype=np.float64).reshape(-1,2)
         self.by_id={item.id:index for index,item in enumerate(self.items)}
         members=defaultdict(list)
