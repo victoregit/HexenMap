@@ -170,7 +170,7 @@ class CompactPanel(PanelLayout):
         self.source_caption.pack(side='left',fill='x',expand=True)
         self.source_caption.bind('<Button-1>',self.open_layers)
         self.source_caption.bind('<Return>',self.open_layers)
-        Tooltip(self.source_caption,_tr('Selecionar mapa do AppSample. A seleção permanece fixa ao viajar.'))
+        Tooltip(self.source_caption,_tr('Escolher detecção automática ou fixar um mapa do AppSample.'))
         layer_caption=tk.Label(scope,text=_tr('Superfície'),bg=BG,fg=TEXT,font=('Segoe UI',8),cursor='hand2')
         layer_caption.pack(side='right')
         layer_caption.bind('<Button-1>',self.open_layers)
@@ -179,7 +179,7 @@ class CompactPanel(PanelLayout):
         for cy in (20,15,10):button.create_polygon(7,cy,15,cy-4,23,cy,15,cy+4,fill=BG,outline=GOLD)
         button.bind('<Button-1>',self.open_layers)
         button.configure(takefocus=1);button.bind('<Return>',self.open_layers);button.bind('<space>',self.open_layers)
-        Tooltip(button,_tr('Escolher mapa e camada. A seleção permanece fixa ao viajar.'))
+        Tooltip(button,_tr('Escolher mapa e camada, ou reconhecer automaticamente ao viajar.'))
         def show_territory(*args):
             path=self.territory_path.get().split(' · ',1)
             name=path[0]

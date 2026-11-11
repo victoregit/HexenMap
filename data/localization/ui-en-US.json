@@ -1198,5 +1198,10 @@
   "Renomear perfil": "Rename profile",
   "Nome do perfil ativo:": "Active profile name:",
   "Progresso JSON": "Progress JSON",
-  "Área {0}": "Area {0}"
+  "Área {0}": "Area {0}",
+  "Automático · Detectar mapa": "Automatic · Detect map",
+  "Automático": "Automatic",
+  "Identificando mapa…": "Identifying map…",
+  "Escolher detecção automática ou fixar um mapa do AppSample.": "Choose automatic detection or lock an AppSample map.",
+  "Escolher mapa e camada, ou reconhecer automaticamente ao viajar.": "Choose a map and layer, or detect automatically when traveling."
 }

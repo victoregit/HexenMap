@@ -1,0 +1,160 @@
+from concurrent.futures import Future
+from dataclasses import replace
+import json
+from pathlib import Path
+import subprocess
+import sys
+from types import SimpleNamespace
+
+import numpy as np
+
+from src.live.automatic_maps import AutomaticMapSearch, Confirmation
+from src.live.catalog import Item
+from src.live.map_registry import maps, tile_metadata
+from src.live.session import Session
+from src.live.storage import read_settings, write_json
+from src.live.vision import Observation
+from src.live.world_index import WorldIndex
+from src.live.world_tiles import WorldTiles
+from src.progress.progress_manager import ProgressManager
+
+
+def observation(stamp=1.,map_id='as-map-7'):
+    return Observation('map',stamp,np.eye(2,3),.9,.2,map_id=map_id,layer_id='surface')
+
+
+def test_published_map_identities_and_extents_do_not_depend_on_markers():
+    assert set(maps())=={'as-map-2','as-map-7','as-map-9','as-map-34','as-map-36','as-map-37','as-map-40'}
+    for map_id,row in maps().items():
+        meta=tile_metadata(map_id)
+        a,b,c,d=meta['bounds_base_tiles']
+        source=row['tile_bounds']['12']
+        assert (a,c)==(source['minX'],source['maxX'])
+        assert (b,d)==(-source['maxY']-1,-source['minY']-1)
+        assert row['names']['pt-BR'] and row['names']['en-US']
+    assert tile_metadata('as-map-2')['bounds_base_tiles']==[-8,-12,7,7]
+
+
+def test_confirmation_requires_three_distinct_frames_and_rejects_failures():
+    gate=Confirmation()
+    assert gate.accept(observation(1)) is None
+    assert gate.accept(observation(1)) is None and gate.count==1
+    assert gate.accept(observation(2)) is None
+    assert gate.accept(Observation('hidden',3)) is None and gate.count==0
+    for stamp in (4,5):assert gate.accept(observation(stamp)) is None
+    assert gate.accept(observation(6))==('as-map-7','surface')
+    assert gate.accept(observation(7,'as-map-9')) is None and gate.count==1
+    assert gate.accept(replace(observation(8),confidence=.1)) is None and gate.count==0
+
+
+def test_stable_tracking_does_not_start_search_or_load_indices(tmp_path):
+    search=AutomaticMapSearch([('as-map-2','surface'),('as-map-7','surface')],
+                              ('as-map-2','surface'),tmp_path,tmp_path,None)
+    try:
+        for stamp in range(100):assert search.tick(None,stamp,observation(stamp,'as-map-2')) is None
+        assert search.future is None and search.router is None and not search.searching
+    finally:search.close()
+
+
+def test_coarse_false_positive_cannot_starve_other_maps(tmp_path):
+    scopes=[('as-map-2','surface'),('as-map-7','surface'),('as-map-9','surface')]
+    search=AutomaticMapSearch(scopes,scopes[0],tmp_path,tmp_path,None)
+    try:
+        assert search._next_scope([scopes[1]])==scopes[1]
+        assert search._next_scope([scopes[1]])==scopes[2]
+    finally:search.close()
+
+
+def test_normal_minimap_alignment_gaps_never_launch_other_map_indices(tmp_path):
+    scopes=[('as-map-2','surface'),('as-map-7','surface')]
+    search=AutomaticMapSearch(scopes,scopes[0],tmp_path,tmp_path,None)
+    frame=np.zeros((20,20,3),np.uint8)
+    try:
+        search.tick(frame,0,observation(0,'as-map-2'),surface='minimap')
+        for stamp in range(1,31):search.tick(frame,stamp,Observation('hidden',stamp),surface='minimap')
+        assert search.future is None and search.router is None and not search.searching
+    finally:search.close()
+
+
+def test_chest_reward_wave_pauses_map_discovery_without_loading_references(tmp_path):
+    scopes=[('as-map-2','surface'),('as-map-7','surface')]
+    search=AutomaticMapSearch(scopes,scopes[0],tmp_path,tmp_path,None)
+    frame=np.zeros((20,20,3),np.uint8)
+    try:
+        for stamp in range(20):search.tick(frame,stamp,Observation('hidden',stamp),surface='map',paused=True)
+        assert search.future is None and not search.searching
+    finally:search.close()
+
+
+def test_search_waits_for_loss_and_rejects_stale_context_and_old_frames(tmp_path):
+    search=AutomaticMapSearch([('as-map-2','surface'),('as-map-7','surface')],
+                              ('as-map-2','surface'),tmp_path,tmp_path,None)
+    search.loss_grace=1.
+    frame=np.zeros((20,20,3),np.uint8)
+    calls=[]
+    def probe(image,stamp,generation):
+        calls.append(stamp)
+        return generation,None,stamp
+    search._probe=probe
+    try:
+        search.tick(frame,1,Observation('hidden',1))
+        search.tick(frame,1.99,Observation('hidden',1.99))
+        assert not calls and not search.searching
+        search.tick(frame,2,Observation('hidden',2));search.future.result(timeout=2)
+        search.tick(frame,2.5,Observation('hidden',2.5))
+        assert calls==[2]
+        old_generation=search.generation
+        search.reset()
+        search.future=Future();search.future.set_result((old_generation,('as-map-7','surface'),3))
+        search.lost_since=2
+        assert search.tick(frame,3,Observation('hidden',3)) is None
+        if search.future:search.future.result(timeout=2)
+        search.future=Future();search.future.set_result((search.generation,('as-map-7','surface'),3))
+        assert search.tick(frame,10,Observation('hidden',10)) is None
+        if search.future:search.future.result(timeout=2)
+        search.future=Future();search.future.set_result((search.generation,('as-map-7','surface'),10))
+        assert search.tick(frame,10.1,Observation('hidden',10.1))==('as-map-7','surface')
+    finally:search.close()
+
+
+
+
+
+
+def test_map_change_rejects_old_epoch_and_resets_collection_context(tmp_path,monkeypatch):
+    from src.live import desktop
+    calls=[]
+    monkeypatch.setattr(desktop,'installed_scopes',lambda root:[('as-map-7','surface')])
+    session=Session([],ProgressManager(str(tmp_path/'progress.json')))
+    session.map_id='as-map-2';session.layer_id='surface';session.pending_ids={'old'}
+    app=SimpleNamespace(selection_epoch=3,settings={'tracking_mode':'auto'},reference_root=tmp_path,
+        session=session,close_marker_menu=lambda **kw:calls.append('close'),
+        automark_snapshot=object(),resync_automark=lambda:calls.append('resync'),
+        territory_path=SimpleNamespace(set=lambda text:calls.append('caption')),
+        reload_reference=lambda:calls.append('reload'),persist_settings=lambda:calls.append('save'))
+    assert not desktop.DesktopApp.accept_discovered_map(app,2,('as-map-7','surface'))
+    assert not calls and session.pending_ids=={'old'}
+    assert desktop.DesktopApp.accept_discovered_map(app,3,('as-map-7','surface'))
+    assert (session.map_id,session.layer_id)==('as-map-7','surface')
+    assert not session.pending_ids and app.automark_snapshot is None
+    assert calls==['close','resync','caption','reload','save']
+    assert not desktop.DesktopApp.accept_discovered_map(app,3,('as-map-7','surface'))
+    app.settings['tracking_mode']='manual'
+    assert not desktop.DesktopApp.accept_discovered_map(app,3,('as-map-9','surface'))
+
+
+
+
+def test_many_floors_do_not_multiply_routing_descriptor_budget(tmp_path):
+    import hashlib
+    from collections import Counter
+    from src.live.automatic_maps import MapRouter
+    scopes=[]
+    for n in range(8):
+        scope=('as-map-7',f'floor-{n}');scopes.append(scope)
+        directory=tmp_path/scope[0]/scope[1];directory.mkdir(parents=True)
+        path=directory/'routing.npz'
+        np.savez_compressed(path,descriptors=np.random.default_rng(n).random((300,128)).astype(np.float32))
+        (directory/'manifest.json').write_text(json.dumps({'routing':{'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}}))
+    router=MapRouter(scopes,tmp_path)
+    assert Counter(s[0] for s in router.owners)['as-map-7']<=1200

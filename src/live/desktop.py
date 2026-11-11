@@ -32,6 +32,8 @@ from src.live.storage import bundle_dir, install_dir, read_settings, write_json,
 from src.live.vision import Observation, ScreenRecognizer, LayerRecognizer, template_visible
 from src.live.reference_store import read_spec
 from src.live.budget_vision import BudgetRecognizer
+from src.live.map_registry import installed_scopes,map_name,layer_name
+from src.live.automatic_maps import AutomaticMapSearch
 from src.live.performance import PerformanceTelemetry
 from src.live.identity import WINDOW_TITLE
 from src.live.theme import BG, SURFACE, TEXT, ACCENT, ON_ACCENT, confirm_dialog, place_dialog
@@ -95,6 +97,8 @@ class DesktopApp(ProfileControls,CompactPanel):
         self.recognizer=None
         self.reference_error=""
         self.capture_quality={}
+        self.auto_search=None
+        self.last_recognized_scope=None
         self.reference_lock=threading.Lock()
         self.reference_build_lock=threading.Lock()
         self.reference_released=threading.Event();self.reference_released.set()
@@ -179,18 +183,23 @@ class DesktopApp(ProfileControls,CompactPanel):
                    'ancient_sacred_mountain':'Montanha Sagrada Antiga','frost_moon':'Lua Gélida',
                    'unclassified-map':'Mapa não confirmado'}
         map_names.update(getattr(self,'map_names',{}))
+        from src.live.map_registry import maps
+        map_names.update({key:map_name(key) for key in maps()})
         self.layer_names={}
+        supported=set(installed_scopes(self.reference_root/'appsample'))
         for value in layers:
             mapid,layer=value.split(' / ')
             node=self.catalogs.territories.nodes.get(layer)
             name=node.name if node else {'surface':'Superfície','automática':'Camada automática',
                                         'underground-unclassified':'Subterrâneo · camada não confirmada'}.get(layer,layer)
-            if layer.startswith('as-layer-'):name=_tr('Camada {0} · sem referência',layer.removeprefix('as-layer-').replace('-', '/'))
+            if layer.startswith('as-layer-'):
+                name=layer_name(mapid,layer) if (mapid,layer) in supported else _tr('Camada {0} · sem referência',layer.removeprefix('as-layer-').replace('-', '/'))
             if mapid.startswith('as-map-') and mapid not in map_names:map_names[mapid]=_tr('Mapa {0} · sem referência',mapid.removeprefix('as-map-'))
             self.layer_names[f'{_tr(map_names.get(mapid,mapid))} · {_tr(name)}']=value
+        self.layer_names[_tr('Automático · Detectar mapa')]='* / automática'
         pref=self.settings.get("regional",{}).get(self.package_id,{})
         default='as-map-2 / surface'
-        choice=pref.get("layer",default)
+        choice='* / automática' if self.settings.get('tracking_mode','auto')=='auto' else pref.get("layer",default)
         choice=choice if choice in self.layer_names.values() else 'teyvat / surface' if 'teyvat / surface' in layers else layers[0]
         self.layer_var.set(next(k for k,v in self.layer_names.items() if v==choice))
         if self.package_id in self.settings.get("regional",{}):
@@ -203,17 +212,44 @@ class DesktopApp(ProfileControls,CompactPanel):
     def apply_territory(self):
         self.session.area_id=None
         self.session.map_id,self.session.layer_id=self.layer_names[self.layer_var.get()].split(" / ")
-        if self.session.map_id=='*': self.session.map_id=None
-        if self.session.layer_id=="automática": self.session.layer_id=None
-        self.territory_path.set(self.layer_var.get())
+        if self.session.map_id=='*':
+            self.settings['tracking_mode']='auto'
+            scopes=installed_scopes(self.reference_root/'appsample')
+            saved=tuple(self.settings.get('resolved_scope',()))
+            scope=saved if saved in scopes else ('as-map-2','surface')
+            self.session.map_id,self.session.layer_id=scope
+            self.territory_path.set(map_name(scope[0])+' · '+_tr('Automático'))
+        else:
+            self.settings['tracking_mode']='manual'
+            if self.session.layer_id=="automática":self.session.layer_id=None
+            self.territory_path.set(self.layer_var.get())
         self.counts_at=0
 
     def change_territory(self,event=None):
         self.close_marker_menu(restore_focus=False)
         self.apply_territory()
+        self.resync_automark();self.automark_snapshot=None
         try: self.persist_settings()
         except OSError as exc: self.session.notice=_tr('Falha ao salvar preferências: {0}', exc)
         self.reload_reference()
+
+    def accept_discovered_map(self,epoch,scope):
+        if (epoch!=self.selection_epoch or self.settings.get('tracking_mode','auto')!='auto'
+                or scope not in installed_scopes(self.reference_root/'appsample')
+                or scope==(self.session.map_id,self.session.layer_id)):
+            return False
+        self.close_marker_menu(restore_focus=False)
+        self.session.pending_ids.clear();self.automark_snapshot=None
+        self.session.map_id,self.session.layer_id=scope
+        self.session.area_id=None
+        self.settings['resolved_scope']=list(scope)
+        self.resync_automark()
+        self.territory_path.set(map_name(scope[0])+' · '+_tr('Automático'))
+        self.counts_at=0
+        self.reload_reference()
+        try:self.persist_settings()
+        except OSError as exc:self.session.notice=_tr('Falha ao salvar preferências: {0}',exc)
+        return True
 
     def show_appsample_export(self, manual=False):
         from src.live.appsample_export import GUIDE, MANUAL_GUIDE, script_text
@@ -264,6 +300,7 @@ class DesktopApp(ProfileControls,CompactPanel):
         import json
         from src.live.identity import VERSION
         rect=self.native.game();obs=self.session.observation
+        search=getattr(self,'auto_search',None)
         report={'versao':VERSION,'janela_encontrada':rect.is_found,'area_cliente':[rect.width,rect.height],
             'posicao_cliente':[rect.x,rect.y],'area_desktop':list(self.native.desktop_bounds()),
             'dpi':self.native.dpi_scale(rect.hwnd) if rect.hwnd else None,
@@ -279,7 +316,9 @@ class DesktopApp(ProfileControls,CompactPanel):
                         'estado':self.automark_service.status,'fase':self.chest_signals.state,
                         'motivo_referencias':self.chest_signals.reason,
                         'pontuacoes':self.chest_signals.scores.copy(),
-                        'altura_hud_detectada':self.chest_signals.detected_hud_height}}
+                        'altura_hud_detectada':self.chest_signals.detected_hud_height},
+            'map_tracking':{'mode':self.settings.get('tracking_mode','auto'),
+                            **(search.diagnostics() if search else {})}}
         self.root.clipboard_clear();self.root.clipboard_append(json.dumps(report,ensure_ascii=False,indent=2))
         self.session.notice=_tr('Diagnóstico copiado. Cole no suporte; não contém imagens, conta ou credenciais.')
 
@@ -757,13 +796,19 @@ class DesktopApp(ProfileControls,CompactPanel):
                         recognizer=self.recognizer; error=self.reference_error; epoch=self.selection_epoch
                         context=self.reference_context
                     if recognizer is not active_recognizer:
+                        if getattr(self,'auto_search',None):self.auto_search.close();self.auto_search=None
                         if motion: motion.close(wait=True)
                         if active_recognizer is not None and hasattr(active_recognizer,'close'):active_recognizer.close()
                         motion=MotionRecognizer(recognizer) if recognizer else None
                         active_recognizer=recognizer
+                        if recognizer and self.settings.get('tracking_mode')=='auto' and self.reference_override is None:
+                            pack=recognizer.pack
+                            self.auto_search=AutomaticMapSearch(installed_scopes(self.reference_root/'appsample'),
+                                (pack.map_id,pack.layer_id),self.reference_root/'appsample',self.user_dir/'cache/references',pack)
                     self.acknowledge_reference_release(active_recognizer)
                     key=(self.rect_key(rect),getattr(self.native,'capture_visible',False))
                     if key!=previous_key:
+                        if getattr(self,'auto_search',None):self.auto_search.reset()
                         if motion: motion.reset()
                         previous_key=key
                     obs=Observation("hidden",started,reason=_tr("Aguardando o Genshin abrir…"))
@@ -795,6 +840,14 @@ class DesktopApp(ProfileControls,CompactPanel):
                         except Exception:
                             logger.exception("Falha no reconhecimento")
                             obs=Observation("hidden",started,reason=_tr("Não foi possível reconhecer a tela"))
+                    search=getattr(self,'auto_search',None)
+                    if search is not None:
+                        if frame is not None and not self.menu_open and self.native.foreground(rect):
+                            phase=self.chest_signals.phase
+                            chest_pending=phase is not None and phase[0] in ('opening','opening_unlocated','done')
+                            discovered=search.tick(frame,started,obs,surface=motion.previous_surface,paused=chest_pending)
+                            if discovered is not None:self.events.put(('map_discovered',epoch,discovered,self.rect_key(rect)))
+                        elif search.searching or search.lost_since is not None:search.reset()
                     elapsed=time.monotonic()-started
                     if frame is not None and started-last_capture_check>=2:
                         sample=frame[:max(1,round(frame.shape[0]*.35)):12,::12]
@@ -822,6 +875,7 @@ class DesktopApp(ProfileControls,CompactPanel):
         except Exception as exc:
             logger.exception("Falha no serviço ao vivo"); self.events.put(("error",str(exc)))
         finally:
+            if getattr(self,'auto_search',None):self.auto_search.close();self.auto_search=None
             if motion: motion.close(wait=True)
             if active_recognizer is not None and hasattr(active_recognizer,'close'):active_recognizer.close()
             self.native.close_capture()
@@ -864,7 +918,9 @@ class DesktopApp(ProfileControls,CompactPanel):
                 self.session.invalidate("Localizando após mudança de janela…"); self.geometry_key=key
             try:
                 observation_key,obs,epoch=self.latest.get_nowait()
-                if observation_key==key and epoch==self.selection_epoch: self.session.observation=obs
+                if observation_key==key and epoch==self.selection_epoch:
+                    self.session.observation=obs
+                    if obs.fresh(time.monotonic()):self.last_recognized_scope=(obs.map_id,obs.layer_id)
             except queue.Empty: pass
             if not foreground:
                 if hasattr(self,'automark'):self.automark.reset()
@@ -881,6 +937,8 @@ class DesktopApp(ProfileControls,CompactPanel):
                         self.session.notice=_tr('Cobertura global indisponível por memória. Modo Leve ativado.')
                         if len(action)>2 and action[2]:self.reload_reference()
                         self.persist_settings()
+                elif isinstance(action,tuple) and action[0]=='map_discovered':
+                    if foreground and action[3]==self.rect_key(rect):self.accept_discovered_map(action[1],action[2])
                 elif action=="visibility": self.toggle_visibility()
                 elif isinstance(action,tuple) and action[0]=='automark_event':
                     if (foreground and action[1]==self.selection_epoch and self.settings.get('automark')
@@ -930,6 +988,9 @@ class DesktopApp(ProfileControls,CompactPanel):
             self._sync_input(rect)
             self.raise_attached_controls()
             status=_tr(self.overlay_error or self.reference_error or self.session.observation.reason)
+            search=getattr(self,'auto_search',None)
+            if search is not None and search.searching:
+                status=_tr('Identificando mapa…')
             if self.session.hidden: status=_tr("Overlay oculto · use o atalho para mostrar")
             elif not self.session.selected and not self.reference_error: status+=_tr(" · selecione o que procurar")
             elif foreground and self.session.observation.surface!="hidden" and not self.session.observation.fresh(time.monotonic()):
