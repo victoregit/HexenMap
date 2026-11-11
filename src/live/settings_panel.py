@@ -48,10 +48,6 @@ def build_settings(app, parent, *, bg, muted):
         content.section_state=state
         return content
 
-    def title_for(content,title):
-        state=content.section_state;state['title']=title
-        state['button'].configure(text=('▾ ' if state['open'] else '▸ ')+title)
-
     if hasattr(app,'profile_store'):
         from src.live.profile_controls import build_profile_controls
         build_profile_controls(app,section('Perfis'),note)
@@ -69,25 +65,6 @@ def build_settings(app, parent, *, bg, muted):
     app.capture_button=ttk.Button(appearance,text=app.capture_label(),command=app.toggle_capture_visibility)
     app.capture_button.pack(fill='x',pady=3)
     note(appearance,'Controla se os ícones aparecem no compartilhamento de tela. Não desliga o reconhecimento. Para incluir os pins, compartilhe a tela inteira; só a janela do jogo pode não incluí-los.')
-
-    automark=section('AutoMark · Beta')
-    app.automark_var=tk.BooleanVar(value=app.settings.get('automark',False))
-    app.automark_toggle=ttk.Checkbutton(automark,text='Marcar baús automaticamente',variable=app.automark_var,command=app.change_automark)
-    app.automark_toggle.pack(anchor='w',pady=3)
-    app.automark_sync_text=tk.StringVar(value='Volte ao Genshin para sincronizar a tela e a posição.'
-                                       if app.settings.get('automark') else 'AutoMark desligado.')
-    ttk.Label(automark,textvariable=app.automark_sync_text,wraplength=280,foreground=muted).pack(fill='x',pady=4)
-    app.automark_resync_button=ttk.Button(automark,text='Sincronizar novamente',command=app.resync_automark)
-    app.automark_resync_button.pack(fill='x',pady=3)
-    if not app.chest_signals.ready:app.automark_toggle.state(['disabled'])
-    def automark_summary(*args):
-        app.automark_resync_button.state(['!disabled'] if app.automark_var.get() and app.chest_signals.ready else ['disabled'])
-        state=('ativo' if app.automark_var.get() else 'desligado') if app.chest_signals.ready else 'indisponível'
-        title_for(automark,'AutoMark · Beta · '+state)
-    app.automark_var.trace_add('write',automark_summary);automark_summary()
-    note(automark,'Reconhece a abertura e as recompensas e confirma somente um baú próximo sem ambiguidade. Use Desfazer se precisar corrigir uma coleta.')
-    if not app.chest_signals.ready:
-        note(automark,'Indisponível nesta instalação: faltam referências visuais qualificadas. Consulte Diagnóstico para ver o motivo.')
 
     if app.catalogs.appsample_available:
         imports=section('Coletados do AppSample')

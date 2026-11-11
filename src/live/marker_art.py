@@ -178,10 +178,12 @@ def pin_image(category,width,height,collected=False):
     else:
         image=icon_base(category,width,height)
         if category in OCULI:
-            alpha=image.getchannel('A');halo=Image.new('RGBA',image.size,'#55516C')
+            alpha=image.getchannel('A')
+            # Graded shade in RGB: the color-key overlay needs binary alpha.
+            glow=alpha.filter(ImageFilter.GaussianBlur(1.2))
+            halo=ImageOps.colorize(glow,'#142234','#9584D0').convert('RGBA')
             halo.putalpha(alpha.filter(ImageFilter.MaxFilter(5)))
-            edge=Image.new('RGBA',image.size,'#F0EDF7');edge.putalpha(alpha.filter(ImageFilter.MaxFilter(3)))
-            halo.alpha_composite(edge);halo.alpha_composite(image);image=halo
+            halo.alpha_composite(image);image=halo
     if collected:
         alpha=image.getchannel('A')
         image=ImageOps.colorize(ImageOps.grayscale(image),'#18252e','#a6adb0').convert('RGBA')

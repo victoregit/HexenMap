@@ -1,5 +1,23 @@
 # Launcher e instalador Windows
 
+## Versão 1.0.7 — óculis, interação e painel
+
+- AutoMark de baús fica acima do rodapé, com interruptor estilizado,
+  status quando ligado e botão compacto para sincronizar novamente. Report,
+  Apoiar e Jogar ficam alinhados na linha inferior, com menos espaço vazio.
+  A seção sai dos Ajustes; detalhes das referências continuam no Diagnóstico.
+- Óculis usam halo sombreado escuro/violeta graduado no lugar da borda branca;
+  a região clicável continua limitada à arte original.
+- Superfícies de clique, cartões e controles internos tratam WM_MOUSEACTIVATE
+  com MA_NOACTIVATE: recebem o clique sem solicitar ativação da janela.
+  A proteção só é instalada em janelas do próprio processo e é removida ao
+  destruir os controles ou encerrar o aplicativo.
+- Seleção de itens sobrepostos usa botões sem janela suspensa. Fotos ampliadas
+  abertas pelo cartão passam a ser janelas pertencentes ao jogo e sem ativação,
+  com botão explícito para fechar. Mapa independente mantém o fluxo normal.
+- Testes Win32/Tk verificam a resposta de ativação nos controles. A preservação
+  do fullscreen durante cliques ainda precisa de validação real no Genshin.
+
 ## Versão 1.0.6 — compatibilidade e interação
 
 - Preservadas as correções recentes de captura gráfica em Windows sem

@@ -1,7 +1,7 @@
 """Product identity; legacy names exist only to prevent duplicate installations."""
 DISPLAY_NAME='Hexen Map'
 APP_ID='HexenMap'
-VERSION='1.0.6'
+VERSION='1.0.7'
 SUPPORT_EMAIL='victorelias20131@gmail.com'
 EXECUTABLE='HexenMap.exe'
 WINDOW_TITLE='Hexen Map · Exploração'

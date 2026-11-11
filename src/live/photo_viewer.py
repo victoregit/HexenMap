@@ -6,12 +6,15 @@ from src.live.theme import BG,MUTED,place_dialog
 
 
 class PhotoViewer:
-    def __init__(self,parent,image,on_close=lambda:None):
+    def __init__(self,parent,image,on_close=lambda:None,*,native=None,game=None):
         self.image=image.copy();self.on_close=on_close;self.zoom=1.;self.offset=None;self.job=None
         self.window=tk.Toplevel(parent);self.window.title('Foto do local · Hexen Map')
+        if native is not None and game is not None:
+            self.window.withdraw();self.window.overrideredirect(True)
         self.window.configure(bg=BG);self.window.minsize(300,240)
         toolbar=ttk.Frame(self.window,padding=8);toolbar.pack(fill='x')
-        ttk.Button(toolbar,text='Ajustar à janela',command=self.fit).pack(side='left')
+        ttk.Button(toolbar,text='Ajustar à janela',command=self.fit,takefocus=False).pack(side='left')
+        ttk.Button(toolbar,text='Fechar',command=self.close,takefocus=False).pack(side='right')
         hint=ttk.Label(toolbar,text='Roda: zoom · arraste para mover · Esc: fechar',foreground=MUTED,wraplength=380)
         hint.pack(side='left',padx=10,fill='x',expand=True)
         hint.bind('<Configure>',lambda event:hint.configure(wraplength=max(100,event.width)) if int(hint.cget('wraplength'))!=max(100,event.width) else None)
@@ -21,7 +24,17 @@ class PhotoViewer:
         self.canvas.bind('<B1-Motion>',self.drag)
         self.window.bind('<Escape>',lambda e:(self.close(),'break')[1])
         self.window.protocol('WM_DELETE_WINDOW',self.close)
-        place_dialog(self.window,parent,(900,650));self.fit()
+        if native is not None and game is not None:
+            from src.overlay.window_tracker import GameWindowRect
+            width=min(900,max(1,game.width-24));height=min(650,max(1,game.height-24))
+            x=game.x+(game.width-width)//2;y=game.y+(game.height-height)//2
+            self.window.geometry(f'{width}x{height}{x:+d}{y:+d}');self.window.update_idletasks()
+            from src.live.noactivate import materialize_controls
+            materialize_controls(self.window)
+            hwnd=native.popup(self.window.winfo_id(),game)
+            native.place(hwnd,GameWindowRect(x,y,width,height))
+        else:place_dialog(self.window,parent,(900,650))
+        self.fit()
 
     def scale(self):
         return min(self.canvas.winfo_width()/self.image.width,self.canvas.winfo_height()/self.image.height)*self.zoom
