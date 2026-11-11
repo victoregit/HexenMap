@@ -1,4 +1,5 @@
 """Modal foreground alerts: errors must not disappear behind the game."""
+from src.live.i18n import tr as _tr
 from contextlib import contextmanager
 import tkinter as tk
 from tkinter import messagebox, filedialog
@@ -30,21 +31,21 @@ def foreground(parent=None):
 
 def showerror(title,message,*,parent=None):
     with foreground(parent) as owner:
-        return messagebox.showerror(title,message,parent=owner)
+        return messagebox.showerror(_tr(title),_tr(message),parent=owner)
 
 
 def showinfo(title,message,*,parent=None):
     with foreground(parent) as owner:
-        return messagebox.showinfo(title,message,parent=owner)
+        return messagebox.showinfo(_tr(title),_tr(message),parent=owner)
 
 
 def askyesnocancel(title,message,*,parent=None):
     with foreground(parent) as owner:
-        return messagebox.askyesnocancel(title,message,parent=owner)
+        return messagebox.askyesnocancel(_tr(title),_tr(message),parent=owner)
 
 
 def select_progress(parent):
     with foreground(parent) as owner:
         return filedialog.askopenfilename(parent=owner,
-            title='Selecione seu progress.json antigo ou um backup — Cancelar encerra o app',
-            filetypes=[('Progresso e backups','*.json *.bak'),('Todos','*.*')])
+            title=_tr('Selecione seu progress.json antigo ou um backup — Cancelar encerra o app'),
+            filetypes=[(_tr('Progresso e backups'),'*.json *.bak'),(_tr('Todos'),'*.*')])

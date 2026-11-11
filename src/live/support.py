@@ -1,4 +1,5 @@
 """User-written reports; no credentials, automatic diagnostics or attachments."""
+from src.live.i18n import tr as _tr
 import json
 import queue
 import re
@@ -25,26 +26,26 @@ def transport_error(exc):
     reason=exc.reason if isinstance(exc,URLError) else exc
     if isinstance(exc,HTTPError):
         if exc.code==403:
-            return 'O serviço bloqueou a conexão (HTTP 403). Use “Enviar por e-mail”.'
-        return f'O serviço recusou o envio (HTTP {exc.code}). Tente novamente mais tarde.'
+            return _tr('O serviço bloqueou a conexão (HTTP 403). Use “Enviar por e-mail”.')
+        return _tr('O serviço recusou o envio (HTTP {0}). Tente novamente mais tarde.',exc.code)
     if isinstance(reason,ssl.SSLCertVerificationError):
-        return 'Não foi possível validar o certificado da conexão. Confira a data do Windows e a conexão.'
+        return _tr('Não foi possível validar o certificado da conexão. Confira a data do Windows e a conexão.')
     if isinstance(reason,(TimeoutError,socket.timeout)):
-        return 'O serviço demorou para responder. Não foi possível confirmar o envio.'
+        return _tr('O serviço demorou para responder. Não foi possível confirmar o envio.')
     if isinstance(reason,socket.gaierror):
-        return 'Não foi possível localizar o serviço. Confira sua conexão com a internet.'
+        return _tr('Não foi possível localizar o serviço. Confira sua conexão com a internet.')
     if isinstance(exc,ValueError):
-        return 'O serviço retornou uma resposta inesperada. Tente novamente mais tarde.'
+        return _tr('O serviço retornou uma resposta inesperada. Tente novamente mais tarde.')
     code=getattr(reason,'winerror',None) or getattr(reason,'errno',None)
-    return f'Falha de conexão com o serviço{f" (código {code})" if code else ""}.'
+    return _tr('Falha de conexão com o serviço')+(_tr(' (código {0})',code) if code else '')+'.'
 
 
 def report_payload(email,message):
     email=email.strip();message=message.strip()
-    if not message:raise ValueError('Escreva seu feedback ou descreva o problema.')
-    if len(message)>MAX_MESSAGE:raise ValueError(f'A mensagem pode ter até {MAX_MESSAGE} caracteres.')
+    if not message:raise ValueError(_tr('Escreva seu feedback ou descreva o problema.'))
+    if len(message)>MAX_MESSAGE:raise ValueError(_tr('A mensagem pode ter até {0} caracteres.', MAX_MESSAGE))
     if email and (len(email)>254 or not re.fullmatch(r'[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+',email)):
-        raise ValueError('Confira o e-mail ou deixe o campo vazio.')
+        raise ValueError(_tr('Confira o e-mail ou deixe o campo vazio.'))
     data={'_subject':f'[{DISPLAY_NAME} {VERSION}] Report / feedback','_template':'table',
           '_captcha':'false','_url':'https://github.com/victoregit/HexenMap-Releases',
           'aplicativo':DISPLAY_NAME,'versao':VERSION,'mensagem':message}
@@ -60,14 +61,14 @@ def send_report(email,message,opener=urlopen):
                              'Referer':data['_url']},method='POST')
     try:
         with opener(request,timeout=NETWORK_TIMEOUT) as response:raw=response.read(65537)
-        if len(raw)>65536:raise ValueError('Resposta muito grande')
+        if len(raw)>65536:raise ValueError(_tr('Resposta muito grande'))
         result=json.loads(raw)
     except (OSError,ValueError) as exc:
-        raise RuntimeError(transport_error(exc)+' Sua mensagem foi mantida.') from exc
+        raise RuntimeError(_tr(transport_error(exc))+_tr(' Sua mensagem foi mantida.')) from exc
     if isinstance(result,dict) and 'needs activation' in str(result.get('message','')).lower():
-        raise RuntimeError('O canal de reports aguarda ativação pelo desenvolvedor. Sua mensagem foi mantida.')
+        raise RuntimeError(_tr('O canal de reports aguarda ativação pelo desenvolvedor. Sua mensagem foi mantida.'))
     if not isinstance(result,dict) or result.get('success') not in (True,'true'):
-        raise RuntimeError('O serviço não confirmou o envio. Sua mensagem foi mantida; tente novamente mais tarde.')
+        raise RuntimeError(_tr('O serviço não confirmou o envio. Sua mensagem foi mantida; tente novamente mais tarde.'))
     return result
 
 
@@ -76,27 +77,27 @@ class ReportDialog:
         self.parent=parent;self.busy=False;self.sent=False;self.next_send=0
         self.results=queue.Queue();self.poll_job=None
         self.window=tk.Toplevel(parent);window=self.window
-        window.withdraw();window.title('Report · Hexen Map');window.configure(bg=BG)
+        window.withdraw();window.title(_tr('Report · Hexen Map'));window.configure(bg=BG)
         window.transient(parent);window.resizable(False,False)
         window.attributes('-topmost',bool(parent.attributes('-topmost')))
         body=ttk.Frame(window,padding=16);body.pack(fill='both',expand=True)
-        ttk.Label(body,text='Report e feedback',font=(FONT,12,'bold')).pack(anchor='w')
-        ttk.Label(body,text='Conte o que aconteceu ou compartilhe sua ideia.',foreground=MUTED).pack(anchor='w',pady=(4,12))
-        ttk.Label(body,text='Seu e-mail (opcional, apenas para responder)').pack(anchor='w')
+        ttk.Label(body,text=_tr('Report e feedback'),font=(FONT,12,'bold')).pack(anchor='w')
+        ttk.Label(body,text=_tr('Conte o que aconteceu ou compartilhe sua ideia.'),foreground=MUTED).pack(anchor='w',pady=(4,12))
+        ttk.Label(body,text=_tr('Seu e-mail (opcional, apenas para responder)')).pack(anchor='w')
         self.email=ttk.Entry(body);self.email.pack(fill='x',pady=(4,12))
-        ttk.Label(body,text='Mensagem').pack(anchor='w')
+        ttk.Label(body,text=_tr('Mensagem')).pack(anchor='w')
         self.message=tk.Text(body,height=7,wrap='word',bg=SURFACE,fg=TEXT,insertbackground=TEXT,
                              relief='flat',font=(FONT,10),padx=8,pady=8,undo=True)
         self.message.pack(fill='both',expand=True,pady=(4,8))
-        ttk.Label(body,text='Envio via FormSubmit ao desenvolvedor. Só enviamos o texto,\no e-mail informado e a versão do app.',foreground=MUTED).pack(anchor='w')
+        ttk.Label(body,text=_tr('Envio via FormSubmit ao desenvolvedor. Só enviamos o texto,\no e-mail informado e a versão do app.'),foreground=MUTED).pack(anchor='w')
         self.status=tk.StringVar()
         self.status_label=ttk.Label(body,textvariable=self.status,foreground=ACCENT,wraplength=360)
         self.status_label.pack(fill='x',pady=(8,4))
         actions=ttk.Frame(body);actions.pack(fill='x',pady=(4,0))
-        self.close_button=ttk.Button(actions,text='Cancelar',command=self.close);self.close_button.pack(side='left')
-        self.send_button=ttk.Button(actions,text='Enviar',style='Primary.TButton',command=self.submit)
+        self.close_button=ttk.Button(actions,text=_tr('Cancelar'),command=self.close);self.close_button.pack(side='left')
+        self.send_button=ttk.Button(actions,text=_tr('Enviar'),style='Primary.TButton',command=self.submit)
         self.send_button.pack(side='right')
-        self.email_button=ttk.Button(actions,text='Enviar por e-mail',command=self.open_email)
+        self.email_button=ttk.Button(actions,text=_tr('Enviar por e-mail'),command=self.open_email)
         self.email_button.pack(side='right',padx=(0,8))
         window.protocol('WM_DELETE_WINDOW',self.close);window.bind('<Escape>',lambda event:self.close())
         window.update_idletasks();scale=getattr(parent,'_lunar_signature',1.)
@@ -107,14 +108,14 @@ class ReportDialog:
         if self.busy or self.sent:return
         email=self.email.get();message=self.message.get('1.0','end-1c')
         try:report_payload(email,message)
-        except ValueError as exc:self.status.set(str(exc));return
+        except ValueError as exc:self.status.set(_tr(str(exc)));return
         if time.monotonic()<self.next_send:
-            self.status.set('Aguarde alguns segundos antes de tentar novamente.');return
+            self.status.set(_tr('Aguarde alguns segundos antes de tentar novamente.'));return
         self.next_send=time.monotonic()+3;self.busy=True
         self.deadline=time.monotonic()+CONFIRMATION_TIMEOUT
         # Each attempt owns its queue: a late reply cannot confirm a newer report.
         self.results=queue.Queue();results=self.results
-        self.status.set('Enviando…');self.send_button.state(['disabled']);self.close_button.state(['disabled'])
+        self.status.set(_tr('Enviando…'));self.send_button.state(['disabled']);self.close_button.state(['disabled'])
         self.email_button.state(['disabled'])
         self.email.state(['disabled']);self.message.configure(state='disabled')
         def worker():
@@ -129,11 +130,11 @@ class ReportDialog:
         except queue.Empty:
             if time.monotonic()<self.deadline:
                 self.poll_job=self.window.after(80,self.poll);return
-            error='O serviço não respondeu em 10 segundos. Não foi possível confirmar o envio. Sua mensagem foi mantida; use “Enviar por e-mail”.'
+            error=_tr('O serviço não respondeu em 10 segundos. Não foi possível confirmar o envio. Sua mensagem foi mantida; use “Enviar por e-mail”.')
         self.busy=False;self.close_button.state(['!disabled'])
         self.email_button.state(['!disabled'])
         if error:
-            self.status.set(error);self.send_button.state(['!disabled'])
+            self.status.set(_tr(error));self.send_button.state(['!disabled'])
             self.email.state(['!disabled']);self.message.configure(state='normal')
         else:
             self.sent=True
@@ -143,7 +144,7 @@ class ReportDialog:
         if self.busy:return
         email=self.email.get();message=self.message.get('1.0','end-1c')
         try:data=report_payload(email,message)
-        except ValueError as exc:self.status.set(str(exc));return
+        except ValueError as exc:self.status.set(_tr(str(exc)));return
         body=f'{message.strip()}\n\n{DISPLAY_NAME} {VERSION}'
         if email.strip():body+=f'\nResponder para: {email.strip()}'
         url=f'mailto:{SUPPORT_EMAIL}?'+urlencode({'subject':data['_subject'],'body':body},quote_via=quote)
@@ -151,11 +152,11 @@ class ReportDialog:
             opened=webbrowser.open(url)
         except OSError:
             opened=False
-        self.status.set('Conclua o envio no aplicativo de e-mail que foi aberto. A mensagem continua aqui.' if opened else
-                        f'Não foi possível abrir o aplicativo de e-mail. Copie sua mensagem e envie para {SUPPORT_EMAIL}.')
+        self.status.set(_tr('Conclua o envio no aplicativo de e-mail que foi aberto. A mensagem continua aqui.') if opened else
+                        _tr('Não foi possível abrir o aplicativo de e-mail. Copie sua mensagem e envie para {0}.', SUPPORT_EMAIL))
 
     def close(self):
-        if self.busy:self.status.set('Aguarde a confirmação do envio…');return
+        if self.busy:self.status.set(_tr('Aguarde a confirmação do envio…'));return
         if not self.window.winfo_exists():return
         if self.poll_job is not None:self.window.after_cancel(self.poll_job)
         self.window.destroy()

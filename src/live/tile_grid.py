@@ -1,11 +1,12 @@
 """Provider-neutral bounded tile rectangles."""
+from src.live.i18n import tr as _tr
 def partition_bounds(bounds, side=16, overlap=1):
     """Bound raster memory while retaining common terrain at chunk seams."""
     if side <= overlap or overlap < 0:
-        raise ValueError('Invalid tile partition size')
+        raise ValueError(_tr('Invalid tile partition size'))
     x0,y0,x1,y1=bounds
     if x1<x0 or y1<y0:
-        raise ValueError('Empty tile rectangle')
+        raise ValueError(_tr('Empty tile rectangle'))
     result=[]
     x=x0
     while x<=x1:

@@ -1,6 +1,7 @@
 """Non-modal, game-owned item card; no native menu grab or root focus transfer."""
 from __future__ import annotations
 
+from src.live.i18n import tr as _tr
 import tkinter as tk
 from tkinter import ttk
 import webbrowser
@@ -52,19 +53,19 @@ class MarkerMenu:
         close=tk.Label(header,text="×",bg=SURFACE,fg=MUTED,font=("Segoe UI",16),cursor="hand2")
         close.pack(side="right",anchor="n")
         close.bind("<ButtonRelease-1>",lambda event:on_close())
-        Tooltip(close,'Fechar cartão (Esc).')
+        Tooltip(close,_tr('Fechar cartão (Esc).'))
         if len(items)>1:
-            tk.Label(card,text="Há itens sobrepostos. Escolha qual alterar:",bg=SURFACE,fg=MUTED,
+            tk.Label(card,text=_tr("Há itens sobrepostos. Escolha qual alterar:"),bg=SURFACE,fg=MUTED,
                      font=("Segoe UI",9)).pack(anchor="w",pady=(10,4))
             selector=ttk.Frame(card);selector.pack(fill='x')
-            ttk.Button(selector,text='◀ Item anterior',takefocus=False,
+            ttk.Button(selector,text=_tr('◀ Item anterior'),takefocus=False,
                        command=lambda:self.select((self.index-1)%len(self.items))).pack(side='left')
-            ttk.Button(selector,text='Próximo item ▶',takefocus=False,
+            ttk.Button(selector,text=_tr('Próximo item ▶'),takefocus=False,
                        command=lambda:self.select((self.index+1)%len(self.items))).pack(side='right')
         tk.Frame(card,bg=BORDER,height=1).pack(fill="x",pady=12)
         self.action=self._button(card)
         if hints is not None:
-            tk.Label(card,text='Fotos do local · AppSample',bg=SURFACE,fg=ACCENT,
+            tk.Label(card,text=_tr('Fotos do local · AppSample'),bg=SURFACE,fg=ACCENT,
                      font=('Segoe UI',10,'bold')).pack(anchor='w',pady=(10,4))
             self.hint_status=tk.Label(card,bg=SURFACE,fg=MUTED,font=('Segoe UI',8),anchor='w',wraplength=360)
             self.hint_status.pack(fill='x')
@@ -73,20 +74,20 @@ class MarkerMenu:
                                         bg=BG,highlightthickness=0)
             self.photo_canvas.pack(pady=6)
             self.photo_canvas.bind('<Button-1>',lambda event:self.open_photo())
-            Tooltip(self.photo_canvas,'Clique na foto para ampliar. Roda: zoom; arraste para navegar.')
+            Tooltip(self.photo_canvas,_tr('Clique na foto para ampliar. Roda: zoom; arraste para navegar.'))
             navigation=tk.Frame(card,bg=SURFACE);navigation.pack(fill='x',pady=(0,6))
-            self.previous_photo=ttk.Button(navigation,text='◀ Anterior',style='Card.TButton',command=lambda:self._show_photo(-1),takefocus=False)
+            self.previous_photo=ttk.Button(navigation,text=_tr('◀ Anterior'),style='Card.TButton',command=lambda:self._show_photo(-1),takefocus=False)
             self.previous_photo.pack(side='left')
             self.photo_counter=tk.Label(navigation,bg=SURFACE,fg=TEXT,font=('Segoe UI',9))
             self.photo_counter.pack(side='left',expand=True)
-            self.next_photo=ttk.Button(navigation,text='Próxima ▶',style='Card.TButton',command=lambda:self._show_photo(1),takefocus=False)
+            self.next_photo=ttk.Button(navigation,text=_tr('Próxima ▶'),style='Card.TButton',command=lambda:self._show_photo(1),takefocus=False)
             self.next_photo.pack(side='right')
             links=tk.Frame(card,bg=SURFACE);links.pack(fill='x')
-            self.source_link=ttk.Button(links,text='Abrir ponto no AppSample',style='Card.TButton',command=self._open_source,takefocus=False)
+            self.source_link=ttk.Button(links,text=_tr('Abrir ponto no AppSample'),style='Card.TButton',command=self._open_source,takefocus=False)
             self.source_link.pack(side='left')
-            self.refresh_link=ttk.Button(links,text='Atualizar',style='Card.TButton',command=lambda:self._load_hints(True),takefocus=False)
+            self.refresh_link=ttk.Button(links,text=_tr('Atualizar'),style='Card.TButton',command=lambda:self._load_hints(True),takefocus=False)
             self.refresh_link.pack(side='right')
-        tk.Label(card,text="Clique fora para voltar ao jogo",bg=SURFACE,fg=MUTED,
+        tk.Label(card,text=_tr("Clique fora para voltar ao jogo"),bg=SURFACE,fg=MUTED,
                  font=("Segoe UI",8)).pack(pady=(10,0))
         self.select(0)
         self.window.update_idletasks()
@@ -125,13 +126,13 @@ class MarkerMenu:
         self.index=index
         item=self.items[index]
         collected=self.progress.is_collected(item.id)
-        self.title.configure(text=LABELS.get(item.category,CATEGORIES.get(item.category,(item.name,))[0]))
-        detail=self.progress.respawn_text(item) if hasattr(self.progress,"respawn_text") else ""
-        self.badge.configure(text=detail or ("Já pego" if collected else "Ainda não pego"),wraplength=265,justify="left")
+        self.title.configure(text=_tr(LABELS.get(item.category,CATEGORIES.get(item.category,(item.name,))[0])))
+        detail=_tr(self.progress.respawn_text(item)) if hasattr(self.progress,"respawn_text") else ""
+        self.badge.configure(text=detail or (_tr("Já pego") if collected else _tr("Ainda não pego")),wraplength=265,justify="left")
         self.icon.delete("all")
         if not draw_category_art(self.icon,item.category,20,21,size=34,collected=collected):
             draw_marker(self.icon,item.category,20,21,1.6,collected=collected)
-        self.action.configure(text="↺  Desmarcar item" if collected else "✓  Marcar como pego")
+        self.action.configure(text=_tr("↺  Desmarcar item") if collected else _tr("✓  Marcar como pego"))
         self._hover(False)
         if self.hints is not None:
             self._load_hints()
@@ -148,7 +149,7 @@ class MarkerMenu:
         self.photo_image=None
         self.photo_canvas.delete('all')
         width,height=self.photo_size
-        self.photo_canvas.create_text(width/2,height/2,text=text,fill=MUTED,
+        self.photo_canvas.create_text(width/2,height/2,text=_tr(text),fill=MUTED,
                                       width=width-24,font=('Segoe UI',10),justify='center')
 
     def _load_hints(self,refresh=False):
@@ -164,8 +165,8 @@ class MarkerMenu:
         self.photos=[]
         self.photo_counter.configure(text='')
         self.previous_photo.configure(state='disabled');self.next_photo.configure(state='disabled')
-        self.hint_status.configure(text='Buscando fotos…' if available else 'Fonte sem fotos integradas')
-        self._photo_message('Buscando fotos deste ponto…' if available else 'Fotos disponíveis para marcadores do AppSample.')
+        self.hint_status.configure(text=_tr('Buscando fotos…') if available else _tr('Fonte sem fotos integradas'))
+        self._photo_message(_tr('Buscando fotos deste ponto…') if available else _tr('Fotos disponíveis para marcadores do AppSample.'))
         future=self.hints.request(self.items[self.index],refresh=refresh)
         self._poll_hints(future,generation)
 
@@ -177,14 +178,14 @@ class MarkerMenu:
             self.hint_job=self.window.after(80,lambda:self._poll_hints(future,generation))
             return
         result=future.result()
-        self.hint_status.configure(text=result.message)
+        self.hint_status.configure(text=_tr(result.message))
         self.refresh_link.configure(state='normal' if marker_url(self.items[self.index]) else 'disabled')
         self.photos=list(dict.fromkeys(row['image'] for row in result.comments if row['image']))
         self.photo_index=0
         if self.photos:
             self._show_photo()
         else:
-            self._photo_message('Nenhuma foto disponível nesta consulta.\nUse Atualizar ou consulte o ponto na fonte.')
+            self._photo_message(_tr('Nenhuma foto disponível nesta consulta.\nUse Atualizar ou consulte o ponto na fonte.'))
 
     def _show_photo(self,step=0):
         if not self.photos:
@@ -198,8 +199,8 @@ class MarkerMenu:
         self.photo_counter.configure(text=f'{self.photo_index+1} / {len(self.photos)}')
         state='normal' if len(self.photos)>1 else 'disabled'
         self.previous_photo.configure(state=state);self.next_photo.configure(state=state)
-        self._photo_message('Carregando foto…')
-        self.hint_status.configure(text='Carregando foto do AppSample…')
+        self._photo_message(_tr('Carregando foto…'))
+        self.hint_status.configure(text=_tr('Carregando foto do AppSample…'))
         future=self.hints.request_image(self.photos[self.photo_index])
         self._poll_photo(future,generation)
 
@@ -211,9 +212,9 @@ class MarkerMenu:
             self.hint_job=self.window.after(80,lambda:self._poll_photo(future,generation))
             return
         result=future.result()
-        self.hint_status.configure(text=result.message)
+        self.hint_status.configure(text=_tr(result.message))
         if result.image is None:
-            self._photo_message(result.message)
+            self._photo_message(_tr(result.message))
             return
         image=result.image.copy()
         self.photo_original=result.image.copy();self.photo_canvas.configure(cursor='hand2')

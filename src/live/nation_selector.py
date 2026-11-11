@@ -1,4 +1,5 @@
 """Nation picker with cached, locally bundled emblems; no network on UI interaction."""
+from src.live.i18n import tr as _tr
 import hashlib
 import json
 import tkinter as tk
@@ -18,11 +19,11 @@ def icon_image(region, size=24):
     metadata=json.loads((directory/'SOURCE.json').read_text(encoding='utf-8'))[region]
     path=directory/metadata['file']
     if hashlib.sha256(path.read_bytes()).hexdigest()!=metadata['sha256']:
-        raise ValueError('Emblema de nação alterado: '+region)
+        raise ValueError(_tr('Emblema de nação alterado: ')+_tr(region))
     with Image.open(path) as source:
         alpha=source.convert('RGBA').getchannel('A')
         bounds=alpha.getbbox()
-        if not bounds:raise ValueError('Emblema vazio: '+region)
+        if not bounds:raise ValueError(_tr('Emblema vazio: ')+_tr(region))
         alpha=alpha.crop(bounds)
         alpha.thumbnail((size,size),Image.Resampling.LANCZOS)
         # Tint only at presentation time. Original downloaded files stay byte-identical.
@@ -75,7 +76,7 @@ class NationSelector(tk.Frame):
             if index==self.index and c.focus_get()==c:
                 c.create_rectangle(x+1,1,x+cell-1,30,outline='#dfc48d')
         name=self.names[self.hovered] if self.hovered is not None else self.variable.get()
-        self.caption.configure(text=name+(' · '+self.detail if self.detail and self.hovered is None else ''))
+        self.caption.configure(text=_tr(name)+(' · '+_tr(self.detail) if self.detail and self.hovered is None else ''))
 
     def click(self,event):
         self.button.focus_set()
@@ -89,7 +90,7 @@ class NationSelector(tk.Frame):
 
     def move(self,delta):
         self.index=(self.index+delta)%len(self.names);self.hovered=None;self.draw()
-        self.caption.configure(text=self.names[self.index]);return 'break'
+        self.caption.configure(text=_tr(self.names[self.index]));return 'break'
 
     def choose(self,index):
         if not 0<=index<len(self.names):return 'break'

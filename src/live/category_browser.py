@@ -1,4 +1,5 @@
 """A virtual marker list: row count does not translate into Tk widget count."""
+from src.live.i18n import tr as _tr
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor
@@ -42,19 +43,19 @@ class CategoryModel:
             source=meta.get('source_name',meta.get('name',fallback))
             name=meta.get('name',fallback)
             original_group=meta.get('group',CATEGORY_GROUPS.get(category,'Exploração'))
-            label=name if meta.get('presentation_reviewed') else portuguese_label(name,source)
+            label=_tr(name) if meta.get('presentation_reviewed') else _tr(portuguese_label(name,source))
             group={'Oculi':'Destaques','Seelies':'Enigmas','Desafios':'Enigmas',
                    'Puzzles':'Enigmas','Santuários':'Exploração'}.get(original_group,original_group)
             if source in INTERNAL: group='Etiquetas da fonte'
             if label is None or meta.get('translation_reviewed') is False:
                 group=PENDING
-                label=name if meta.get('presentation_status')=='pending' else source
+                label=_tr(name) if meta.get('presentation_status')=='pending' else _tr(source)
             key=(meta.get('source_group',original_group),meta['source_type']) if meta.get('source_type') else (original_group,source)
             subgroup=meta.get('subgroup') if group=='Recursos' else None
             if group=='Recursos' and subgroup not in RESOURCE_SUBGROUPS:subgroup='Outros materiais'
             if key not in buckets:buckets[key]=[label,group,set(),category,subgroup,set()]
             buckets[key][2].add(category)
-            buckets[key][5].update((source,category,*meta.get('aliases',[])))
+            buckets[key][5].update((source,name,category,*meta.get('aliases',[])))
         order={g:i for i,g in enumerate(GROUP_ORDER)}
         self.entries=[CategoryEntry(key,label,group,frozenset(members),icon,
                       normalized(' '.join((label,group,subgroup or '',*sorted(aliases)))),subgroup)
@@ -139,7 +140,7 @@ class CategoryBrowser(tk.Canvas):
         self.tile_column=0
         self.bind('<Left>',lambda e:self.move_tile(-1))
         self.bind('<Right>',lambda e:self.move_tile(1))
-        tip=Tooltip(self,self.tooltip_text);self.bind('<Motion>',tip.schedule,add='+')
+        tip=Tooltip(self,_tr(self.tooltip_text));self.bind('<Motion>',tip.schedule,add='+')
 
     def connect_scrollbar(self, scrollbar):
         def changed(first,last):
@@ -218,9 +219,9 @@ class CategoryBrowser(tk.Canvas):
                         if not draw_category_art(self,entry.icon,center,y+22,size=round(30*self.ui_scale)):
                             draw_marker(self,entry.icon,center,y+22,scale=1.2)
                     else:draw_oculus(self,entry,center,y+22,size=round(30*self.ui_scale))
-                    self.create_text(center,y+44,text=CHEST_LABELS.get(entry.icon,entry.label),fill=TEXT,font=('Segoe UI',max(6,round((7 if entry.icon=='remarkable-chest' else 8)*self.font_scale))))
+                    self.create_text(center,y+44,text=_tr(CHEST_LABELS.get(entry.icon,entry.label)),fill=TEXT,font=('Segoe UI',max(6,round((7 if entry.icon=='remarkable-chest' else 8)*self.font_scale))))
                     count=self.counts.get(entry.key);counter=f'{count[0]:,} / {count[1]:,}'.replace(',','.') if count is not None else '—'
-                    self.create_text(center,y+59,text=counter,fill=GOLD if chosen else MUTED,font=('Segoe UI',max(6,round(8*self.font_scale))))
+                    self.create_text(center,y+59,text=_tr(counter),fill=GOLD if chosen else MUTED,font=('Segoe UI',max(6,round(8*self.font_scale))))
                     if chosen:self.create_text(right-7,y+10,text='✓',fill=GOLD,font=('Segoe UI',8,'bold'))
                 continue
             if kind in {'group','subgroup'}:
@@ -229,35 +230,35 @@ class CategoryBrowser(tk.Canvas):
                 if kind=='group':
                     self.create_line(2,y,width-2,y,fill=BORDER)
                     if not draw_group_art(self,value,12,y+18,size=round(22*self.ui_scale)):
-                        self.create_text(12,y+18,text=GROUP_SYMBOLS.get(value,'◇'),fill=MUTED,font=('Segoe UI Symbol',12))
+                        self.create_text(12,y+18,text=_tr(GROUP_SYMBOLS.get(value,'◇')),fill=MUTED,font=('Segoe UI Symbol',12))
                 elif value in collapsed and not self.query:
                     self.create_polygon(offset+8,y+14,offset+13,y+18,offset+8,y+22,fill=GOLD,outline='')
                 else:self.create_polygon(offset+7,y+15,offset+15,y+15,offset+11,y+21,fill=GOLD,outline='')
                 active=sum(bool(e.members & self.selected) for e in entries)
-                label=GROUP_TITLES.get(value,value)
-                self.create_text((29 if kind=='group' else 26)+offset,y+18,text=label+(f' · {active}' if active else ''),
+                label=_tr(GROUP_TITLES.get(value,value))
+                self.create_text((29 if kind=='group' else 26)+offset,y+18,text=_tr(label)+(f' · {active}' if active else ''),
                                  anchor='w',fill=TEXT,font=('Segoe UI',round(9*self.font_scale),'bold' if kind=='group' else 'normal'))
-                self.create_text(width-53,y+18,text='Todos',fill=MUTED,font=('Segoe UI',max(6,round(8*self.font_scale))))
+                self.create_text(width-53,y+18,text=_tr('Todos'),fill=MUTED,font=('Segoe UI',max(6,round(8*self.font_scale))))
                 self.create_text(width-14,y+18,text='×',fill=MUTED,font=('Segoe UI',12))
                 continue
             entry=value;chosen=bool(entry.members & self.selected)
             rounded(self,(1,y+1,width-2,y+34),radius=8,fill=SELECTED if chosen else BG,
                     outline=GOLD if index==self.focused and self.focus_get()==self else '')
             if not draw_category_art(self,entry.icon,17,y+18,size=round(22*self.ui_scale)):draw_marker(self,entry.icon,17,y+18,scale=.95)
-            label=entry.label
+            label=_tr(entry.label)
             # Ellipsis keeps counters in their own column; full label remains searchable.
             max_chars=max(12,int((width-126)/6.3))
-            if len(label)>max_chars:label=label[:max_chars-1]+'…'
-            self.create_text(36,y+17,text=label,anchor='w',fill=TEXT,font=('Segoe UI',round(9*self.font_scale)))
+            if len(label)>max_chars:label=_tr(label[:max_chars-1])+'…'
+            self.create_text(36,y+17,text=_tr(label),anchor='w',fill=TEXT,font=('Segoe UI',round(9*self.font_scale)))
             count=self.counts.get(entry.key)
             counter=f'{count[0]}/{count[1]}' if count is not None else '—'
-            self.create_text(width-34,y+17,text=counter,anchor='e',
+            self.create_text(width-34,y+17,text=_tr(counter),anchor='e',
                              fill=MUTED,font=('Segoe UI',max(6,round(8*self.font_scale))))
             self.create_rectangle(width-23,y+11,width-11,y+23,fill=GOLD if chosen else BG,outline=GOLD if chosen else BORDER)
             if chosen:self.create_text(width-17,y+17,text='✓',fill=BG,font=('Segoe UI',round(9*self.font_scale),'bold'))
 
         if not self.rows:
-            self.create_text(width/2,25,text='Carregando catálogo…' if self.model is None else 'Nenhum item encontrado',fill=MUTED,font=('Segoe UI',round(9*self.font_scale)))
+            self.create_text(width/2,25,text=_tr('Carregando catálogo…') if self.model is None else _tr('Nenhum item encontrado'),fill=MUTED,font=('Segoe UI',round(9*self.font_scale)))
         if self.ui_scale!=1.:self.scale('all',0,0,self.ui_scale,self.ui_scale)
 
     def tooltip_text(self):

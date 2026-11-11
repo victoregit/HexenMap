@@ -1,5 +1,6 @@
 """Versioned, source-backed territory tree and exact descendant filtering."""
 from __future__ import annotations
+from src.live.i18n import tr as _tr
 from dataclasses import dataclass
 import json
 from pathlib import Path
@@ -20,15 +21,15 @@ class TerritoryIndex:
     def __init__(self,nodes: list[Territory]):
         self.nodes={n.id:n for n in nodes}
         if len(self.nodes)!=len(nodes):
-            raise ValueError("Território duplicado")
+            raise ValueError(_tr("Território duplicado"))
         self.children={key:[] for key in self.nodes}
         for node in nodes:
             if node.parent_id is not None:
                 if node.parent_id not in self.nodes:
-                    raise ValueError(f"Área sem pai: {node.id}")
+                    raise ValueError(_tr('Área sem pai: {0}', node.id))
                 parent=self.nodes[node.parent_id]
                 if parent.region_id!=node.region_id:
-                    raise ValueError("Área vinculada a outra região")
+                    raise ValueError(_tr("Área vinculada a outra região"))
                 self.children[node.parent_id].append(node.id)
         self._descendants={}
         for node in nodes:
@@ -36,7 +37,7 @@ class TerritoryIndex:
 
     def _walk(self,identifier,visiting):
         if identifier in visiting:
-            raise ValueError("Ciclo na hierarquia territorial")
+            raise ValueError(_tr("Ciclo na hierarquia territorial"))
         if identifier in self._descendants:
             return self._descendants[identifier]
         result={identifier}

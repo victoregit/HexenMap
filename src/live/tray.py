@@ -1,4 +1,5 @@
 """Windows notification-area controls; tray callbacks never call Tk directly."""
+from src.live.i18n import tr as _tr
 import logging
 import queue
 
@@ -16,9 +17,9 @@ class AppTray:
             image=source.convert('RGBA')
         self.icon=pystray.Icon('HexenMap',image,f'{DISPLAY_NAME} {VERSION}',
             pystray.Menu(
-                pystray.MenuItem('Abrir painel',lambda icon,item:self.pending.put('open'),default=True),
+                pystray.MenuItem(_tr('Abrir painel'),lambda icon,item:self.pending.put('open'),default=True),
                 pystray.Menu.SEPARATOR,
-                pystray.MenuItem('Encerrar Hexen Map',lambda icon,item:self.pending.put('exit'))))
+                pystray.MenuItem(_tr('Encerrar Hexen Map'),lambda icon,item:self.pending.put('exit'))))
         self.icon.run_detached()
         self.job=app.root.after(100,self.poll)
 

@@ -1,4 +1,5 @@
 """Independent, offline Teyvat map; no capture, tracking or game commands."""
+from src.live.i18n import tr as _tr
 import ctypes as ct
 import math,time
 from types import SimpleNamespace
@@ -26,7 +27,7 @@ class MapCardNative:
 
 class WorldMap:
     def __init__(self,app):
-        self.app=app;self.window=tk.Toplevel(app.root);self.window.title('Teyvat · Mapa geral · Hexen Map')
+        self.app=app;self.window=tk.Toplevel(app.root);self.window.title(_tr('Teyvat · Mapa geral · Hexen Map'))
         self.window.configure(bg=BG);self.window.minsize(520,380)
         self.window._lunar_signature=app.root._lunar_signature;self.window._lunar_native=app.native
         self.window._visual_scale=getattr(app.root,'_visual_scale',1.)
@@ -38,13 +39,13 @@ class WorldMap:
         toolbar=ttk.Frame(self.window,padding=8);toolbar.pack(fill='x')
         ttk.Button(toolbar,text='−',width=3,command=lambda:self.zoom_at(-.5)).pack(side='left')
         ttk.Button(toolbar,text='+',width=3,command=lambda:self.zoom_at(.5)).pack(side='left',padx=3)
-        ttk.Button(toolbar,text='Ver Teyvat inteiro',command=self.fit).pack(side='left',padx=5)
-        ttk.Button(toolbar,text='Desfazer',command=self.undo).pack(side='left')
-        self.reveal=tk.BooleanVar();ttk.Checkbutton(toolbar,text='Mostrar coletados',variable=self.reveal,command=self.invalidate).pack(side='right')
-        ttk.Label(self.window,text='Teyvat · Superfície · tipos e coletas compartilhados com o painel',foreground=MUTED).pack(fill='x',padx=10)
+        ttk.Button(toolbar,text=_tr('Ver Teyvat inteiro'),command=self.fit).pack(side='left',padx=5)
+        ttk.Button(toolbar,text=_tr('Desfazer'),command=self.undo).pack(side='left')
+        self.reveal=tk.BooleanVar();ttk.Checkbutton(toolbar,text=_tr('Mostrar coletados'),variable=self.reveal,command=self.invalidate).pack(side='right')
+        ttk.Label(self.window,text=_tr('Teyvat · Superfície · tipos e coletas compartilhados com o painel'),foreground=MUTED).pack(fill='x',padx=10)
         self.canvas=tk.Canvas(self.window,bg='#19252D',highlightthickness=0);self.canvas.pack(fill='both',expand=True,padx=8,pady=6)
-        self.status=tk.StringVar(value='Carregando mapa local…');ttk.Label(self.window,textvariable=self.status,foreground=MUTED).pack(fill='x',padx=10)
-        ttk.Label(self.window,text='Arraste para navegar · roda para zoom · clique no ponto para coletar | AppSample / HoYoverse',foreground=MUTED,font=('Segoe UI',8),wraplength=800).pack(fill='x',padx=10,pady=(2,8))
+        self.status=tk.StringVar(value=_tr('Carregando mapa local…'));ttk.Label(self.window,textvariable=self.status,foreground=MUTED).pack(fill='x',padx=10)
+        ttk.Label(self.window,text=_tr('Arraste para navegar · roda para zoom · clique no ponto para coletar | AppSample / HoYoverse'),foreground=MUTED,font=('Segoe UI',8),wraplength=800).pack(fill='x',padx=10,pady=(2,8))
         self.renderer=MarkerCanvas(self.canvas,self.draw_pin)
         self.canvas.bind('<Configure>',lambda event:self.fit() if self.need_fit else self.invalidate())
         self.canvas.bind('<MouseWheel>',lambda event:self.zoom_at(.25 if event.delta>0 else -.25,event.x,event.y))
@@ -92,7 +93,7 @@ class WorldMap:
         def change(identifier,value):
             try:self.app.session.set_collected(identifier,value,map_scope=('as-map-2','surface'))
             except Exception as exc:
-                messagebox.showerror('Coleta não salva',str(exc),parent=self.window);return
+                messagebox.showerror(_tr('Coleta não salva'),_tr(str(exc)),parent=self.window);return
             self.app.refresh_counts()
             self.last_progress=0.;self.close_card();self.invalidate()
         self.card=MarkerMenu(self.window,MapCardNative(native,hwnd),rect,items,self.app.session,change,self.close_card,
@@ -106,7 +107,7 @@ class WorldMap:
         if category.startswith('cluster:'):
             count=category.split(':')[1]
             canvas.create_oval(x-12,y-12,x+12,y+12,fill='#332E46',outline=ACCENT)
-            canvas.create_text(x,y,text=count,fill=TEXT,font=('Segoe UI',8))
+            canvas.create_text(x,y,text=_tr(count),fill=TEXT,font=('Segoe UI',8))
         else:draw_pin(canvas,category,x,y,**kwargs)
 
     def draw(self):
@@ -149,12 +150,12 @@ class WorldMap:
         self.shown=self.renderer.render(pins,lambda key:False if key in self.clusters else self.app.session.is_collected(key),budget_ms=8.)
         if len(self.shown)<len(pins):self.dirty=True
         self.canvas.tag_lower('tiles')
-        state=f'{len(ids):,} pontos'.replace(',','.')
-        if self.clusters:state+=f' · {len(self.clusters)} grupos — clique para aproximar'
+        state=_tr('{0} pontos',f'{len(ids):,}'.replace(',','.'))
+        if self.clusters:state+=_tr(' · {0} grupos — clique para aproximar',len(self.clusters))
         if not selected:state='Selecione os tipos de itens no painel para mostrar os pontos.'
         if not self.tiles.levels:state='Imagens locais não instaladas. Os pontos usam o catálogo atual.'
-        elif self.tiles.pending:state+=' · carregando imagens locais…'
-        self.status.set(state)
+        elif self.tiles.pending:state+=_tr(' · carregando imagens locais…')
+        self.status.set(_tr(state))
 
     def poll(self):
         if self.closed:return

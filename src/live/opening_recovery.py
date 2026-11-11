@@ -1,4 +1,5 @@
 """Bounded, in-memory minimap evidence for reconstruction at the opening instant."""
+from src.live.i18n import tr as _tr
 from collections import deque
 from dataclasses import dataclass,replace
 import math
@@ -79,4 +80,4 @@ class OpeningRecovery:
         if error>3:return None
         player=tuple(cv2.invertAffineTransform(matrix)@np.array([*circle[:2],1.]))
         return replace(current,world_to_screen=matrix,circle=circle,player=player,captured_at=opened,
-                       position_uncertainty_px=error,reason='Abertura reconstruída por movimento verificado')
+                       position_uncertainty_px=error,reason=_tr('Abertura reconstruída por movimento verificado'))

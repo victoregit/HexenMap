@@ -1,4 +1,5 @@
 """Independent, bounded HUD sampling; tracking delays do not drop reward frames."""
+from src.live.i18n import tr as _tr
 import logging
 import time
 
@@ -14,7 +15,7 @@ logger=logging.getLogger(__name__)
 
 
 def synchronization_message(state):
-    return {
+    return _tr({
         'disabled':'AutoMark desligado.',
         'references_loading':'Carregando referências…',
         'game_not_focused':'Volte ao Genshin para sincronizar a tela e a posição.',
@@ -24,7 +25,7 @@ def synchronization_message(state):
         'synchronizing':'Sincronizando tela e posição…',
         'screen_ready':'Tela e posição sincronizadas · aproxime-se de um baú para calibrar o HUD.',
         'ready':'Tela, posição e HUD sincronizados.',
-    }.get(state,'Aguardando sincronização…')
+    }.get(state,'Aguardando sincronização…'))
 
 
 def normalized_hud(frame,reference_height):
@@ -89,7 +90,7 @@ class AutoMarkService:
             logger.info('AutoMark context client=%sx%s reference=%sx%s generation=%s epoch=%s',
                         rect.width,rect.height,*self.signals.reference_size,generation,epoch)
         self.idle_at=None
-        obs=Observation('hidden',now,reason='Aguardando posição válida para AutoMark')
+        obs=Observation('hidden',now,reason=_tr('Aguardando posição válida para AutoMark'))
         anchor=None
         if snapshot is not None:
             geometry,observed,observed_epoch=snapshot[:3]
@@ -139,7 +140,7 @@ class AutoMarkService:
         if anchor is not None and obs.surface=='minimap':
             aligned=self.recovery.recover(stamp,anchor,obs,stamp)
             if aligned is not None:obs=aligned
-            else:obs=Observation('hidden',stamp,reason='AutoMark alinhando captura atual')
+            else:obs=Observation('hidden',stamp,reason=_tr('AutoMark alinhando captura atual'))
         if self.signals.phase and self.signals.phase[0]=='opening_unlocated':
             source=snapshot[1] if snapshot is not None else obs
             recovered=self.recovery.recover(self.signals.phase[1],anchor,source,stamp)

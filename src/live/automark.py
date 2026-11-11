@@ -1,4 +1,5 @@
 """Conservative chest-opening events; missing qualified visual evidence disables writes."""
+from src.live.i18n import tr as _tr
 from dataclasses import dataclass
 import hashlib
 import json
@@ -40,19 +41,19 @@ class ChestSignals:
         self.hud_scale=1.
         self.layout_size=None;self.detected_hud_height=None
         self.scale_probe=0
-        self.reason='Aguardando conferência de uma abertura real de baú.'
+        self.reason=_tr('Aguardando conferência de uma abertura real de baú.')
         self.phase=None;self.token=0;self.quiet=None;self.last_stamp=None
         self.opening_count=0;self.loot_seen=-math.inf;self.gem_seen=-math.inf;self.exp_seen=-math.inf
         try:
             root=Path(directory).resolve()
             if not (root/'manifest.json').is_file():
-                self.reason='Referências do AutoMark ausentes nesta instalação.';return
+                self.reason=_tr('Referências do AutoMark ausentes nesta instalação.');return
             data=json.loads((root/'manifest.json').read_text(encoding='utf-8'))
             validation=data.get('validation',{})
             if (data.get('schema')!=1 or (validation.get('approved') is not True and not review_only)
                     or not validation.get('positive_sessions') or not validation.get('negative_sessions')
                     or not validation.get('reviewed_at')):
-                self.reason='Referências do AutoMark sem validação aprovada.';return
+                self.reason=_tr('Referências do AutoMark sem validação aprovada.');return
             # Legacy client_size records where artwork was captured, not a lock
             # on the player's display. Preserve the original pixels and hashes.
             size=data.get('reference_size',data.get('client_size'))
@@ -61,17 +62,17 @@ class ChestSignals:
                 self.reference_size=tuple(size)
             def decode(entry):
                 path=(root/entry['file']).resolve()
-                if not path.is_relative_to(root):raise ValueError('Template fora da pasta')
+                if not path.is_relative_to(root):raise ValueError(_tr('Template fora da pasta'))
                 raw=path.read_bytes()
-                if hashlib.sha256(raw).hexdigest()!=entry['sha256']:raise ValueError('Template alterado')
+                if hashlib.sha256(raw).hexdigest()!=entry['sha256']:raise ValueError(_tr('Template alterado'))
                 template=cv2.imdecode(np.frombuffer(raw,np.uint8),cv2.IMREAD_GRAYSCALE)
                 roi=tuple(float(v) for v in entry['roi']);threshold=float(entry['threshold'])
                 if (template is None or min(template.shape)<6 or float(template.std())<5
                         or len(roi)!=4 or min(roi)<0 or min(roi[2:])<=0
                         or roi[0]+roi[2]>1 or roi[1]+roi[3]>1 or not .85<=threshold<1):
-                    raise ValueError('Sinal inválido')
+                    raise ValueError(_tr('Sinal inválido'))
                 method=entry.get('method','grayscale')
-                if method not in ('grayscale','white_glyph','local_contrast'):raise ValueError('Método visual inválido')
+                if method not in ('grayscale','white_glyph','local_contrast'):raise ValueError(_tr('Método visual inválido'))
                 return template,roi,threshold,method
             for role in ('opening','loot','primogem','adventure_exp'):
                 if role=='adventure_exp' and role not in data['signals']:continue
@@ -80,11 +81,11 @@ class ChestSignals:
                 self.templates[role]=(template,roi,threshold);self.methods[role]=method
                 self.alternatives[role]=[decode(e) for e in entry.get('variants',[])]
                 anchor=entry.get('anchor','center' if role=='opening' else 'left')
-                if anchor not in ('left','center','right'):raise ValueError('Âncora inválida')
+                if anchor not in ('left','center','right'):raise ValueError(_tr('Âncora inválida'))
                 self.anchors[role]=anchor
-            self.ready=True;self.reason='Beta: escala automática da janela, referência Full HD. HUD em português; mudanças na interface do jogo ainda exigem conferência. F10 desfaz.'
+            self.ready=True;self.reason=_tr('Beta: escala automática da janela, referência Full HD. HUD em português; mudanças na interface do jogo ainda exigem conferência. F10 desfaz.')
         except (OSError,ValueError,KeyError,TypeError,cv2.error) as exc:
-            self.reason=f'Referências do AutoMark inválidas: {type(exc).__name__}: {exc}'
+            self.reason=_tr('Referências do AutoMark inválidas: {0}: {1}', type(exc).__name__, exc)
             self.templates.clear()
 
     def reset(self):
@@ -279,7 +280,7 @@ class AutoMark:
             return result('marked' if changed else 'ignored','saved' if changed else 'unchanged')
         self.context=self.scope(session)
         self.pending=(now+10,tuple(item.id for _,item in candidates if not session.is_collected(item.id)))
-        session.notice='AutoMark beta: há baús próximos. Use o atalho de coleta para escolher.'
+        session.notice=_tr('AutoMark beta: há baús próximos. Use o atalho de coleta para escolher.')
         return result('ambiguous','multiple_nearby_chests')
 
     def choices(self,session,now):

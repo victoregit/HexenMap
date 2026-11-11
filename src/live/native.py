@@ -1,6 +1,7 @@
 """Typed, pointer-safe Win32 calls for the new runtime only."""
 from __future__ import annotations
 
+from src.live.i18n import tr as _tr
 import ctypes as ct
 from ctypes import wintypes as wt
 import sys
@@ -20,7 +21,7 @@ class OverlayAlreadyRunning(RuntimeError):
 class Windows:
     def __init__(self):
         if sys.platform != "win32":
-            raise OSError("O overlay ao vivo requer Windows 10/11")
+            raise OSError(_tr("O overlay ao vivo requer Windows 10/11"))
         self.u = ct.WinDLL("user32", use_last_error=True)
         self.g = ct.WinDLL("gdi32", use_last_error=True)
         self.k=ct.WinDLL('kernel32',use_last_error=True)
@@ -75,7 +76,7 @@ class Windows:
         found=[]
         callback_type=ct.WINFUNCTYPE(wt.BOOL,wt.HWND,wt.LPARAM)
         def visit(hwnd,param):
-            text=ct.create_unicode_buffer(256);self.u.GetWindowTextW(hwnd,text,256)
+            text=_tr(ct.create_unicode_buffer(256));self.u.GetWindowTextW(hwnd,text,256)
             if text.value not in (WINDOW_TITLE,*LEGACY_WINDOW_TITLES):return True
             pid=wt.DWORD();self.u.GetWindowThreadProcessId(hwnd,ct.byref(pid))
             if pid.value==os.getpid():return True
@@ -93,7 +94,7 @@ class Windows:
             if not handle:
                 error=ct.get_last_error()
                 for owned in handles:self.k.CloseHandle(owned)
-                raise ct.WinError(error)
+                raise ct.WinError(_tr(error))
             already=already or ct.get_last_error()==183
             handles.append(handle)
         panel=self.existing_panel()
@@ -176,7 +177,7 @@ class Windows:
 
     def capture_policy(self,hwnd):
         if not self.u.SetWindowDisplayAffinity(hwnd,0 if getattr(self,'capture_visible',False) else 0x11):
-            raise OSError('Não foi possível configurar a visibilidade na captura')
+            raise OSError(_tr('Não foi possível configurar a visibilidade na captura'))
         if not hasattr(self,'capture_windows'):self.capture_windows=set()
         self.capture_windows.add(hwnd)
 
@@ -190,7 +191,7 @@ class Windows:
                 if pid.value!=os.getpid():continue
                 valid.add(hwnd)
                 if not self.u.SetWindowDisplayAffinity(hwnd,0 if visible else 0x11):
-                    raise OSError('O Windows não permitiu alterar a visibilidade na captura')
+                    raise OSError(_tr('O Windows não permitiu alterar a visibilidade na captura'))
                 applied.append(hwnd)
         except OSError:
             for hwnd in applied:self.u.SetWindowDisplayAffinity(hwnd,0 if previous else 0x11)

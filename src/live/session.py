@@ -1,6 +1,7 @@
 """Shared selection, projections, and explicit reversible collection."""
 from __future__ import annotations
 
+from src.live.i18n import tr as _tr
 from dataclasses import dataclass
 import math
 import time
@@ -97,16 +98,16 @@ class Session:
     def respawn_text(self,item: Item) -> str:
         rule=self.rules.get(item.rule_id,UNKNOWN)
         record=self.progress.get_collection_record(item.id)
-        if rule.kind in {"unknown","conditional"}: return "Reposição não confirmada"
+        if rule.kind in {"unknown","conditional"}: return _tr("Reposição não confirmada")
         if rule.kind=='permanent': return ''
         deadline=parse_utc(record.get("ready_at")) if record else None
         if deadline and self.is_collected(item.id):
             seconds=max(0,int((deadline-self.clock()).total_seconds()))
             days,remainder=divmod(seconds,86400);hours,minutes=divmod(remainder//60,60)
-            return f"Reposição estimada: {days}d {hours:02d}h {minutes:02d}min"
+            return _tr('Reposição estimada: {0}d {1:02d}h {2:02d}min', days, hours, minutes)
         if record and rule.kind in {'elapsed','server_reset'} and deadline is None:
-            return "Reposição não confirmada"
-        if deadline: return "Disponibilidade estimada — confira no jogo"
+            return _tr("Reposição não confirmada")
+        if deadline: return _tr("Disponibilidade estimada — confira no jogo")
         return ""
 
     def active(self) -> list[Item]:
@@ -136,7 +137,7 @@ class Session:
         return collected,len(self._permanent_ids),unavailable
 
     def invalidate(self, reason: str, clear_pending: bool = True) -> None:
-        self.observation = Observation("hidden", time.monotonic(), reason=reason)
+        self.observation = Observation("hidden", time.monotonic(), reason=_tr(reason))
         if clear_pending:
             self.pending_ids.clear()
 
@@ -202,7 +203,7 @@ class Session:
         record=self.progress.get_collection_record(identifier)
         if collected:
             stamp=self.clock()
-            if stamp.tzinfo is None: raise ValueError("Horário da coleta sem fuso")
+            if stamp.tzinfo is None: raise ValueError(_tr("Horário da coleta sem fuso"))
             stamp=stamp.astimezone(timezone.utc)
             rule=self.rules.get(item.rule_id,UNKNOWN)
             deadline=rule.deadline(stamp)
@@ -219,7 +220,7 @@ class Session:
         self.undo_ids.append(identifier)
         self.undo_records.append((identifier,record))
         self.pending_ids.discard(identifier)
-        self.notice="Item marcado como pego." if collected else "Item desmarcado."
+        self.notice=_tr("Item marcado como pego.") if collected else _tr("Item desmarcado.")
         return True
 
     def candidates(self, now: float) -> list[Item]:
@@ -247,21 +248,21 @@ class Session:
         self.pending_at = stamp
         if len(candidates) == 1:
             return self.confirm(candidates[0].id, stamp)
-        self.notice = ("Há vários itens próximos. Selecione o coletado no painel."
-                       if candidates else "Nenhum item próximo com localização válida.")
+        self.notice = (_tr("Há vários itens próximos. Selecione o coletado no painel.")
+                       if candidates else _tr("Nenhum item próximo com localização válida."))
         return False
 
     def confirm(self, identifier: str, now: float | None = None) -> bool:
         stamp = time.monotonic() if now is None else now
         # Explicit panel confirmation must still refer to the recent candidate set.
         if identifier not in self.pending_ids or not 0 <= stamp-self.pending_at <= 30:
-            self.notice = "Seleção expirada. Confirme os itens próximos novamente."
+            self.notice = _tr("Seleção expirada. Confirme os itens próximos novamente.")
             return False
         if identifier not in {i.id for i in self.active()}:
             return False
         if not self.set_collected(identifier,True): return False
         self.pending_ids.clear()
-        self.notice = "Item marcado como coletado. Você pode desfazer."
+        self.notice = _tr("Item marcado como coletado. Você pode desfazer.")
         return True
 
     def undo(self, *, map_scope=None) -> bool:
@@ -269,7 +270,7 @@ class Session:
         scoped={i.id for i in self.items if i.map_id==map_scope[0] and map_scope[1] in (i.layer_ids or (i.layer_id,))} if map_scope else {i.id for i in self.scoped_items()}
         index=next((n for n in range(len(self.undo_ids)-1,-1,-1) if self.undo_ids[n] in scoped),None)
         if index is None:
-            self.notice = "Nenhuma alteração deste recorte para desfazer."
+            self.notice = _tr("Nenhuma alteração deste recorte para desfazer.")
             return False
         identifier = self.undo_ids[index]
         record = self.progress.get_collection_record(identifier)
@@ -283,5 +284,5 @@ class Session:
             raise
         self.undo_ids.pop(index)
         if index<len(self.undo_records): self.undo_records.pop(index)
-        self.notice = "Última coleta desfeita."
+        self.notice = _tr("Última coleta desfeita.")
         return True

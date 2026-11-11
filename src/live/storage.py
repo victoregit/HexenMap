@@ -1,6 +1,7 @@
 """Stable installation-relative portable storage, independent of working directory."""
 from __future__ import annotations
 
+from src.live.i18n import tr as _tr
 import json
 import shutil
 import os
@@ -18,7 +19,7 @@ HOTKEY_OPTIONS=tuple([f"F{i}" for i in range(6,13)]+[f"Ctrl+Alt+F{i}" for i in r
 
 def parse_hotkey(value: str) -> tuple[int,int]:
     if value not in HOTKEY_OPTIONS:
-        raise ValueError("Atalho inválido")
+        raise ValueError(_tr("Atalho inválido"))
     key=value.split("+")[-1]
     return 0x6f+int(key[1:]),0x4000 | (0x3 if value.startswith("Ctrl+Alt+") else 0)
 
@@ -67,7 +68,7 @@ class PreferenceWriter:
     def request(self, settings):
         snapshot=copy.deepcopy(settings)
         with self.condition:
-            if self.closed:raise RuntimeError('Gravador de preferências encerrado')
+            if self.closed:raise RuntimeError(_tr('Gravador de preferências encerrado'))
             self.generation+=1
             self.pending=(self.generation,snapshot)
             self.condition.notify()
@@ -158,7 +159,7 @@ def read_settings(path: Path) -> dict:
                 if not backup.exists(): shutil.copy2(path,backup)
                 write_json(path,result)
             except OSError as exc:
-                raise RuntimeError("Não foi possível preservar as preferências antes da migração") from exc
+                raise RuntimeError(_tr("Não foi possível preservar as preferências antes da migração")) from exc
         if retired_navigation:write_json(path,result)
         return result
     except (ValueError, OSError):

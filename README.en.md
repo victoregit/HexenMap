@@ -8,7 +8,7 @@ Explore **Genshin Impact** with pins on the minimap and the full-screen map, tra
 
 **Windows 10/11 · External overlay · Test version**
 
-> This page is available in English. The application interface and reviewed item catalog currently use Brazilian Portuguese; this is not an English UI release. Supporting documents linked below are primarily in Portuguese.
+> The interface, reviewed catalog, startup messages and installer support English and Brazilian Portuguese. Supporting documents linked below are primarily in Portuguese.
 
 ## What Hexen Map offers
 
@@ -23,6 +23,10 @@ Explore **Genshin Impact** with pins on the minimap and the full-screen map, tra
 | **Teyvat overview map** | The planet button opens a navigable surface map with shared item filters and progress. It uses installed local images; dense points form clickable groups. |
 
 The application uses external image recognition. It does not read game memory, inject code, or control the character. Recognition may lose alignment; pins are hidden while the position is recovered.
+
+Choose **Português (Brasil)** or **English** during installation or under **Settings → Idioma / Language** in the main panel. Reopen the application to apply a change. The preference is shared across profiles and preserved by automatic updates.
+
+Changing the application language does not change Genshin. The current **AutoMark references require the Portuguese game HUD**, including when the application uses English. The AutoMark switch is above the main panel footer.
 
 ## Start playing
 

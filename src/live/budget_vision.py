@@ -1,4 +1,5 @@
 """Coarse routing plus bounded native-resolution blocks, shared across selected layers."""
+from src.live.i18n import tr as _tr
 from collections import Counter
 import math
 import time
@@ -15,7 +16,7 @@ class BudgetRecognizer:
     def __init__(self,packs,cache_dir,mode='light',cancelled=lambda:False):
         cv2.setNumThreads(2)
         self.packs=tuple(packs)
-        if not self.packs:raise ValueError('Nenhuma referência válida para a seleção')
+        if not self.packs:raise ValueError(_tr('Nenhuma referência válida para a seleção'))
         self.pack=self.packs[0];self.cancelled=cancelled
         self.store=ReferenceStore(FeatureCache(cache_dir,cancelled),mode)
         self.mode=mode;self.circle_hint=None;self.last={};self.position=None;self.cursor={}
@@ -46,7 +47,7 @@ class BudgetRecognizer:
             matcher=cv2.FlannBasedMatcher(dict(algorithm=1,trees=4),dict(checks=64))
             matcher.add([descriptors]);matcher.train();self.coarse[surface]=matcher
         self.global_map=None
-        if not self.coarse:raise ValueError('Referências sem detalhes suficientes para localização')
+        if not self.coarse:raise ValueError(_tr('Referências sem detalhes suficientes para localização'))
         selected_maps={pack.map_id for pack in self.packs}
         if mode=='global' and len(selected_maps)==1:self.preload_global(next(iter(selected_maps)))
 
@@ -112,7 +113,7 @@ class BudgetRecognizer:
 
     def observe(self,frame,captured_at=None):
         stamp=time.monotonic() if captured_at is None else captured_at
-        if frame is None or not frame.size:return Observation('hidden',stamp,reason='Captura indisponível')
+        if frame is None or not frame.size:return Observation('hidden',stamp,reason=_tr('Captura indisponível'))
         check_cancel(self.cancelled);h,w=frame.shape[:2];p=self.pack;circle=None
         if template_visible(frame,p.map_ui,p.map_ui_roi):
             surface='map';mask=np.zeros((h,w),np.uint8);mask[int(.08*h):int(.9*h),int(.2*w):int(.8*w)]=255
@@ -121,7 +122,7 @@ class BudgetRecognizer:
             # A current circumference plus the native cyan pointer can qualify
             # gameplay independently of a single colour-sensitive HUD glyph.
             circle=confirmed_circle(frame,self.circle_hint)
-            if circle is None:return Observation('hidden',stamp,reason='Minimapa não reconhecido')
+            if circle is None:return Observation('hidden',stamp,reason=_tr('Minimapa não reconhecido'))
             self.circle_hint=circle;surface='minimap';x,y,r=circle
             mask=np.zeros((h,w),np.uint8);cv2.circle(mask,(round(x),round(y)),max(1,round(r-8)),255,-1)
             cv2.circle(mask,(round(x),round(y)),max(8,round(r*.17)),0,-1)
@@ -129,7 +130,7 @@ class BudgetRecognizer:
         # without relaxing the geometric inlier or error gates.
         self.query_engine.query_scale=1.5 if surface=='minimap' else 1.
         query=self.query_engine.query(frame,mask)
-        if query is None:return Observation('hidden',stamp,reason='Detalhes insuficientes no mapa')
+        if query is None:return Observation('hidden',stamp,reason=_tr('Detalhes insuficientes no mapa'))
         queries=[(mask,query)]
         if circle:
             for fraction in (.85,.7):
@@ -154,8 +155,8 @@ class BudgetRecognizer:
             if fits and len(self.packs)==1:break
             if fit is None and tile is not self.last.get(surface):self.failed[tile.key]=time.monotonic()+2
             del matcher
-        if not fits:return Observation('hidden',stamp,reason='Localizando trecho do mapa…')
-        if len({tile.raster.pack_index for tile,fit in fits})>1:return Observation('hidden',stamp,reason='Camada ambígua')
+        if not fits:return Observation('hidden',stamp,reason=_tr('Localizando trecho do mapa…'))
+        if len({tile.raster.pack_index for tile,fit in fits})>1:return Observation('hidden',stamp,reason=_tr('Camada ambígua'))
         tile,(matrix,confidence,error)=fits[0]
         self.last[surface]=tile
         self.store.protected_key=tile.key

@@ -1,6 +1,7 @@
 """Track current terrain between absolute registrations, without stale pin positions."""
 from __future__ import annotations
 
+from src.live.i18n import tr as _tr
 from concurrent.futures import ThreadPoolExecutor
 from collections import deque
 from dataclasses import replace
@@ -158,7 +159,7 @@ class MotionRecognizer:
     def observe(self, frame: np.ndarray | None, stamp: float) -> Observation:
         if frame is None or frame.size==0:
             self.reset()
-            return Observation("hidden",stamp,reason="Captura indisponível",continuity_id=self.continuity_id)
+            return Observation("hidden",stamp,reason=_tr("Captura indisponível"),continuity_id=self.continuity_id)
         image=gray(frame)
         if frame.shape!=self.image_shape:
             self.circle_hint=None;self.image_shape=frame.shape
@@ -188,7 +189,7 @@ class MotionRecognizer:
         surface="map" if is_map else "minimap" if is_gameplay else "hidden"
         if surface=="hidden":
             self.reset()
-            return Observation("hidden",stamp,reason="Menu, carregamento ou tela não reconhecida",continuity_id=self.continuity_id)
+            return Observation("hidden",stamp,reason=_tr("Menu, carregamento ou tela não reconhecida"),continuity_id=self.continuity_id)
         if surface=='minimap':
             if self.circle is None or self.previous_surface!='minimap':
                 self.circle=self.circle or detect_circle(frame)
@@ -289,14 +290,14 @@ class MotionRecognizer:
             self.anchor_motion=np.eye(3)
         self.previous=image
         self.previous_surface=surface
-        self.current=updated or Observation("hidden",stamp,reason="Localizando no mapa selecionado…")
+        self.current=updated or Observation("hidden",stamp,reason=_tr("Localizando no mapa selecionado…"))
         if updated is not None and surface=='minimap':
             self.verified_frame=image
             self.verified_observation=updated
             if not self.recent or stamp-self.recent[-1][1].captured_at>=.12:
                 self.recent.append((image.copy(),updated))
-        status=('correction' if discontinuity else 'tracking' if updated else
-                'anchor_expired' if stamp-self.last_absolute>age_limit else 'flow_lost')
+        status=(_tr('correction') if discontinuity else _tr('tracking') if updated else
+                _tr('anchor_expired') if stamp-self.last_absolute>age_limit else _tr('flow_lost'))
         if status!=self.tracking_status:
             self.tracking_status=status
             logger.info('Tracking surface=%s state=%s anchor_age=%.3f pending_age=%.3f absolute=%s',
@@ -306,6 +307,6 @@ class MotionRecognizer:
             self.continuity_id+=1
             self.recent.clear()
             # Keep the recovered anchor internally; never animate across a large correction.
-            return Observation("hidden",stamp,reason="Recuperando alinhamento…",continuity_id=self.continuity_id)
+            return Observation("hidden",stamp,reason=_tr("Recuperando alinhamento…"),continuity_id=self.continuity_id)
         self.current=replace(self.current,continuity_id=self.continuity_id)
         return self.current

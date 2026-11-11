@@ -1,5 +1,6 @@
 """Lunar presentation tokens and reusable Tk assets; no per-capture styling work."""
 from __future__ import annotations
+from src.live.i18n import tr as _tr
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageDraw, ImageTk
@@ -122,7 +123,7 @@ class Tooltip:
         self.job=None
         if not self.widget.winfo_exists() or not self.widget.winfo_viewable():return
         root=self.widget.winfo_toplevel();width=max(120,min(260,root.winfo_width()-12))
-        self.label=tk.Label(root,text=self.text() if callable(self.text) else self.text,bg=HOVER,fg=TEXT,font=(FONT,8),wraplength=width-12,
+        self.label=tk.Label(root,text=_tr(self.text()) if callable(self.text) else _tr(self.text),bg=HOVER,fg=TEXT,font=(FONT,8),wraplength=width-12,
                             justify='left',padx=6,pady=5,highlightthickness=1,highlightbackground=ACCENT)
         self.label.update_idletasks()
         x=self.widget.winfo_rootx()-root.winfo_rootx()
@@ -160,21 +161,21 @@ def confirm_dialog(title,message,*,parent,bounds=None):
     result=False
     scale=getattr(parent.winfo_toplevel(),'_lunar_signature',1.)
     apply_theme(parent.winfo_toplevel(),scale)
-    dialog=tk.Toplevel(parent);dialog.withdraw();dialog.title(title)
+    dialog=tk.Toplevel(parent);dialog.withdraw();dialog.title(_tr(title))
     dialog.configure(bg=BG);dialog.transient(parent);dialog.resizable(False,False)
     native=getattr(parent.winfo_toplevel(),'_lunar_native',None)
     left,top,right,bottom=bounds or ((native.work_area(parent.winfo_rootx(),parent.winfo_rooty()) if hasattr(native,'work_area') else native.desktop_bounds()) if native else (0,0,parent.winfo_screenwidth(),parent.winfo_screenheight()))
     width=min(round(440*scale),right-left-24)
     frame=ttk.Frame(dialog,style='Card.TFrame',padding=round(16*scale));frame.pack(fill='both',expand=True,padx=8,pady=8)
-    ttk.Label(frame,text=title,font=(FONT,12,'bold'),background=SURFACE).pack(anchor='w',pady=(0,10))
-    ttk.Label(frame,text=message,wraplength=width-round(56*scale),justify='left',background=SURFACE).pack(fill='x',pady=(0,14))
+    ttk.Label(frame,text=_tr(title),font=(FONT,12,'bold'),background=SURFACE).pack(anchor='w',pady=(0,10))
+    ttk.Label(frame,text=_tr(message),wraplength=width-round(56*scale),justify='left',background=SURFACE).pack(fill='x',pady=(0,14))
     actions=ttk.Frame(frame);actions.pack(fill='x')
     def finish(accepted=False):
         nonlocal result
         result=accepted;dialog.destroy()
-    cancel=ttk.Button(actions,text='Cancelar',command=finish)
+    cancel=ttk.Button(actions,text=_tr('Cancelar'),command=finish)
     cancel.pack(side='left')
-    ttk.Button(actions,text='Mesclar coletas',style='Primary.TButton',command=lambda:finish(True)).pack(side='right')
+    ttk.Button(actions,text=_tr('Mesclar coletas'),style='Primary.TButton',command=lambda:finish(True)).pack(side='right')
     dialog.bind('<Escape>',lambda e:finish());dialog.protocol('WM_DELETE_WINDOW',finish)
     dialog.update_idletasks();height=dialog.winfo_reqheight()
     x=max(left,min(parent.winfo_rootx(),right-width));y=max(top,min(parent.winfo_rooty()+40,bottom-height-32))

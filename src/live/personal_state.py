@@ -1,4 +1,5 @@
 """Personal saves live outside versioned program folders. Never guess between saves."""
+from src.live.i18n import tr as _tr
 from pathlib import Path
 import hashlib
 import json
@@ -30,11 +31,11 @@ def state_directory(home=None):
     if pointer.exists():
         target=Path(pointer.read_text(encoding='utf-8-sig').strip())
         if not target.is_absolute():
-            raise StateRecoveryRequired('Caminho de saves inválido. Nenhuma coleta será gravada.')
+            raise StateRecoveryRequired(_tr('Caminho de saves inválido. Nenhuma coleta será gravada.'))
         return target
     base=os.environ.get('LOCALAPPDATA')
     if not base:
-        raise StateRecoveryRequired('Não foi possível localizar os dados pessoais do usuário.')
+        raise StateRecoveryRequired(_tr('Não foi possível localizar os dados pessoais do usuário.'))
     return Path(base)/'HexenMap'/'state'
 
 
@@ -42,16 +43,16 @@ def read_progress(path):
     raw=path.read_bytes()
     data=json.loads(raw.decode('utf-8-sig'))
     if not isinstance(data,dict) or data.get('version',1) not in (1,2):
-        raise ValueError('Versão de progresso inválida')
+        raise ValueError(_tr('Versão de progresso inválida'))
     records=data.get('records')
     if not isinstance(records,(dict,list)) or not isinstance(data.get('metadata',{}),dict):
-        raise ValueError('Formato de progresso inválido')
+        raise ValueError(_tr('Formato de progresso inválido'))
     if 'collected_count' in data and (type(data['collected_count']) is not int or data['collected_count']!=len(records)):
-        raise ValueError('Contagem de progresso inválida')
+        raise ValueError(_tr('Contagem de progresso inválida'))
     if isinstance(records,dict) and any(not isinstance(k,str) or not isinstance(v,dict) for k,v in records.items()):
-        raise ValueError('Registros inválidos')
+        raise ValueError(_tr('Registros inválidos'))
     if isinstance(records,list) and any(not isinstance(k,str) for k in records):
-        raise ValueError('IDs inválidos')
+        raise ValueError(_tr('IDs inválidos'))
     return raw,data
 
 
@@ -67,7 +68,7 @@ def prepare_state(home=None, destination=None, legacy_roots=None, allow_new=Fals
         if not marker.exists():write_json(marker,{'version':1})
         return target
     if any(target.iterdir()):
-        raise StateRecoveryRequired(f'O save pessoal está ausente em {target}. Restaure um backup; não será criado um progresso vazio.')
+        raise StateRecoveryRequired(_tr('O save pessoal está ausente em {0}. Restaure um backup; não será criado um progresso vazio.', target))
     roots=list(legacy_roots) if legacy_roots is not None else [home/'userData']
     if legacy_roots is None and os.environ.get('LOCALAPPDATA'):
         roots.append(Path(os.environ['LOCALAPPDATA'])/'Programs'/'Hexen Map'/'userData')
@@ -80,7 +81,7 @@ def prepare_state(home=None, destination=None, legacy_roots=None, allow_new=Fals
             if backups:
                 expanded.extend(backups);continue
             if any((root/name).exists() for name in ('initialized.json','profiles.json','profiles.json.bak')):
-                raise StateRecoveryRequired(f'Há sinais de uso anterior em {root}, mas o save está ausente. Recupere um backup antes de continuar.')
+                raise StateRecoveryRequired(_tr('Há sinais de uso anterior em {0}, mas o save está ausente. Recupere um backup antes de continuar.', root))
         expanded.append(root)
     roots=expanded
     candidates=[]
@@ -97,13 +98,13 @@ def prepare_state(home=None, destination=None, legacy_roots=None, allow_new=Fals
             except (OSError,ValueError,UnicodeError):
                 continue
         if chosen is None:
-            raise StateRecoveryRequired(f'Progresso anterior inválido em {root}. Recupere o arquivo antes de continuar.')
+            raise StateRecoveryRequired(_tr('Progresso anterior inválido em {0}. Recupere o arquivo antes de continuar.', root))
         candidates.append(chosen)
     nonempty=[row for row in candidates if row[2]['records']]
     fingerprints={json.dumps(row[2]['records'],sort_keys=True,ensure_ascii=False) for row in nonempty}
     if len(fingerprints)>1:
         locations='; '.join(str(row[0]) for row in nonempty)
-        raise AmbiguousProfilesRequired('Há saves diferentes. Escolha qual recuperar antes de continuar: '+locations)
+        raise AmbiguousProfilesRequired(_tr('Há saves diferentes. Escolha qual recuperar antes de continuar: ')+_tr(locations))
     chosen=(nonempty or candidates or [None])[0]
     if chosen is not None:
         source,raw,data=chosen
@@ -119,7 +120,7 @@ def prepare_state(home=None, destination=None, legacy_roots=None, allow_new=Fals
             shutil.copy2(settings,target/'settings.json')
     else:
         if not allow_new:
-            raise NewProfileRequired('Nenhum save anterior encontrado. Escolha importar suas marcações ou iniciar um perfil novo explicitamente.')
+            raise NewProfileRequired(_tr('Nenhum save anterior encontrado. Escolha importar suas marcações ou iniciar um perfil novo explicitamente.'))
         write_json(progress,{'version':2,'records':{},'metadata':{},'collected_count':0})
         shutil.copy2(progress,target/'progress.json.bak')
     write_json(marker,{'version':1,'migrated_from':str(chosen[0]) if chosen else None})
@@ -136,11 +137,11 @@ def prepare_state_interactive(home=None):
         from src.live import alerts as messagebox
         root=tk.Tk();root.withdraw()
         try:
-            messagebox.showinfo('Saves diferentes encontrados',
-                str(recovery)+'\n\nSelecione o progresso correto. Cancelar encerra o aplicativo sem modificar suas marcações.',parent=root)
+            messagebox.showinfo(_tr('Saves diferentes encontrados'),
+                _tr(str(recovery))+_tr('\n\nSelecione o progresso correto. Cancelar encerra o aplicativo sem modificar suas marcações.'),parent=root)
             selected=messagebox.select_progress(root)
             if not selected:
-                raise OpeningCancelled('Recuperação cancelada. Nenhum save vazio foi criado.')
+                raise OpeningCancelled(_tr('Recuperação cancelada. Nenhum save vazio foi criado.'))
             return prepare_state(home,legacy_roots=[Path(selected)])
         finally:
             root.destroy()

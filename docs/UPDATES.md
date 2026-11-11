@@ -1,5 +1,20 @@
 # Launcher e instalador Windows
 
+## Em desenvolvimento — português e inglês
+
+- Instalador oferece seleção de idioma. Ajustes do painel principal mostram
+  `Idioma / Language`; alterações passam a valer ao reabrir o aplicativo.
+- Interface, mensagens de inicialização e nomes revisados do catálogo recebem
+  apresentação em inglês. IDs, grupos internos, regras, coordenadas, nomes de
+  perfis existentes e progresso continuam preservados. Busca aceita os aliases
+  nos dois idiomas.
+- Preferência em `%LOCALAPPDATA%\HexenMap\language.json`, fora da pasta `state`.
+  Instalações com `state-dir.txt` usam a pasta pessoal apontada pela instalação,
+  inclusive quando abertas com outra conta de administrador. Atualizações
+  silenciosas preservam a escolha do aplicativo.
+- O idioma da interface não qualifica um HUD diferente: AutoMark continua
+  exigindo as referências visuais do jogo em português.
+
 ## Versão 1.0.7 — óculis, interação e painel
 
 - AutoMark de baús fica acima do rodapé, com interruptor estilizado,

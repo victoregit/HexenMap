@@ -1,6 +1,7 @@
 """Configuration panel and separate click-through icon surface, all Tk calls on UI thread."""
 from __future__ import annotations
 
+from src.live.i18n import tr as _tr
 import csv
 import math
 from collections import Counter
@@ -120,7 +121,7 @@ class DesktopApp(ProfileControls,CompactPanel):
         self.menu_mouse_down=False
         self.root=tk.Tk()
         self.root.report_callback_exception=self.callback_error
-        self.root.title(WINDOW_TITLE)
+        self.root.title(_tr(WINDOW_TITLE))
         self.root.geometry("470x710")
         self.root.minsize(440,690)
         self.root.protocol("WM_DELETE_WINDOW",self.close)
@@ -134,7 +135,7 @@ class DesktopApp(ProfileControls,CompactPanel):
         self.canvas.pack(fill="both",expand=True)
         self.surface.update_idletasks()
         try: self.overlay_hwnd=self.native.overlay(self.surface.winfo_id())
-        except OSError as exc: self.overlay_error=f"Overlay indisponível: {exc}"
+        except OSError as exc: self.overlay_error=_tr("Overlay indisponível: {0}",exc)
         self.input_surface=tk.Toplevel(self.root)
         self.input_surface.withdraw()
         self.input_surface.overrideredirect(True)
@@ -144,7 +145,7 @@ class DesktopApp(ProfileControls,CompactPanel):
         self.input_canvas.bind("<Button-1>",self.open_marker_menu)
         self.input_surface.update_idletasks()
         try: self.input_hwnd=self.native.input_overlay(self.input_surface.winfo_id())
-        except OSError as exc: self.overlay_error=f"Interação indisponível: {exc}"
+        except OSError as exc: self.overlay_error=_tr("Interação indisponível: {0}",exc)
         self.renderer=MarkerCanvas(self.canvas,draw_pin)
         self.display_motion=DisplayMotion()
         self.displayed_at=0.0
@@ -184,9 +185,9 @@ class DesktopApp(ProfileControls,CompactPanel):
             node=self.catalogs.territories.nodes.get(layer)
             name=node.name if node else {'surface':'Superfície','automática':'Camada automática',
                                         'underground-unclassified':'Subterrâneo · camada não confirmada'}.get(layer,layer)
-            if layer.startswith('as-layer-'):name='Camada '+layer.removeprefix('as-layer-').replace('-', '/')+' · sem referência'
-            if mapid.startswith('as-map-') and mapid not in map_names:map_names[mapid]='Mapa '+mapid.removeprefix('as-map-')+' · sem referência'
-            self.layer_names[f'{map_names.get(mapid,mapid)} · {name}']=value
+            if layer.startswith('as-layer-'):name=_tr('Camada {0} · sem referência',layer.removeprefix('as-layer-').replace('-', '/'))
+            if mapid.startswith('as-map-') and mapid not in map_names:map_names[mapid]=_tr('Mapa {0} · sem referência',mapid.removeprefix('as-map-'))
+            self.layer_names[f'{_tr(map_names.get(mapid,mapid))} · {_tr(name)}']=value
         pref=self.settings.get("regional",{}).get(self.package_id,{})
         default='as-map-2 / surface'
         choice=pref.get("layer",default)
@@ -211,14 +212,14 @@ class DesktopApp(ProfileControls,CompactPanel):
         self.close_marker_menu(restore_focus=False)
         self.apply_territory()
         try: self.persist_settings()
-        except OSError as exc: self.session.notice=f"Falha ao salvar preferências: {exc}"
+        except OSError as exc: self.session.notice=_tr('Falha ao salvar preferências: {0}', exc)
         self.reload_reference()
 
     def show_appsample_export(self, manual=False):
         from src.live.appsample_export import GUIDE, MANUAL_GUIDE, script_text
         from tkinter import filedialog
         import webbrowser
-        popup=tk.Toplevel(self.root);popup.title('Trazer coletados do AppSample');popup.configure(bg=BG)
+        popup=tk.Toplevel(self.root);popup.title(_tr('Trazer coletados do AppSample'));popup.configure(bg=BG)
         popup.transient(self.root)
         body=tk.Text(popup,wrap='word',font=('Segoe UI',10),padx=14,pady=12,
                      bg=SURFACE,fg=TEXT,insertbackground=TEXT,selectbackground=ACCENT,
@@ -228,19 +229,19 @@ class DesktopApp(ProfileControls,CompactPanel):
         body.insert('1.0',MANUAL_GUIDE if manual else GUIDE);body.configure(state='disabled')
         actions=ttk.Frame(popup);actions.pack(fill='x',padx=10,pady=8)
         def save_script():
-            name=filedialog.asksaveasfilename(parent=popup,title='Salvar código para conferir',
+            name=filedialog.asksaveasfilename(parent=popup,title=_tr('Salvar código para conferir'),
                 initialfile='hexen-appsample-export.js',defaultextension='.js',filetypes=[('JavaScript','*.js')])
             if name:
                 try:
                     Path(name).write_text(script_text(),encoding='utf-8')
-                    messagebox.showinfo('Script salvo','Abra o arquivo em um editor para conferir o código. Execute somente no DevTools do AppSample, seguindo as instruções.',parent=popup)
-                except OSError as exc:messagebox.showerror('Falha ao salvar',str(exc),parent=popup)
+                    messagebox.showinfo(_tr('Script salvo'),_tr('Abra o arquivo em um editor para conferir o código. Execute somente no DevTools do AppSample, seguindo as instruções.'),parent=popup)
+                except OSError as exc:messagebox.showerror(_tr('Falha ao salvar'),_tr(str(exc)),parent=popup)
         if manual:
-            ttk.Button(actions,text='Salvar script…',command=save_script).pack(side='left')
+            ttk.Button(actions,text=_tr('Salvar script…'),command=save_script).pack(side='left')
         else:
-            ttk.Button(actions,text='Pasta da extensão…',command=self.open_exporter_folder).pack(side='left')
-        ttk.Button(actions,text='Abrir AppSample',command=lambda:webbrowser.open('https://genshin-impact-map.appsample.com/pt/')).pack(side='left',padx=6)
-        ttk.Button(actions,text='Importar arquivo…',command=lambda:(popup.destroy(),self.import_appsample_progress())).pack(side='right')
+            ttk.Button(actions,text=_tr('Pasta da extensão…'),command=self.open_exporter_folder).pack(side='left')
+        ttk.Button(actions,text=_tr('Abrir AppSample'),command=lambda:webbrowser.open('https://genshin-impact-map.appsample.com/pt/')).pack(side='left',padx=6)
+        ttk.Button(actions,text=_tr('Importar arquivo…'),command=lambda:(popup.destroy(),self.import_appsample_progress())).pack(side='right')
         place_dialog(popup,self.root,(540,580))
 
     def open_exporter_folder(self):
@@ -249,9 +250,9 @@ class DesktopApp(ProfileControls,CompactPanel):
         try:
             folder=prepare_extension()
             os.startfile(str(folder))
-            self.session.notice='Pasta pronta: selecione-a em Extensões → Modo do desenvolvedor → Carregar sem compactação.'
+            self.session.notice=_tr('Pasta pronta: selecione-a em Extensões → Modo do desenvolvedor → Carregar sem compactação.')
         except (OSError,ValueError) as exc:
-            messagebox.showerror('Pasta da extensão',f'Não foi possível preparar a extensão: {exc}',parent=self.root)
+            messagebox.showerror(_tr('Pasta da extensão'),_tr('Não foi possível preparar a extensão: {0}', exc),parent=self.root)
 
     def open_world_map(self):
         if getattr(self,'world_map',None):
@@ -280,18 +281,18 @@ class DesktopApp(ProfileControls,CompactPanel):
                         'pontuacoes':self.chest_signals.scores.copy(),
                         'altura_hud_detectada':self.chest_signals.detected_hud_height}}
         self.root.clipboard_clear();self.root.clipboard_append(json.dumps(report,ensure_ascii=False,indent=2))
-        self.session.notice='Diagnóstico copiado. Cole no suporte; não contém imagens, conta ou credenciais.'
+        self.session.notice=_tr('Diagnóstico copiado. Cole no suporte; não contém imagens, conta ou credenciais.')
 
     def install_browser_connector(self):
         from src.live.browser_connector import register_connector
         try:
             register_connector(install_dir())
-            messagebox.showinfo('Conector do navegador',
-                'Conexão local ativada para Chrome e Edge neste usuário.\n'
+            messagebox.showinfo(_tr('Conector do navegador'),
+                _tr('Conexão local ativada para Chrome e Edge neste usuário.\n'
                 'Instale a extensão 0.2.0 e use Enviar ao Hexen Map.\n'
-                'Cada envio abrirá a prévia; nada será mesclado sem confirmação.',parent=self.root)
+                'Cada envio abrirá a prévia; nada será mesclado sem confirmação.'),parent=self.root)
         except Exception as exc:
-            messagebox.showerror('Conector do navegador',str(exc),parent=self.root)
+            messagebox.showerror(_tr('Conector do navegador'),_tr(str(exc)),parent=self.root)
 
     def poll_browser_imports(self):
         try:
@@ -317,18 +318,18 @@ class DesktopApp(ProfileControls,CompactPanel):
     def import_appsample_progress(self, filename=None):
         if self.region_loading:return
         if self.package_id!='appsample':
-            self.session.notice='Selecione a fonte AppSample antes de importar.';return
+            self.session.notice=_tr('Selecione a fonte AppSample antes de importar.');return
         from tkinter import filedialog
         from src.live.appsample_import import parse_marker_ids
         from src.live.appsample_runtime import import_records
         import json
         if filename is None:
-            filename=filedialog.askopenfilename(parent=self.root,title='Coletados do AppSample',
-                initialdir=self.user_dir/'imports/appsample',filetypes=[('Progresso JSON','*.json *.txt')])
+            filename=filedialog.askopenfilename(parent=self.root,title=_tr('Coletados do AppSample'),
+                initialdir=self.user_dir/'imports/appsample',filetypes=[(_tr('Progresso JSON'),'*.json *.txt')])
         if not filename:return
         try:
             path=Path(filename)
-            if path.stat().st_size>16*1024*1024:raise ValueError('Arquivo maior que 16 MiB')
+            if path.stat().st_size>16*1024*1024:raise ValueError(_tr('Arquivo maior que 16 MiB'))
             payload=json.loads(path.read_text(encoding='utf-8-sig'))
             from src.live.browser_connector import validated_payload
             # Browser deliveries use only the normalized contract. Manual imports
@@ -338,23 +339,23 @@ class DesktopApp(ProfileControls,CompactPanel):
             records,missing,key=import_records(ids,self.session.items)
             progress=self.session.progress
             profile=getattr(self,'profile_store',None)
-            caption=f'Perfil: {profile.name()}\n' if profile else ''
-            if not confirm_dialog('Importar coletados',caption+f'{len(records)} itens encontrados no catálogo.\n{len(missing)} IDs ausentes serão preservados no arquivo original.\n\nMesclar com o progresso atual, criando backup?',parent=self.root):return
+            caption=_tr('Perfil: {0}\n', profile.name()) if profile else ''
+            if not confirm_dialog(_tr('Importar coletados'),_tr(caption)+_tr('{0} itens encontrados no catálogo.\n{1} IDs ausentes serão preservados no arquivo original.\n\nMesclar com o progresso atual, criando backup?', len(records), len(missing)),parent=self.root):return
             if self.session.progress is not progress:
-                self.session.notice='Perfil alterado; importação cancelada. Abra a prévia novamente.';return
+                self.session.notice=_tr('Perfil alterado; importação cancelada. Abra a prévia novamente.');return
             result=progress.merge_imported_records(records,key,'appsample')
-            self.refresh_counts();self.session.notice=f"AppSample: {result['added']} novos coletados; {len(missing)} IDs sem posição nesta versão."
+            self.refresh_counts();self.session.notice=_tr('AppSample: {0} novos coletados; {1} IDs sem posição nesta versão.', result['added'], len(missing))
         except Exception as exc:
-            logger.exception('Importação AppSample não aplicada');self.session.notice=f'Falha na importação: {exc}'
+            logger.exception('Importação AppSample não aplicada');self.session.notice=_tr('Falha na importação: {0}', exc)
 
     def sync_source_controls(self):
-        self.source_caption.configure(text='APPSAMPLE')
+        self.source_caption.configure(text=_tr('APPSAMPLE'))
 
     def request_package(self,identifier):
         if identifier==self.package_id and not self.region_loading:return
         try:self.persist_settings()
         except OSError as exc:
-            self.session.notice=f"Falha ao salvar preferências: {exc}";return
+            self.session.notice=_tr('Falha ao salvar preferências: {0}', exc);return
         self.close_layers();self.close_marker_menu(restore_focus=False)
         self.requested_package=identifier
         self.region_loading=True
@@ -370,8 +371,8 @@ class DesktopApp(ProfileControls,CompactPanel):
         if self.input_hwnd:
             self.native.interactive(self.input_hwnd,False);self.native.hide(self.input_hwnd)
         self.category_browser.set_model(None,set())
-        self.territory_path.set('Carregando '+('AppSample' if identifier=='appsample' else self.region_var.get())+'…')
-        self.progress_text.set('Carregando catálogo…')
+        self.territory_path.set(_tr('Carregando {0}…','AppSample' if identifier=='appsample' else self.region_var.get()))
+        self.progress_text.set(_tr('Carregando catálogo…'))
         self.catalog_generation=self.catalog_loader.request(identifier)
 
     def poll_catalog(self):
@@ -379,7 +380,7 @@ class DesktopApp(ProfileControls,CompactPanel):
             try:generation,error=self.preference_writer.errors.get_nowait()
             except queue.Empty:break
             if generation==self.preference_writer.generation:
-                self.session.notice=f'Preferências não salvas: {error}'
+                self.session.notice=_tr('Preferências não salvas: {0}', error)
         while True:
             try:generation,identifier,package,error=self.catalog_loader.results.get_nowait()
             except queue.Empty:return
@@ -388,7 +389,7 @@ class DesktopApp(ProfileControls,CompactPanel):
             if error:
                 if hasattr(self,'source_var'):self.sync_source_controls()
                 else:self.region_var.set(next(k for k,v in self.region_names.items() if v==self.package_id))
-                self.session.notice=f"Pacote regional indisponível: {error}"
+                self.session.notice=_tr('Pacote regional indisponível: {0}', error)
                 self.populate_region_controls();self.reload_reference()
                 continue
             self.package_id=package.id;self.coordinate_system=package.coordinate_system
@@ -401,7 +402,7 @@ class DesktopApp(ProfileControls,CompactPanel):
             self.sync_source_controls()
             self.populate_region_controls()
             try:self.persist_settings()
-            except OSError as exc:self.session.notice=f"Falha ao salvar preferências: {exc}"
+            except OSError as exc:self.session.notice=_tr('Falha ao salvar preferências: {0}', exc)
             self.reload_reference()
 
     def set_categories(self,selected):
@@ -431,18 +432,18 @@ class DesktopApp(ProfileControls,CompactPanel):
         self.close_marker_menu(restore_focus=False)
         self.session.pending_ids.clear()
         try: self.persist_settings()
-        except OSError as exc: self.session.notice=f"Falha ao salvar preferências: {exc}"
+        except OSError as exc: self.session.notice=_tr('Falha ao salvar preferências: {0}', exc)
 
     def save_keys(self):
         keys={k:v.get() for k,v in self.key_vars.items()}
         if len(set(keys.values()))!=len(self.key_vars):
-            messagebox.showerror("Atalhos","Escolha uma tecla diferente para cada ação.",parent=self.root)
+            messagebox.showerror(_tr("Atalhos"),_tr("Escolha uma tecla diferente para cada ação."),parent=self.root)
             return
         self.settings["hotkeys"]=keys
         try:
             self.persist_settings()
             self.configure_hotkeys()
-        except OSError as exc: self.session.notice=f"Falha ao salvar atalhos: {exc}"
+        except OSError as exc: self.session.notice=_tr('Falha ao salvar atalhos: {0}', exc)
 
     def configure_hotkeys(self):
         # Registrations belong to the listener thread; recreate rather than rebind from Tk.
@@ -495,7 +496,7 @@ class DesktopApp(ProfileControls,CompactPanel):
                                     if (mapid or candidate.parent.parent.name,candidate.parent.name) in allowed_layers]
                     specs=[]
                     for candidate in candidates:
-                        if cancelled():raise ReferenceCancelled('Seleção substituída')
+                        if cancelled():raise ReferenceCancelled(_tr('Seleção substituída'))
                         import json
                         metadata=json.loads(candidate.read_text(encoding='utf-8'))
                         specs.append(read_spec(candidate.parent,region,mapid or metadata.get('map_id','teyvat'),
@@ -527,7 +528,7 @@ class DesktopApp(ProfileControls,CompactPanel):
         index=self.candidates.current()
         if 0<=index<len(self.pending_order):
             try: self.session.confirm(self.pending_order[index])
-            except Exception as exc: self.session.notice=f"Falha ao salvar coleta: {exc}"
+            except Exception as exc: self.session.notice=_tr('Falha ao salvar coleta: {0}', exc)
 
     def _poll_pointer(self):
         if self.stop_event.is_set():
@@ -614,12 +615,12 @@ class DesktopApp(ProfileControls,CompactPanel):
         try:
             rect=self.native.game()
             if time.monotonic()>self.menu_deadline or self.rect_key(rect)!=self.menu_geometry:
-                self.session.notice="Menu expirado. Use Ctrl + clique no item novamente."
+                self.session.notice=_tr("Menu expirado. Use Ctrl + clique no item novamente.")
             else:
                 self.session.set_collected(identifier,collected)
                 self.refresh_counts()
         except Exception as exc:
-            self.session.notice=f"Falha ao salvar item: {exc}"
+            self.session.notice=_tr('Falha ao salvar item: {0}', exc)
             logger.exception("Falha ao salvar pelo menu do marcador")
         finally:
             self.close_marker_menu()
@@ -643,7 +644,7 @@ class DesktopApp(ProfileControls,CompactPanel):
             if hasattr(self,'count_indices'):
                 index=self.count_indices.get(self.session,self.category_model)
                 if index is None:
-                    self.progress_text.set('Contando itens…')
+                    self.progress_text.set(_tr('Contando itens…'))
                     return False
                 totals,memberships,permanent_ids,other_ids=index
                 collected_counts=Counter();collected=unavailable=0
@@ -660,7 +661,7 @@ class DesktopApp(ProfileControls,CompactPanel):
             browser=self.category_browser
             if counts!=browser.counts or browser.selected!=self.session.selected:
                 browser.counts=counts;browser.selected=set(self.session.selected);browser.schedule_paint()
-            self.progress_text.set(f"{collected}/{total} permanentes · {unavailable} recursos indisponíveis")
+            self.progress_text.set(_tr('{0}/{1} permanentes · {2} recursos indisponíveis', collected, total, unavailable))
             self.progress_value.set(100*collected/total if total else 0)
             return
         counts=self.session.collection_counts()
@@ -671,11 +672,11 @@ class DesktopApp(ProfileControls,CompactPanel):
         permanent_ids={i.id for i in permanent}
         unavailable=sum(self.session.is_collected(i.id) for i in items if i.id not in permanent_ids)
         for category in self.category_labels:
-            label=CATEGORIES[category][0]
+            label=_tr(CATEGORIES[category][0])
             count=counts.get(category,CollectionCount(0,0))
-            state='indisponíveis' if CATEGORY_GROUPS.get(category)=='Recursos' else 'pegos'
+            state=_tr('indisponíveis') if CATEGORY_GROUPS.get(category)=='Recursos' else _tr('pegos')
             self.category_labels[category].set(f"{label} · {count.collected}/{count.total} {state}")
-        self.progress_text.set(f"{collected}/{total} permanentes · {unavailable} recursos indisponíveis")
+        self.progress_text.set(_tr('{0}/{1} permanentes · {2} recursos indisponíveis', collected, total, unavailable))
         self.progress_value.set(100*collected/total if total else 0)
 
     def open_marker_menu(self, event):
@@ -765,16 +766,16 @@ class DesktopApp(ProfileControls,CompactPanel):
                     if key!=previous_key:
                         if motion: motion.reset()
                         previous_key=key
-                    obs=Observation("hidden",started,reason="Aguardando o Genshin abrir…")
+                    obs=Observation("hidden",started,reason=_tr("Aguardando o Genshin abrir…"))
                     if rect.is_found and not self.native.foreground(rect):
                         if motion: motion.reset()
-                        obs=Observation("hidden",started,reason="Volte ao Genshin para continuar")
+                        obs=Observation("hidden",started,reason=_tr("Volte ao Genshin para continuar"))
                     elif rect.is_found and recognizer is None:
-                        obs=Observation("hidden",started,reason=error)
+                        obs=Observation("hidden",started,reason=_tr(error))
                     elif rect.is_found and ((not self.session.selected and not (self.settings.get('automark')
                             and getattr(self,'chest_signals',None) is not None and self.chest_signals.ready)) or self.session.hidden):
                         if motion:motion.reset()
-                        obs=Observation('hidden',started,reason='Overlay oculto' if self.session.hidden else 'Selecione o que procurar')
+                        obs=Observation('hidden',started,reason=_tr('Overlay oculto') if self.session.hidden else _tr('Selecione o que procurar'))
                     elif rect.is_found:
                         try:
                             p=recognizer.pack
@@ -785,15 +786,15 @@ class DesktopApp(ProfileControls,CompactPanel):
                                 if frame is not None and template_visible(frame,p.map_ui,p.map_ui_roi):frame=self.native.capture(rect)
                             obs=motion.observe(frame,started)
                             if frame is None and getattr(self.native,'capture_error',''):
-                                obs=Observation('hidden',started,reason=self.native.capture_error)
+                                obs=Observation('hidden',started,reason=_tr(self.native.capture_error))
                         except MemoryError:
                             if self.settings.get('performance_mode')=='global':self.events.put(('performance_fallback',epoch,True))
-                            obs=Observation('hidden',started,reason='Memória insuficiente para a referência atual')
+                            obs=Observation('hidden',started,reason=_tr('Memória insuficiente para a referência atual'))
                         except ReferenceCancelled:
-                            obs=Observation('hidden',started,reason='Seleção substituída')
+                            obs=Observation('hidden',started,reason=_tr('Seleção substituída'))
                         except Exception:
                             logger.exception("Falha no reconhecimento")
-                            obs=Observation("hidden",started,reason="Não foi possível reconhecer a tela")
+                            obs=Observation("hidden",started,reason=_tr("Não foi possível reconhecer a tela"))
                     elapsed=time.monotonic()-started
                     if frame is not None and started-last_capture_check>=2:
                         sample=frame[:max(1,round(frame.shape[0]*.35)):12,::12]
@@ -845,7 +846,7 @@ class DesktopApp(ProfileControls,CompactPanel):
                         self.close_marker_menu(restore_focus=False);self.panel_shortcut()
                     elif isinstance(action,tuple) and action[0]=='automark_event':
                         logger.info('AutoMark result=ignored reason=marker_card_open event=%s',action[2].token)
-                    elif isinstance(action,tuple): self.session.notice=action[1]
+                    elif isinstance(action,tuple): self.session.notice=_tr(action[1])
                 if (key!=self.menu_geometry or not rect.is_found or rect.is_minimized
                         or time.monotonic()>self.menu_deadline or self.session.hidden
                         or not self.native.menu_foreground(rect)):
@@ -877,7 +878,7 @@ class DesktopApp(ProfileControls,CompactPanel):
                 elif isinstance(action,tuple) and action[0]=='performance_fallback':
                     if action[1]==self.selection_epoch:
                         self.settings['performance_mode']='light'
-                        self.session.notice='Cobertura global indisponível por memória. Modo Leve ativado.'
+                        self.session.notice=_tr('Cobertura global indisponível por memória. Modo Leve ativado.')
                         if len(action)>2 and action[2]:self.reload_reference()
                         self.persist_settings()
                 elif action=="visibility": self.toggle_visibility()
@@ -891,10 +892,10 @@ class DesktopApp(ProfileControls,CompactPanel):
                         if outcome=='marked':self.refresh_counts()
                 elif isinstance(action,tuple) and action[0]=='automark_unresolved':
                     if foreground and action[1]==self.selection_epoch:
-                        self.session.notice='AutoMark: abertura sem posição comprovada. Use o atalho de coleta para escolher.'
+                        self.session.notice=_tr('AutoMark: abertura sem posição comprovada. Use o atalho de coleta para escolher.')
                 elif action=="collect" and foreground and not self.region_loading: self.collect_shortcut(rect)
                 elif action=="undo" and foreground and not self.region_loading: self.session.undo()
-                elif isinstance(action,tuple): self.session.notice=action[1]
+                elif isinstance(action,tuple): self.session.notice=_tr(action[1])
             now=time.monotonic()
             display=self.display_motion.present(self.session.observation,now)
             self.session.marker_dpi=self.native.dpi_scale(rect.hwnd) if rect.hwnd else 1.
@@ -928,17 +929,17 @@ class DesktopApp(ProfileControls,CompactPanel):
                     self.telemetry.close();self.telemetry=None
             self._sync_input(rect)
             self.raise_attached_controls()
-            status=self.overlay_error or self.reference_error or self.session.observation.reason
-            if self.session.hidden: status="Overlay oculto · use o atalho para mostrar"
-            elif not self.session.selected and not self.reference_error: status+=" · selecione o que procurar"
+            status=_tr(self.overlay_error or self.reference_error or self.session.observation.reason)
+            if self.session.hidden: status=_tr("Overlay oculto · use o atalho para mostrar")
+            elif not self.session.selected and not self.reference_error: status+=_tr(" · selecione o que procurar")
             elif foreground and self.session.observation.surface!="hidden" and not self.session.observation.fresh(time.monotonic()):
-                status="Localização atrasada · ícones ocultos"
-            status+=" · cobertura em validação"
-            if self.status.get()!=status:self.status.set(status)
+                status=_tr("Localização atrasada · ícones ocultos")
+            status+=_tr(" · cobertura em validação")
+            if self.status.get()!=status:self.status.set(_tr(status))
             self.update_automark_sync()
-            if self.notice.get()!=self.session.notice:self.notice.set(self.session.notice)
+            if self.notice.get()!=self.session.notice:self.notice.set(_tr(self.session.notice))
             if self.listener and self.listener.registration_errors:
-                self.notice.set("Um atalho está em uso por outro programa. Escolha outra tecla e salve.")
+                self.notice.set(_tr("Um atalho está em uso por outro programa. Escolha outra tecla e salve."))
             if time.monotonic()-self.counts_at>=1:
                 if self.refresh_counts() is not False:self.counts_at=time.monotonic()
             if self.session.pending_ids and time.monotonic()-self.session.pending_at>30: self.session.pending_ids.clear()
@@ -951,7 +952,7 @@ class DesktopApp(ProfileControls,CompactPanel):
                 self.native.interactive(self.input_hwnd,False);self.native.hide(self.input_hwnd)
             if self.overlay_hwnd: self.native.hide(self.overlay_hwnd)
             self.session.invalidate("Overlay pausado após uma falha")
-            self.fatal_error(exc)
+            self.fatal_error(_tr(exc))
             return
         self.root.after(16 if foreground else 100,self._tick)
 
@@ -970,7 +971,7 @@ class DesktopApp(ProfileControls,CompactPanel):
 
     def callback_error(self,kind,error,traceback):
         logger.error('Falha não tratada na interface',exc_info=(kind,error,traceback))
-        self.fatal_error(error)
+        self.fatal_error(_tr(error))
 
     def fatal_error(self,error):
         if getattr(self,'_fatal_error',False):return
@@ -979,8 +980,8 @@ class DesktopApp(ProfileControls,CompactPanel):
         for handle in (getattr(self,'input_hwnd',None),getattr(self,'overlay_hwnd',None)):
             if handle:self.native.hide(handle)
         try:
-            messagebox.showerror('Hexen Map — erro ao continuar',
-                f'{error}\n\nNão é seguro continuar. O aplicativo será encerrado. Seus arquivos de progresso serão preservados.',parent=self.root)
+            messagebox.showerror(_tr('Hexen Map — erro ao continuar'),
+                _tr('{0}\n\nNão é seguro continuar. O aplicativo será encerrado. Seus arquivos de progresso serão preservados.', error),parent=self.root)
         finally:
             try:self.close()
             except Exception:

@@ -1,4 +1,4 @@
-; Compile with /DAppVersion=... /DPackageDir=... /DLauncherFile=... /DOutputDir=...
+﻿; Compile with /DAppVersion=... /DPackageDir=... /DLauncherFile=... /DOutputDir=...
 #ifndef AppVersion
   #error AppVersion is required
 #endif
@@ -36,12 +36,29 @@ CloseApplicationsFilter=HexenMapLauncher.exe
 RestartApplications=no
 DisableProgramGroupPage=yes
 UsePreviousAppDir=yes
+ShowLanguageDialog=yes
+UsePreviousLanguage=yes
 
 [Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
+[CustomMessages]
+english.DesktopShortcut=Create a desktop shortcut
+brazilianportuguese.DesktopShortcut=Criar atalho na Área de Trabalho
+english.OpenApp=Open Hexen Map
+brazilianportuguese.OpenApp=Abrir Hexen Map
+english.WrongUser=Update using the account that installed Hexen Map. Existing data has been preserved.
+brazilianportuguese.WrongUser=Atualize usando a conta que instalou o Hexen Map. Os dados existentes foram preservados.
+english.BackupFailed=Could not save the previous version. Close Hexen Map and try again.
+brazilianportuguese.BackupFailed=Não foi possível salvar a versão anterior. Feche o Hexen Map e tente novamente.
+english.BackupDirectoryFailed=Could not prepare the previous version backup.
+brazilianportuguese.BackupDirectoryFailed=Não foi possível preparar o backup da versão anterior.
+english.LanguageSaveFailed=Could not save the language preference.
+brazilianportuguese.LanguageSaveFailed=Não foi possível salvar a preferência de idioma.
+
 [Tasks]
-Name: "desktopicon"; Description: "Criar atalho na Área de Trabalho"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:DesktopShortcut}"; Flags: unchecked
 
 [Files]
 Source: "{#PackageDir}\HexenMap.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -61,7 +78,7 @@ Name: "{userprograms}\Hexen Map{#TestSuffix}"; Filename: "{app}\HexenMapLauncher
 Name: "{userdesktop}\Hexen Map{#TestSuffix}"; Filename: "{app}\HexenMapLauncher.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{cmd}"; Parameters: "/D /C .\Start-HexenMap.cmd"; WorkingDir: "{app}"; Description: "Abrir Hexen Map"; Flags: nowait postinstall skipifsilent runhidden; Check: ShouldLaunch
+Filename: "{cmd}"; Parameters: "/D /C .\Start-HexenMap.cmd"; WorkingDir: "{app}"; Description: "{cm:OpenApp}"; Flags: nowait postinstall skipifsilent runhidden; Check: ShouldLaunch
 Filename: "{cmd}"; Parameters: "/D /C .\Start-HexenMap.cmd"; WorkingDir: "{app}"; Flags: nowait runascurrentuser runhidden; Check: IsUpdate
 
 [Code]
@@ -71,7 +88,7 @@ begin
   Result := '';
   if LoadStringFromFile(ExpandConstant('{app}\installed-user.txt'), Owner) then
     if CompareText(Trim(String(Owner)), GetUserNameString) <> 0 then
-      Result := 'Atualize usando a conta que instalou o Hexen Map. Os dados existentes foram preservados.';
+      Result := CustomMessage('WrongUser');
 end;
 
 function ShouldLaunch: Boolean;
@@ -90,18 +107,19 @@ begin
   Source := ExpandConstant('{app}\') + Name;
   Target := ExpandConstant('{app}\.previous\') + Name;
   if FileExists(Source) and not FileCopy(Source, Target, False) then
-    RaiseException('Não foi possível salvar a versão anterior. Feche o Hexen Map e tente novamente.');
+    RaiseException(CustomMessage('BackupFailed'));
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
-var PreviousVersion: AnsiString;
+var PreviousVersion, StatePath: AnsiString;
+    LanguageFile, LanguageCode: String;
 begin
   if CurStep = ssInstall then begin
     LoadStringFromFile(ExpandConstant('{app}\installed-version.txt'), PreviousVersion);
     if (Trim(String(PreviousVersion)) <> '{#AppVersion}') and
        FileExists(ExpandConstant('{app}\HexenMap.exe')) then begin
       if not ForceDirectories(ExpandConstant('{app}\.previous')) then
-        RaiseException('Não foi possível preparar o backup da versão anterior.');
+        RaiseException(CustomMessage('BackupDirectoryFailed'));
       BackupFile('HexenMap.exe');
       BackupFile('HexenMapLauncher.exe');
       BackupFile('HexenMapBridge.exe');
@@ -115,5 +133,21 @@ begin
       SaveStringToFile(ExpandConstant('{app}\installed-user.txt'), GetUserNameString, False);
     if not FileExists(ExpandConstant('{app}\state-dir.txt')) then
       SaveStringToFile(ExpandConstant('{app}\state-dir.txt'), UTF8Encode(ExpandConstant('{localappdata}\HexenMap\state')), False);
+    { Keep the language outside state: a preference is not evidence of an existing save. }
+    if not LoadStringFromFile(ExpandConstant('{app}\state-dir.txt'), StatePath) then
+      RaiseException(CustomMessage('LanguageSaveFailed'));
+#if TestSuffix != ""
+    StatePath := UTF8Encode(ExpandConstant('{app}\test-user-data\state'));
+#endif
+    LanguageFile := AddBackslash(ExtractFileDir(Trim(UTF8Decode(StatePath)))) + 'language.json';
+    { Background updates preserve a choice made inside the application. }
+    if (not WizardSilent) or (not FileExists(LanguageFile)) then begin
+      LanguageCode := 'pt-BR';
+      if ActiveLanguage = 'english' then LanguageCode := 'en-US';
+      if not ForceDirectories(ExtractFileDir(LanguageFile)) then
+        RaiseException(CustomMessage('LanguageSaveFailed'));
+      if not SaveStringToFile(LanguageFile, '{"language":"' + LanguageCode + '"}', False) then
+        RaiseException(CustomMessage('LanguageSaveFailed'));
+    end;
   end;
 end;

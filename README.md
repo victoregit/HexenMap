@@ -15,7 +15,7 @@ Explore o **Genshin Impact** com pins sobre o minimapa e o mapa M, acompanhe sua
 | **Pins no minimapa e no mapa M** | Mostra os itens selecionados sobre os mapas nativos, acompanhando o alinhamento reconhecido na tela. |
 | **AutoMark de baús · Beta** | Combina sinais de abertura e recompensas para registrar um baú próximo quando a associação é confiável. |
 | **Importação do AppSample** | Aproveita seus coletados com prévia, mesclagem e backup, sem precisar marcar tudo novamente. |
-| **Catálogo em português** | Organiza recursos em subgrupos e permite buscar por nomes, aliases e texto sem acentos. Categorias ainda não identificadas ficam sinalizadas. |
+| **Português e inglês** | Interface, catálogo, inicialização e instalador nos dois idiomas. A busca aceita nomes e aliases; categorias ainda não identificadas ficam sinalizadas. |
 | **Fotos dos pontos** | Clique na foto do cartão para ampliar, usar zoom e arrastar a imagem. |
 | **Painel independente** | Pode ser movido, redimensionado pelas bordas e recolhido. Em Ajustes, aumente textos e controles para 125% ou 150%. |
 | **Mapa geral de Teyvat** | O planetinha abre uma janela navegável da superfície, com zoom, filtros e coletas compartilhados. Usa imagens locais instaladas; muitos pontos próximos formam grupos clicáveis. |
@@ -44,7 +44,11 @@ O aplicativo usa reconhecimento de imagem externo. Não lê memória do jogo, n�
 | **F9** | Confirmar uma coleta próxima ou escolher entre candidatos. |
 | **F10** | Desfazer a última coleta da sessão. |
 
-Os atalhos são configuráveis nos **Ajustes**. Suas opções ficam em seções recolhíveis: painel e compartilhamento, AutoMark, coletados do AppSample, desempenho, atalhos e diagnóstico. O controle de compartilhamento define se o overlay aparece nas capturas; ele não desliga o reconhecimento.
+Em **Ajustes → Idioma / Language**, escolha **Português (Brasil)** ou **English** e reabra o aplicativo para aplicar. O instalador também permite escolher o idioma. A preferência é compartilhada entre perfis e preservada nas atualizações automáticas.
+
+Os atalhos são configuráveis nos **Ajustes**. Suas opções ficam em seções recolhíveis: perfis, painel e compartilhamento, coletados do AppSample, atalhos e diagnóstico. O AutoMark fica acima do rodapé do painel principal. O controle de compartilhamento define se o overlay aparece nas capturas; ele não desliga o reconhecimento.
+
+A tradução da interface não altera o idioma do Genshin. As referências atuais do **AutoMark exigem o HUD do jogo em português**, inclusive quando o aplicativo está em inglês.
 
 ## Traga seus coletados do AppSample
 

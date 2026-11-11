@@ -1,4 +1,5 @@
 """Prepare personal AppSample progress without guessing cross-source marker IDs."""
+from src.live.i18n import tr as _tr
 from collections import defaultdict
 from collections import Counter
 from dataclasses import dataclass,asdict
@@ -25,28 +26,28 @@ def parse_marker_ids(payload):
         for entry in entries:
             if not isinstance(entry,dict):continue
             found=entry.get('found',{})
-            if not isinstance(found,dict):raise ValueError('Documento Firestore inválido')
+            if not isinstance(found,dict):raise ValueError(_tr('Documento Firestore inválido'))
             fields=found.get('fields',{})
-            if not isinstance(fields,dict):raise ValueError('Campos Firestore inválidos')
+            if not isinstance(fields,dict):raise ValueError(_tr('Campos Firestore inválidos'))
             if 'markerIds' not in fields:continue
             value=fields['markerIds']
             if not isinstance(value,dict) or not isinstance(value.get('arrayValue'),dict):
-                raise ValueError('markerIds não é uma lista Firestore')
+                raise ValueError(_tr('markerIds não é uma lista Firestore'))
             values=value['arrayValue'].get('values',[])
-            if not isinstance(values,list):raise ValueError('Lista markerIds inválida')
+            if not isinstance(values,list):raise ValueError(_tr('Lista markerIds inválida'))
             ids=[]
             for item in values:
                 if not isinstance(item,dict) or set(item)!={'stringValue'}:
-                    raise ValueError('ID Firestore fora do formato confirmado')
+                    raise ValueError(_tr('ID Firestore fora do formato confirmado'))
                 ids.append(item['stringValue'])
             candidates.append(ids)
-    if len(candidates)!=1:raise ValueError('Esperado exatamente um documento de progresso com markerIds')
+    if len(candidates)!=1:raise ValueError(_tr('Esperado exatamente um documento de progresso com markerIds'))
     ids=candidates[0]
-    if not isinstance(ids,list) or len(ids)>300000:raise ValueError('Lista de IDs inválida ou grande demais')
+    if not isinstance(ids,list) or len(ids)>300000:raise ValueError(_tr('Lista de IDs inválida ou grande demais'))
     # Current AppSample official markers use decimal string IDs. Do not coerce
     # numbers, strip prefixes or equate unrelated namespaces by numeric value.
     if any(not isinstance(i,str) or not i.isascii() or not i.isdigit() or len(i)>32 for i in ids):
-        raise ValueError('ID fora do formato decimal confirmado do AppSample')
+        raise ValueError(_tr('ID fora do formato decimal confirmado do AppSample'))
     return tuple(sorted(set(ids))),len(ids)-len(set(ids))
 
 
@@ -75,7 +76,7 @@ def archive_progress(marker_ids,report,directory: Path):
     output=directory/digest[:20]
     existing=output/'progress.json'
     if existing.exists():
-        if json.loads(existing.read_text(encoding='utf-8'))!=payload:raise ValueError('Arquivo de importação existente diverge do conteúdo')
+        if json.loads(existing.read_text(encoding='utf-8'))!=payload:raise ValueError(_tr('Arquivo de importação existente diverge do conteúdo'))
     else:write_json(existing,payload)
     if report is not None:write_json(output/'report.json',{**report,'normalized_sha256':digest})
     return output
@@ -104,42 +105,42 @@ def parse_catalog(payload):
     the source's normalized CRS; they must retain their own projected coordinate system.
     Encoded coordinates require a separately reviewed decoder, not a guess.
     """
-    if not isinstance(payload,dict):raise ValueError('Catálogo AppSample inválido')
-    if payload.get('code',0)!=0:raise ValueError('Coordenadas codificadas ainda não qualificadas')
-    if payload.get('compressionVersion')!=1:raise ValueError('Versão de compactação não suportada')
+    if not isinstance(payload,dict):raise ValueError(_tr('Catálogo AppSample inválido'))
+    if payload.get('code',0)!=0:raise ValueError(_tr('Coordenadas codificadas ainda não qualificadas'))
+    if payload.get('compressionVersion')!=1:raise ValueError(_tr('Versão de compactação não suportada'))
     encoding=payload.get('encoding',{})
     if not isinstance(encoding,dict) or encoding.get('delta')!=['id']:
-        raise ValueError('Codificação delta não reconhecida')
+        raise ValueError(_tr('Codificação delta não reconhecida'))
     headers=payload.get('headers');data=payload.get('data')
     if (not isinstance(headers,list) or not all(isinstance(h,str) for h in headers)
             or len(set(headers))!=len(headers) or not isinstance(data,dict)
             or not {'id','type','lng','lat'}.issubset(headers)):
-        raise ValueError('Colunas obrigatórias ausentes ou duplicadas')
+        raise ValueError(_tr('Colunas obrigatórias ausentes ou duplicadas'))
     deltas=data.get('id')
-    if not isinstance(deltas,list) or len(deltas)>500000:raise ValueError('Lista de pontos inválida')
+    if not isinstance(deltas,list) or len(deltas)>500000:raise ValueError(_tr('Lista de pontos inválida'))
     count=len(deltas)
     for key in headers:
         column=data.get(key)
-        if not isinstance(column,list) or len(column)!=count:raise ValueError('Colunas com tamanhos diferentes')
+        if not isinstance(column,list) or len(column)!=count:raise ValueError(_tr('Colunas com tamanhos diferentes'))
     points=[];seen=set();identifier=0
     for index,delta in enumerate(deltas):
-        if type(delta) is not int:raise ValueError('Delta de ID inválido')
+        if type(delta) is not int:raise ValueError(_tr('Delta de ID inválido'))
         identifier+=delta
-        if not 0<identifier<2**53 or identifier in seen:raise ValueError('ID inválido ou duplicado no catálogo')
+        if not 0<identifier<2**53 or identifier in seen:raise ValueError(_tr('ID inválido ou duplicado no catálogo'))
         seen.add(identifier)
         marker_type=data['type'][index]
         if not isinstance(marker_type,str) or not marker_type or len(marker_type)>128:
-            raise ValueError('Tipo de marcador inválido')
+            raise ValueError(_tr('Tipo de marcador inválido'))
         x,y=data['lng'][index],data['lat'][index]
         if (type(x) not in (int,float) or type(y) not in (int,float)
                 or not math.isfinite(x) or not math.isfinite(y)):
-            raise ValueError('Coordenada inválida')
+            raise ValueError(_tr('Coordenada inválida'))
         map_id=data['mid'][index] if 'mid' in headers else 0
         level=data['level'][index] if 'level' in headers else 0
         if type(map_id) is not int or map_id<0 or type(level) is not int or level<0:
-            raise ValueError('Mapa ou nível inválido')
+            raise ValueError(_tr('Mapa ou nível inválido'))
         layer=data['meta'][index] if 'meta' in headers else ''
-        if not isinstance(layer,str):raise ValueError('Metadados de camada inválidos')
+        if not isinstance(layer,str):raise ValueError(_tr('Metadados de camada inválidos'))
         points.append(AppSamplePoint(str(identifier),marker_type,map_id,level,float(x),float(y),layer))
     return points
 
@@ -150,7 +151,7 @@ CHEST_TYPES={'o17':'common-chest','o44':'exquisite-chest','o45':'precious-chest'
 
 def resolve_catalog_progress(marker_ids,points):
     lookup={point.external_id:point for point in points}
-    if len(lookup)!=len(points):raise ValueError('IDs duplicados no catálogo')
+    if len(lookup)!=len(points):raise ValueError(_tr('IDs duplicados no catálogo'))
     resolved=[lookup[identifier] for identifier in marker_ids if identifier in lookup]
     missing=[identifier for identifier in marker_ids if identifier not in lookup]
     chest_counts=Counter(CHEST_TYPES[p.marker_type] for p in resolved if p.marker_type in CHEST_TYPES)
@@ -172,7 +173,7 @@ def archive_catalog_progress(marker_ids,report,catalog_path: Path,directory: Pat
     catalog_name='catalog-'+digest[:16]+'.json'
     target=output/catalog_name
     if target.exists():
-        if hashlib.sha256(target.read_bytes()).hexdigest()!=digest:raise ValueError('Catálogo arquivado foi alterado')
+        if hashlib.sha256(target.read_bytes()).hexdigest()!=digest:raise ValueError(_tr('Catálogo arquivado foi alterado'))
     else:
         temporary=target.with_suffix('.json.tmp');temporary.write_bytes(raw);temporary.replace(target)
     write_json(output/'source-progress.json',report)

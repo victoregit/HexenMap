@@ -1,4 +1,5 @@
 """Public GitHub release discovery and bounded, verified installer downloads."""
+from src.live.i18n import tr as _tr
 from dataclasses import dataclass
 import hashlib
 import json
@@ -14,7 +15,7 @@ MAX_INSTALLER = 2 * 1024**3
 def version_key(value):
     match = re.fullmatch(r'v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(alpha|beta|rc)\.(0|[1-9]\d*))?', value)
     if not match:
-        raise ValueError('Versão não reconhecida')
+        raise ValueError(_tr('Versão não reconhecida'))
     major, minor, patch, stage, number = match.groups()
     return int(major), int(minor), int(patch), {'alpha':0,'beta':1,'rc':2,None:3}[stage], int(number or 0)
 
@@ -31,7 +32,7 @@ class Release:
 def select_release(payload, current):
     installed = version_key(current)
     if not isinstance(payload, list):
-        raise ValueError('Resposta de releases inválida')
+        raise ValueError(_tr('Resposta de releases inválida'))
     candidates = []
     for row in payload:
         if not isinstance(row, dict) or row.get('draft'):
@@ -65,7 +66,7 @@ def discover(current, opener=urlopen):
     with opener(request, timeout=8) as response:
         raw = response.read(2 * 1024 * 1024 + 1)
     if len(raw) > 2 * 1024 * 1024:
-        raise ValueError('Resposta de releases grande demais')
+        raise ValueError(_tr('Resposta de releases grande demais'))
     return select_release(json.loads(raw),current)
 
 
@@ -75,7 +76,7 @@ def download(release, directory, progress=lambda value:None, opener=urlopen):
         'name':release.name,'browser_download_url':release.url,
         'digest':'sha256:'+release.digest,'size':release.size}]}], '0.0.0-alpha.0')
     if valid != release:
-        raise ValueError('Instalador não pertence à release esperada')
+        raise ValueError(_tr('Instalador não pertence à release esperada'))
     directory = Path(directory)
     directory.mkdir(parents=True,exist_ok=True)
     target = directory / release.name
@@ -88,22 +89,22 @@ def download(release, directory, progress=lambda value:None, opener=urlopen):
             final = urlparse(response.geturl())
             if final.scheme != 'https' or final.hostname not in {
                     'github.com','release-assets.githubusercontent.com','objects.githubusercontent.com'}:
-                raise ValueError('Origem do download inválida')
+                raise ValueError(_tr('Origem do download inválida'))
             while True:
                 chunk = response.read(1024*1024)
                 if not chunk:
                     break
                 count += len(chunk)
                 if count > release.size or count > MAX_INSTALLER:
-                    raise ValueError('Instalador maior que o esperado')
+                    raise ValueError(_tr('Instalador maior que o esperado'))
                 output.write(chunk)
                 digest.update(chunk)
                 progress(count/release.size)
         if count != release.size or digest.hexdigest() != release.digest:
-            raise ValueError('O instalador falhou na verificação SHA-256')
+            raise ValueError(_tr('O instalador falhou na verificação SHA-256'))
         with partial.open('rb') as source:
             if source.read(2) != b'MZ':
-                raise ValueError('Instalador Windows inválido')
+                raise ValueError(_tr('Instalador Windows inválido'))
         partial.replace(target)
         return target
     finally:
