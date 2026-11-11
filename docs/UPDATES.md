@@ -1,6 +1,6 @@
 # Launcher e instalador Windows
 
-## Revisão local de compatibilidade e interação (ainda sem novo instalador)
+## Versão 1.0.6 — compatibilidade e interação
 
 - Preservadas as correções recentes de captura gráfica em Windows sem
   `MinimumUpdateInterval` e de ancoragem do botão recolhido à área do jogo.

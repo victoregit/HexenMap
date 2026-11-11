@@ -77,7 +77,7 @@ Windows 10/11 de 64 bits. Não precisa instalar Python, Git ou ferramentas de pr
 F8: abrir/recolher painel. Ctrl+clique: marcar/desmarcar um item.
 F9: coletar próximo. F10: desfazer. Atalhos configuráveis em Ajustes.
 Não há bússola ou busca guiada. AutoMark é beta, desligado por padrão e qualificado em HUD PT-BR.
-Modo Leve padrão. Modo Global opcional consome mais memória.
+Gerenciamento de memória automático, com carregamento de referências sob demanda.
 Desde a 1.0.1, progresso e preferências ficam em %LOCALAPPDATA%\HexenMap\state.
 Faça backup dessa pasta com o app fechado. userData contém recursos e caches.
 O app procura saves nas pastas conhecidas e recupera um save anterior único com backup.
