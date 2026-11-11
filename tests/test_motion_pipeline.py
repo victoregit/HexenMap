@@ -244,3 +244,54 @@ def test_current_verified_flow_can_bridge_slow_absolute_confirmation_without_fre
     assert motion.last_absolute==100. # No renewal of the absolute anchor's time.
     assert motion.observe(frame(100),102.05).surface=='hidden' # No unverified hold.
     motion.close()
+
+
+def test_hidden_output_does_not_shorten_verified_anchor_recovery(monkeypatch):
+    motion,pending,calls=pipeline(monkeypatch,'minimap')
+    observation=Observation('minimap',102.,np.eye(2,3),.95,.3,circle=(50.,50.,40.))
+    motion.previous=frame(80);motion.previous_surface='minimap';motion.circle=observation.circle
+    motion.current=Observation('hidden',102.05);motion.last_absolute=100.
+    motion.verified_frame=frame(0);motion.verified_observation=observation
+    try:
+        recovered=motion.observe(frame(10),102.1)
+        assert recovered.surface=='minimap' and recovered.world_to_screen[0,2]==10
+        assert motion.last_absolute==100.
+        assert motion.observe(frame(80),102.15).surface=='hidden'
+    finally:motion.close()
+
+
+def test_wrong_scope_absolute_result_cannot_reappear(monkeypatch):
+    motion,pending,calls=pipeline(monkeypatch,'minimap')
+    motion.expected_scopes={('teyvat','surface')}
+    motion.observe(frame(0),100.)
+    pending[0].set_result(Observation('minimap',100.,np.eye(2,3),.95,.3,
+                                    circle=(50.,50.,40.),map_id='other',layer_id='surface'))
+    try:
+        assert motion.observe(frame(1),100.05).surface=='hidden'
+        assert motion.diagnostics()['absolute']=='context_mismatch'
+    finally:motion.close()
+
+
+def test_geometry_change_discards_pending_absolute(monkeypatch):
+    motion,pending,calls=pipeline(monkeypatch,'minimap')
+    motion.observe(frame(0),100.)
+    previous=pending[0]
+    try:
+        assert motion.observe(np.zeros((80,80),np.uint8),100.05).surface=='hidden'
+        assert previous.cancelled()
+        assert motion.previous_observation is None
+    finally:motion.close()
+
+
+def test_optional_rejection_diagnostic_does_not_change_shared_follow(monkeypatch):
+    from src.live.motion import _flow_diagnostic
+    image=frame(0)
+    observation=Observation('minimap',100.,np.eye(2,3),.95,circle=(50.,50.,40.))
+    diagnostic={}
+    token=_flow_diagnostic.set(diagnostic)
+    try:
+        assert follow(image,image,observation,100.1) is None
+        assert diagnostic=={'reason':'features','features':0}
+    finally:_flow_diagnostic.reset(token)
+    assert _flow_diagnostic.get() is None
+    assert follow(image,image,observation,100.1) is None

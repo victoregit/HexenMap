@@ -23,9 +23,9 @@ def referenced(data):
         for value in data:yield from referenced(value)
 
 
-def main():
+def main(output_root=None):
     stamp=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d-%H%M%SZ')
-    base=ROOT/'dist/atual'/f'HexenMap-{VERSION}'
+    base=(Path(output_root) if output_root is not None else ROOT/'dist/atual')/f'HexenMap-{VERSION}'
     archive=base.parent/f'HexenMap-{VERSION}-Windows-x64.zip'
     if (base/'package-report.json').exists() or archive.exists():
         raise FileExistsError('Essa versão já foi empacotada. Incremente a versão ou arquive a pasta e o ZIP anteriores antes de gerar novamente.')
@@ -48,8 +48,10 @@ def main():
         manifest(path,path.relative_to(ROOT))
     manifest(ROOT/'userData/assets/appsample/SOURCE.json',Path('userData/assets/appsample/SOURCE.json'))
     # Only existing map tiles from the qualified personal dataset, never logs or saves.
-    for level in ('12','14'):
-        for path in (ROOT/'userData/reference-tile-cache/appsample-teyvat-v72'/level).glob('*.jpg'):
+    from src.live.map_registry import maps
+    for row in maps().values():
+        directory=ROOT/'userData/reference-tile-cache'/row['dataset']
+        for path in directory.glob('*/*.jpg'):
             copy(path,path.relative_to(ROOT))
     for kind in ('chests','oculi'):
         data=json.loads((ROOT/f'data/assets/{kind}/SOURCE.json').read_text(encoding='utf-8'))
@@ -60,7 +62,9 @@ def main():
         copy(ROOT/f'data/assets/{kind}/SOURCE.json',Path(f'creditos/{kind}-SOURCE.json'))
     # Only cropped detector templates; never recordings/calibration frames.
     manifest(ROOT/'userData/automark/manifest.json',Path('userData/automark/manifest.json'))
-    settings={'package':'appsample','categories':[],'performance_mode':'light','automark':False,
+    icons=ROOT/'userData/automark/icon-signals.json'
+    if icons.is_file():manifest(icons,Path('userData/automark/icon-signals.json'))
+    settings={'tracking_mode':'auto','package':'appsample','categories':[],'performance_mode':'light','automark':False,
         'capture_visible':False,'server':'America','regional':{'appsample':{'categories':[],
         'area':None,'layer':'as-map-2 / surface'}},'panel':{'collapsed':False,'detached':True}}
     (package/'userData/settings.json').write_text(json.dumps(settings,indent=2),encoding='utf-8')
@@ -76,9 +80,10 @@ Windows 10/11 de 64 bits. Não precisa instalar Python, Git ou ferramentas de pr
 
 F8: abrir/recolher painel. Ctrl+clique: marcar/desmarcar um item.
 F9: coletar próximo. F10: desfazer. Atalhos configuráveis em Ajustes.
-Não há bússola ou busca guiada. AutoMark é beta, desligado por padrão e qualificado em HUD PT-BR.
+Não há bússola ou busca guiada. AutoMark é beta e desligado por padrão. Também confirma recompensas por ícones,
+sem depender dos textos do jogo. O uso real em inglês ainda precisa de validação.
 Gerenciamento de memória automático, com carregamento de referências sob demanda.
-Desde a 1.0.1, progresso e preferências ficam em %LOCALAPPDATA%\HexenMap\state.
+Desde a 1.0.1, progresso e preferências ficam em %LOCALAPPDATA%\\HexenMap\\state.
 Faça backup dessa pasta com o app fechado. userData contém recursos e caches.
 O app procura saves nas pastas conhecidas e recupera um save anterior único com backup.
 No primeiro uso, sem sinais de progresso anterior, abre direto sem perguntar sobre importação.
@@ -89,7 +94,9 @@ Esta cópia começa sem coletas, sem conta e sem preferências pessoais do autor
 Não exige login no AppSample para usar o catálogo incluído. Importar progresso é opcional,
 em Ajustes, com confirmação e backup. O guia experimental de exportação também está ali.
 
-Cobertura: catálogo importado AppSample e referências instaladas da superfície de Teyvat.
+Cobertura: Teyvat e mapas permanentes separados com referências instaladas.
+Use Automático para detectar a área ou fixe um mapa no painel. O mapa global do
+planeta permite consultar outras áreas sem mudar o rastreamento do jogo.
 Cavernas/mapas separados sem referências permanecem indisponíveis. Os dados não equivalem
 a validação em jogo de todos os pontos. A localização pode precisar se recuperar após viagens.
 Use Encerrar overlay para sair. O aplicativo não executa comandos nem lê a memória do jogo.
@@ -111,7 +118,8 @@ Não envie cookies, tokens, HAR ou dados de login.
     if (ROOT/'docs/HOTFIX_CTRL_AUTOMARK.md').exists():copy(ROOT/'docs/HOTFIX_CTRL_AUTOMARK.md',Path('HOTFIX_CTRL_AUTOMARK.md'))
     if (ROOT/'docs/EXPLORATION_UI.md').exists():copy(ROOT/'docs/EXPLORATION_UI.md',Path('PAINEL_E_MAPA.md'))
     report={'build':stamp,'version':VERSION,'private_test':True,'personal_progress_included':False,
-        'python_required':False,'coverage':'as-map-2 / surface',
+        'python_required':False,'coverage':[str(p.parent.relative_to(ROOT/'userData/references/appsample')).replace('\\',' / ') for p in sorted((ROOT/'userData/references/appsample').glob('*/*/manifest.json'))],
+        'expansion_live_validated':False,
         'files':{str(p.relative_to(package)).replace('\\','/'):digest(p) for p in sorted(package.rglob('*')) if p.is_file()}}
     (package/'BUILD.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     archive=base.parent/f'HexenMap-{VERSION}-Windows-x64.zip'

@@ -92,7 +92,7 @@ class PreferenceWriter:
 
 
 def read_settings(path: Path) -> dict:
-    defaults = {"categories": [], "hotkeys": dict(DEFAULT_KEYS), "performance_mode": "light", "automark":False}
+    defaults = {"categories": [], "hotkeys": dict(DEFAULT_KEYS), "performance_mode": "light", "automark":False,"tracking_mode":"auto"}
     if not path.exists():
         return defaults
     try:
@@ -121,6 +121,13 @@ def read_settings(path: Path) -> dict:
         result={"categories": [v for v in data["categories"] if isinstance(v, str)], "hotkeys": keys}
         # Keep the internal bounded backend; old preferences must not preload maps.
         result['performance_mode']='light'
+        result['tracking_mode']='manual' if data.get('tracking_mode')=='manual' else 'auto'
+        scope=data.get('resolved_scope')
+        if isinstance(scope,list) and len(scope)==2 and all(isinstance(v,str) for v in scope):result['resolved_scope']=scope
+        atlas=data.get('world_map',{})
+        if isinstance(atlas,dict):
+            scope=atlas.get('scope')
+            if isinstance(scope,list) and len(scope)==2 and all(isinstance(v,str) for v in scope):result['world_map']={'scope':scope}
         result['capture_visible']=data.get('capture_visible') is True
         result['automark']=data.get('automark') is True
         if isinstance(data.get("regional"),dict):

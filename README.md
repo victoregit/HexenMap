@@ -18,7 +18,7 @@ Explore o **Genshin Impact** com pins sobre o minimapa e o mapa M, acompanhe sua
 | **Português e inglês** | Interface, catálogo, inicialização e instalador nos dois idiomas. A busca aceita nomes e aliases; categorias ainda não identificadas ficam sinalizadas. |
 | **Fotos dos pontos** | Clique na foto do cartão para ampliar, usar zoom e arrastar a imagem. |
 | **Painel independente** | Pode ser movido, redimensionado pelas bordas e recolhido. Em Ajustes, aumente textos e controles para 125% ou 150%. |
-| **Mapa geral de Teyvat** | O planetinha abre uma janela navegável da superfície, com zoom, filtros e coletas compartilhados. Usa imagens locais instaladas; muitos pontos próximos formam grupos clicáveis. |
+| **Mapa global e áreas separadas** | O planetinha permite consultar Teyvat, os seis mapas permanentes separados e suas camadas instaladas. Zoom, fotos, filtros e coletas são compartilhados; a navegação é independente do rastreamento. |
 
 O aplicativo usa reconhecimento de imagem externo. Não lê memória do jogo, não injeta código e não controla o personagem. O reconhecimento pode perder o alinhamento; nessas situações, os pins são ocultados enquanto a posição é recuperada.
 
@@ -48,7 +48,26 @@ Em **Ajustes → Idioma / Language**, escolha **Português (Brasil)** ou **Engli
 
 Os atalhos são configuráveis nos **Ajustes**. Suas opções ficam em seções recolhíveis: perfis, painel e compartilhamento, coletados do AppSample, atalhos e diagnóstico. O AutoMark fica acima do rodapé do painel principal. O controle de compartilhamento define se o overlay aparece nas capturas; ele não desliga o reconhecimento.
 
-A tradução da interface não altera o idioma do Genshin. As referências atuais do **AutoMark exigem o HUD do jogo em português**, inclusive quando o aplicativo está em inglês.
+A tradução da interface não altera o idioma do Genshin. O **AutoMark em validação** também usa pares de ícones de recompensa, sem depender dos textos do jogo. As referências textuais em português continuam como alternativa; o uso real com HUD em inglês ainda precisa de conferência.
+
+## Mapas e troca automática
+
+A expansão em validação local inclui **Enkanomiya, Despenhadeiro subterrâneo,
+Mar das Eras Passadas, Montanha Sagrada Antiga, Templo do Espaço e Lua Gélida**,
+além de Teyvat. O seletor **Automático · Detectar mapa** procura a nova área pelo
+minimapa ou pelo mapa M quando a localização atual é perdida. Também é possível
+fixar um mapa/camada manualmente. Durante a identificação, não são exibidos pins
+sem localização válida.
+
+O mapa global do planetinha abre na área reconhecida ou na última consultada.
+Você pode navegar por outros mapas sem mudar o rastreamento do jogo; **Área atual**
+retorna ao contexto reconhecido. As 44 camadas próprias dos mapas separados têm
+imagens e filtros próprios. A expansão geral das cavernas de Teyvat e mapas de
+eventos não faz parte desta etapa.
+
+Os recursos ficam instalados para uso offline e são carregados sob demanda.
+A verificação técnica não substitui a validação dentro do jogo: esta expansão
+permanece uma compilação local de teste antes da próxima release.
 
 ## Traga seus coletados do AppSample
 

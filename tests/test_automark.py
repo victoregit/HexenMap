@@ -53,6 +53,27 @@ def test_chest_prompt_followed_only_by_generic_plant_loot_is_insufficient(tmp_pa
         assert signals.advance({'loot':True},event.observation,stamp) is None
 
 
+@pytest.mark.parametrize('first,second',[('adventure_icon','gem_icon'),('adventure_icon','mora_icon'),('gem_icon','mora_icon')])
+def test_language_independent_rewards_require_two_distinct_icons(tmp_path,first,second):
+    session,event=setup(tmp_path,[(102,100)])
+    signals=ChestSignals(tmp_path);signals.ready=True
+    signals.advance({'opening':True},event.observation,10)
+    signals.advance({'opening':True},event.observation,10.1)
+    assert signals.advance({second:True},event.observation,10.2) is None
+    detected=signals.advance({first:True},event.observation,10.3)
+    assert detected is not None
+    assert AutoMark().apply(detected,session,10.3)=='marked'
+
+
+def test_a_single_reward_icon_never_confirms_a_chest(tmp_path):
+    session,event=setup(tmp_path,[(102,100)])
+    signals=ChestSignals(tmp_path);signals.ready=True
+    signals.advance({'opening':True},event.observation,10)
+    signals.advance({'opening':True},event.observation,10.1)
+    for stamp in (10.2,10.3,10.4):
+        assert signals.advance({'adventure_icon':True},event.observation,stamp) is None
+
+
 def test_many_nearby_chests_require_explicit_choice_and_expire(tmp_path):
     session,event=setup(tmp_path,[(102,100),(103,100)])
     auto=AutoMark();assert auto.apply(event,session,11)=='ambiguous'
@@ -103,6 +124,21 @@ def test_rewards_alone_and_repeated_loot_wave_are_not_openings(tmp_path):
 def test_unknown_template_pack_cannot_enable_detector(tmp_path):
     write_json(tmp_path/'manifest.json',{'schema':1,'validation':{'approved':True}})
     assert not ChestSignals(tmp_path).ready
+
+
+def test_broken_optional_icon_pack_preserves_qualified_base_references(tmp_path):
+    import hashlib,json,cv2
+    template=np.random.default_rng(4).integers(0,255,(24,24),dtype=np.uint8)
+    cv2.imwrite(str(tmp_path/'signal.png'),template)
+    entry={'file':'signal.png','sha256':hashlib.sha256((tmp_path/'signal.png').read_bytes()).hexdigest(),
+           'roi':[.1,.1,.4,.4],'threshold':.88}
+    data={'schema':1,'reference_size':[1366,768],
+          'validation':{'approved':True,'positive_sessions':['positive'],'negative_sessions':['negative'],'reviewed_at':'2026-11-11'},
+          'signals':{role:entry for role in ('opening','loot','primogem','adventure_exp')}}
+    (tmp_path/'manifest.json').write_text(json.dumps(data))
+    (tmp_path/'icon-signals.json').write_text('{')
+    signals=ChestSignals(tmp_path)
+    assert signals.ready and set(signals.templates)==set(data['signals'])
 
 
 def test_single_flash_and_rewards_without_gems_do_not_confirm_chest(tmp_path):

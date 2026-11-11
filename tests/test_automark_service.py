@@ -55,6 +55,18 @@ def test_reward_sampling_survives_short_tracking_loss_after_a_located_opening(tm
     assert len(events)==1 and events[0][2].stamp==10.125
 
 
+def test_map_search_does_not_disable_automark_or_change_its_generation():
+    from src.live.desktop import DesktopApp
+    app=DesktopApp.__new__(DesktopApp)
+    app.reference_lock=threading.Lock();pack=object()
+    app.recognizer=SimpleNamespace(pack=pack);app.selection_epoch=7
+    app.settings={'automark':True};app.session=SimpleNamespace(hidden=False)
+    app.region_loading=False;app.menu_open=False;app.automark_generation=4
+    app.automark_snapshot=object();app.auto_search=SimpleNamespace(searching=True)
+    enabled,generation,epoch,current,_=app.automark_context()
+    assert enabled and generation==4 and epoch==7 and current is pack
+
+
 def test_inactive_automark_releases_graphics_capture_after_grace_period(tmp_path,monkeypatch):
     from unittest.mock import Mock
     worker,signals,tick,events,enabled,*_=service(tmp_path,monkeypatch)
