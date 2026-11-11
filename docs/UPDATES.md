@@ -1,5 +1,16 @@
 # Launcher e instalador Windows
 
+## Versão 2.0.0 — expansão de mapas
+
+- Nova versão principal para o registro compartilhado de mapas, reconhecimento
+  automático e navegação global independente. Inclui Teyvat, Enkanomiya,
+  Despenhadeiro subterrâneo, Mar das Eras Passadas, Montanha Sagrada Antiga,
+  Temple of Space e Frost Moon, com 44 camadas dos mapas separados.
+- Integra a correção local aprovada do minimapa, confirmação do AutoMark por
+  ícones de recompensa e diagnóstico visual opcional. Mantém os IDs e o progresso.
+- Recursos e limites de validação estão nas [notas da versão](releases/v2.0.0.md).
+  A preparação desta versão não publica a release automaticamente.
+
 ## Correção local aprovada — minimapa e AutoMark
 
 - Recuperação de movimento no minimapa remove iluminação suave quando a mudança

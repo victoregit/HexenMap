@@ -6,7 +6,7 @@
 
 Explore **Genshin Impact** with pins on the minimap and the full-screen map, track your collected items, and bring along the progress you already marked on AppSample. Choose your items, collapse the panel, and keep playing.
 
-**Windows 10/11 · External overlay · Test version**
+**Windows 10/11 · External overlay · 2.0.0 · Test version**
 
 > The interface, reviewed catalog, startup messages and installer support English and Brazilian Portuguese. Supporting documents linked below are primarily in Portuguese.
 

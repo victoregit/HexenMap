@@ -128,6 +128,7 @@ app.compact.stop();app.root.destroy()
 
 
 def test_installer_language_choice_and_silent_update_preservation(tmp_path):
+    from src.live.identity import VERSION
     root = Path(__file__).resolve().parents[1]
     compiler = root / 'build/tools/inno/ISCC.exe'
     if sys.platform != 'win32' or not compiler.exists():
@@ -141,11 +142,11 @@ def test_installer_language_choice_and_silent_update_preservation(tmp_path):
         (package / name).write_text('{}')
     def run(args):
         return subprocess.run(list(map(str,args)),capture_output=True,text=True,timeout=45,check=True)
-    run([compiler, '/Q', '/DAppVersion=1.0.7', '/DTestSuffix=-LanguageTest',
+    run([compiler, '/Q', f'/DAppVersion={VERSION}', '/DTestSuffix=-LanguageTest',
          f'/DPackageDir={package}', f'/DLauncherFile={package / "HexenMapLauncher.exe"}',
          f'/DOutputDir={tmp_path}', root / 'installer/HexenMap.iss'])
     installation = tmp_path / 'installation'
-    installer = tmp_path / 'HexenMap-1.0.7-Setup-x64-LanguageTest.exe'
+    installer = tmp_path / f'HexenMap-{VERSION}-Setup-x64-LanguageTest.exe'
     preference = installation / 'test-user-data/language.json'
     def install(language):
         run([installer, '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/NORUN=1',

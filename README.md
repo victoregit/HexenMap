@@ -6,7 +6,7 @@
 
 Explore o **Genshin Impact** com pins sobre o minimapa e o mapa M, acompanhe suas coletas e aproveite o progresso que você já marcou no AppSample. Escolha os itens no painel, recolha a janela e continue jogando.
 
-**Windows 10/11 · Overlay externo · Versão de teste**
+**Windows 10/11 · Overlay externo · 2.0.0 · Versão de teste**
 
 ## O que o Hexen Map oferece
 
