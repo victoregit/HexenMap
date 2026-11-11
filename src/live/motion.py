@@ -259,10 +259,18 @@ class MotionRecognizer:
                                 probes@relative.T-probes[:,:2],axis=1)))
                             discontinuity=discrepancy>24
                             if discrepancy<=3:
-                                blended=(rebased.world_to_screen+updated.world_to_screen)/2
-                                player=tuple(cv2.invertAffineTransform(blended)@np.array([*rebased.circle[:2],1])) if rebased.circle else rebased.player
-                                rebased=replace(rebased,world_to_screen=blended,player=player,
-                                                position_uncertainty_px=max(discrepancy,rebased.error_px))
+                                uncertainty=max(discrepancy,rebased.error_px)
+                                if surface=='minimap':
+                                    # The midpoint is only half the discrepancy
+                                    # from the newly verified absolute estimate.
+                                    # Include its existing error; never clamp a
+                                    # genuinely uncertain result to the LK limit.
+                                    uncertainty=max(rebased.position_uncertainty_px,rebased.error_px)+discrepancy/2
+                                if surface!='minimap' or uncertainty<=2.5:
+                                    blended=(rebased.world_to_screen+updated.world_to_screen)/2
+                                    player=tuple(cv2.invertAffineTransform(blended)@np.array([*rebased.circle[:2],1])) if rebased.circle else rebased.player
+                                    rebased=replace(rebased,world_to_screen=blended,player=player,
+                                                    position_uncertainty_px=uncertainty)
                         updated=rebased
                         self.last_absolute=self.anchor_stamp
                         if surface=='minimap':self.circle=rebased.circle

@@ -188,3 +188,29 @@ def test_checkbox_is_opt_in_and_persisted(tmp_path):
     path=tmp_path/'settings.json';assert read_settings(path)['automark'] is False
     write_json(path,{'categories':[],'automark':True,'regional':None})
     assert read_settings(path)['automark'] is True
+
+
+@pytest.mark.parametrize('factor',[.8,.9,1.1,1.2])
+def test_opening_glyph_calibrates_hud_scale_without_lowering_threshold(tmp_path,factor):
+    import cv2
+    signals=ChestSignals(tmp_path)
+    template=np.full((40,110),50,np.uint8)
+    cv2.putText(template,'BAU',(6,28),cv2.FONT_HERSHEY_SIMPLEX,.8,250,2,cv2.LINE_AA)
+    signals.templates={'opening':(template,(.4,.2,.5,.6),.88)}
+    frame=np.full((1080,1920,3),50,np.uint8)
+    patch=cv2.resize(template,(round(110*factor),round(40*factor)),interpolation=cv2.INTER_CUBIC)
+    frame[400:400+patch.shape[0],1000:1000+patch.shape[1]]=patch[:,:,None]
+    for _ in range(4):
+        result=signals.read_signals(1920,1080,lambda box:frame[box[1]:box[1]+box[3],box[0]:box[0]+box[2]])
+        if result['opening']:break
+    assert result['opening']
+    assert signals.detected_hud_height==pytest.approx(1080*factor)
+    assert signals.read_signals(1920,1080,lambda b:frame[b[1]:b[1]+b[3],b[0]:b[0]+b[2]])['opening']
+
+
+def test_old_global_preference_uses_bounded_backend_and_preserves_selection(tmp_path):
+    path=tmp_path/'settings.json'
+    write_json(path,{'categories':['common-chest'],'performance_mode':'global','automark':True})
+    settings=read_settings(path)
+    assert settings['performance_mode']=='light'
+    assert settings['categories']==['common-chest'] and settings['automark'] is True

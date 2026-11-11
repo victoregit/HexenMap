@@ -28,3 +28,29 @@ def test_graphics_rejects_stale_frames_and_preserves_partial_frame_geometry():
     crop=capture.read(rect,(0,0,1920,1200),region=(20,30,100,80))
     assert crop.shape==(80,100,3) and (crop==80).all()
     assert capture.read(rect,(0,0,1920,1200),region=(-1,0,10,10)) is None
+
+
+def test_startup_does_not_require_optional_windows_update_interval(monkeypatch):
+    from unittest.mock import Mock
+    import windows_capture
+    factory=Mock();monkeypatch.setattr(windows_capture,'WindowsCapture',factory)
+    capture=WindowGraphicsCapture(99)
+    factory.assert_called_once_with(window_hwnd=99,cursor_capture=False,draw_border=None)
+    frame=SimpleNamespace(frame_buffer=np.full((10,10,4),80,np.uint8))
+    callback=factory.return_value.frame_handler
+    callback(frame,None)
+    assert capture.latest.shape==(10,10,3)
+    saved=capture.latest
+    callback(frame,None)
+    assert capture.latest is saved
+    capture.close();factory.return_value.start_free_threaded.return_value.stop.assert_called_once()
+
+
+def test_closed_graphics_capture_can_restart_with_same_game_geometry():
+    from unittest.mock import Mock
+    from src.live.native import Windows
+    native=Windows.__new__(Windows);capture=Mock()
+    native._graphics=capture;native._graphics_key=(99,1920,1080)
+    native.close_graphics_capture()
+    assert native._graphics is None and native._graphics_key is None
+    capture.close.assert_called_once()

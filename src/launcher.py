@@ -53,7 +53,8 @@ class Launcher:
         self.root.title('Hexen Map')
         assets=bundle_dir()/'data/assets/brand'
         self.root.iconbitmap(str(assets/'app.ico'))
-        self.root.overrideredirect(True)
+        # A regular window remains reachable through the taskbar and Alt+Tab.
+        self.root.overrideredirect(False)
         self.root.resizable(False,False)
         self.root.configure(bg='#142132')
         self.root.protocol('WM_DELETE_WINDOW',self.close)
@@ -77,6 +78,7 @@ class Launcher:
         x=(self.root.winfo_screenwidth()-width)//2
         y=(self.root.winfo_screenheight()-height)//2
         self.root.geometry(f'{width}x{height}+{x}+{y}')
+        self.root.deiconify();self.root.lift();self.root.focus_force()
         self.animate()
         self.root.after(100,self.startup)
         self.root.after(80,self.poll)

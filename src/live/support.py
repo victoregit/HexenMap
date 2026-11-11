@@ -136,8 +136,8 @@ class ReportDialog:
             self.status.set(error);self.send_button.state(['!disabled'])
             self.email.state(['!disabled']);self.message.configure(state='normal')
         else:
-            self.sent=True;self.status_label.configure(foreground=SUCCESS)
-            self.status.set('O serviço confirmou o recebimento da mensagem. Obrigado pelo feedback!');self.close_button.configure(text='Fechar')
+            self.sent=True
+            self.close()
 
     def open_email(self):
         if self.busy:return
@@ -156,6 +156,7 @@ class ReportDialog:
 
     def close(self):
         if self.busy:self.status.set('Aguarde a confirmação do envio…');return
+        if not self.window.winfo_exists():return
         if self.poll_job is not None:self.window.after_cancel(self.poll_job)
         self.window.destroy()
 

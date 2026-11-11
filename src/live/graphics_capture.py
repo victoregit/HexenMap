@@ -19,12 +19,16 @@ class WindowGraphicsCapture:
     def __init__(self,hwnd):
         from windows_capture import WindowsCapture
         self.lock=threading.Lock();self.latest=None;self.received=0.;self.error=''
-        self.capture=WindowsCapture(window_hwnd=hwnd,cursor_capture=False,
-                                    draw_border=None,minimum_update_interval=50)
+        # MinimumUpdateInterval is unavailable on some supported Windows builds.
+        # Leave optional OS properties unset; throttle copies in Python instead.
+        self.capture=WindowsCapture(window_hwnd=hwnd,cursor_capture=False,draw_border=None)
         def on_frame_arrived(frame,control):
+            now=time.monotonic()
+            with self.lock:
+                if now-self.received<.05:return
             # Native mapped memory is only valid for the duration of this event.
-            image=np.ascontiguousarray(frame.frame_buffer[:,:,:3]).copy()
-            with self.lock:self.latest=image;self.received=time.monotonic()
+            image=np.array(frame.frame_buffer[:,:,:3],copy=True,order='C')
+            with self.lock:self.latest=image;self.received=now
         def on_closed():
             with self.lock:self.latest=None;self.error='A janela de captura foi fechada.'
         self.capture.frame_handler=on_frame_arrived

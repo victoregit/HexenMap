@@ -430,7 +430,7 @@ class Windows:
             return None
 
     def close_graphics_capture(self):
-        graphics=getattr(self,'_graphics',None);self._graphics=None
+        graphics=getattr(self,'_graphics',None);self._graphics=None;self._graphics_key=None
         if graphics is not None:graphics.close()
 
     @staticmethod

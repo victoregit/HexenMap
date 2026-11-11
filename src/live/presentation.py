@@ -31,8 +31,8 @@ class DisplayMotion:
             self.reset()
             return observation
         old = self.previous
-        if old is None or (old.surface, old.map_id, old.layer_id) != (
-                observation.surface, observation.map_id, observation.layer_id):
+        if old is None or (old.surface, old.map_id, old.layer_id,old.continuity_id) != (
+                observation.surface, observation.map_id, observation.layer_id,observation.continuity_id):
             self.reset()
         elif observation.captured_at > old.captured_at:
             dt = observation.captured_at-old.captured_at

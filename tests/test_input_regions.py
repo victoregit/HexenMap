@@ -85,7 +85,7 @@ def test_input_window_is_not_reconfigured_for_unchanged_drawn_pins():
     key=(app.rect_key(rect),1,((30,40,pin.geometry),))
     app.input_boxes=None;app.input_active=False;app.input_placement=None
     app.input_regions=SimpleNamespace(get=lambda *a,**k:b'prepared',ready_key=key)
-    app.native=SimpleNamespace(input_region_data=lambda *a:calls.append('mask'),
+    app.native=SimpleNamespace(pointer=lambda:(True,30,40),input_region_data=lambda *a:calls.append('mask'),
         interactive=lambda *a:calls.append('interactive'),place=lambda *a:calls.append('place'),hide=lambda *a:calls.append('hide'))
     app.input_canvas=SimpleNamespace(configure=lambda **k:calls.append('configure'))
     app._sync_input(rect);before=list(calls);app._sync_input(rect)
@@ -104,6 +104,15 @@ def test_large_reveal_never_enumerates_existing_canvas_items():
     pins=[SimpleNamespace(item=SimpleNamespace(id=str(n),category='common-chest'),x=n,y=0) for n in range(2000)]
     renderer.render(pins,lambda _:True)
     assert canvas.n==len(canvas.tags)==2000
+
+
+def test_nearby_click_masks_include_icon_edges_and_leave_distant_pins_visible():
+    from src.live.input_regions import nearby_placements
+    g=MarkerGeometry(-10,-10,11,11)
+    pins=[SimpleNamespace(x=x,y=0,geometry=g) for x in (0,125,500)]
+    assert nearby_placements(pins,0,0)==((0,0,g),(125,0,g))
+    assert nearby_placements(pins,500,0)==((500,0,g),)
+    assert len(pins)==3
 
 
 def test_render_budget_defers_creation_and_never_exposes_undrawn_pins(monkeypatch):

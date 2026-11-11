@@ -109,7 +109,7 @@ def test_splash_is_animated_and_has_no_buttons(tmp_path,monkeypatch):
                 yield child
                 yield from widgets(child)
         assert not any(isinstance(widget,(launcher.tk.Button,ttk.Button)) for widget in widgets(obj.root))
-        assert obj.root.overrideredirect()
+        assert not obj.root.overrideredirect()
         assert len(obj.loading_frames)==48
         old=obj.animation_index
         obj.animate()

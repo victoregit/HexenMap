@@ -55,6 +55,54 @@ def test_reward_sampling_survives_short_tracking_loss_after_a_located_opening(tm
     assert len(events)==1 and events[0][2].stamp==10.125
 
 
+def test_inactive_automark_releases_graphics_capture_after_grace_period(tmp_path,monkeypatch):
+    from unittest.mock import Mock
+    worker,signals,tick,events,enabled,*_=service(tmp_path,monkeypatch)
+    tick(10,{})
+    worker.native.close_graphics_capture=Mock()
+    enabled[0]=False
+    tick(10.125,{})
+    worker.native.close_graphics_capture.assert_not_called()
+    tick(15.25,{})
+    worker.native.close_graphics_capture.assert_called_once()
+
+
+def test_sync_requires_current_position_then_distinguishes_hud_calibration(tmp_path,monkeypatch):
+    worker,signals,tick,events,*_=service(tmp_path,monkeypatch)
+    tick(10,{},located=False)
+    assert worker.sync_state=='locating'
+    for stamp in (10.125,10.25,10.375):tick(stamp,{})
+    assert worker.sync_state=='screen_ready'
+    signals.detected_hud_height=768
+    tick(10.5,{})
+    assert worker.sync_state=='ready'
+    tick(10.625,{},located=False)
+    assert worker.sync_state=='locating' and not events
+
+
+def test_explicit_resync_discards_old_scale_and_pending_opening(tmp_path,monkeypatch):
+    worker,signals,tick,events,*_=service(tmp_path,monkeypatch)
+    tick(10,{'opening':True});tick(10.125,{'opening':True})
+    assert signals.phase is not None
+    signals.detected_hud_height=900
+    context=worker.context
+    def resynced_context():
+        enabled,generation,epoch,pack,snapshot=context()
+        return enabled,generation+1,epoch,pack,snapshot
+    worker.context=resynced_context
+    tick(10.25,{'loot':True,'adventure_exp':True})
+    assert signals.detected_hud_height is None and signals.phase is None and not events
+    assert worker.sync_context==(1,1) and worker.sync_state=='synchronizing'
+
+
+def test_sync_focus_loss_never_reports_ready_from_previous_position(tmp_path,monkeypatch):
+    worker,signals,tick,events,enabled,epoch,focused=service(tmp_path,monkeypatch)
+    for stamp in (10,10.125,10.25):tick(stamp,{})
+    assert worker.sync_state=='screen_ready'
+    focused[0]=False;tick(10.375,{})
+    assert worker.sync_state=='game_not_focused' and worker.sync_samples==0
+
+
 def test_unknown_position_never_arms_and_selection_change_discards_pending_chest(tmp_path,monkeypatch):
     worker,signals,tick,events,enabled,epoch,focused=service(tmp_path,monkeypatch)
     tick(10,{'opening':True},False);tick(10.125,{'opening':True},False)

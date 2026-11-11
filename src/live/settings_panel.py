@@ -20,6 +20,8 @@ def build_settings(app, parent, *, bg, muted):
     body.bind('<Configure>',body_changed)
     canvas.bind('<Configure>',canvas_changed)
     app.settings_sections=[]
+    app.panel_mode_button=ttk.Button(body,text=app.panel_mode_label(),command=app.toggle_panel_mode)
+    app.panel_mode_button.pack(fill='x',pady=(4,8))
 
     def note(container,text):
         label=ttk.Label(container,text=text,wraplength=280,foreground=muted,justify='left')
@@ -63,8 +65,6 @@ def build_settings(app, parent, *, bg, muted):
     note(appearance,'Puxe as bordas da janela para aumentar o painel. No modo fixado, use a alça no canto inferior direito. Tamanho e escala são salvos.')
     ttk.Label(appearance,text='Mapa e camada do rastreamento').pack(anchor='w',pady=(6,0))
     app.build_scope_controls(appearance)
-    app.panel_mode_button=ttk.Button(appearance,text=app.panel_mode_label(),command=app.toggle_panel_mode)
-    app.panel_mode_button.pack(fill='x',pady=3)
     note(appearance,'Janela independente: mova o painel para fora da área do jogo. Fixado ao jogo: acompanha o foco do Genshin.')
     app.capture_button=ttk.Button(appearance,text=app.capture_label(),command=app.toggle_capture_visibility)
     app.capture_button.pack(fill='x',pady=3)
@@ -74,8 +74,14 @@ def build_settings(app, parent, *, bg, muted):
     app.automark_var=tk.BooleanVar(value=app.settings.get('automark',False))
     app.automark_toggle=ttk.Checkbutton(automark,text='Marcar baús automaticamente',variable=app.automark_var,command=app.change_automark)
     app.automark_toggle.pack(anchor='w',pady=3)
+    app.automark_sync_text=tk.StringVar(value='Volte ao Genshin para sincronizar a tela e a posição.'
+                                       if app.settings.get('automark') else 'AutoMark desligado.')
+    ttk.Label(automark,textvariable=app.automark_sync_text,wraplength=280,foreground=muted).pack(fill='x',pady=4)
+    app.automark_resync_button=ttk.Button(automark,text='Sincronizar novamente',command=app.resync_automark)
+    app.automark_resync_button.pack(fill='x',pady=3)
     if not app.chest_signals.ready:app.automark_toggle.state(['disabled'])
     def automark_summary(*args):
+        app.automark_resync_button.state(['!disabled'] if app.automark_var.get() and app.chest_signals.ready else ['disabled'])
         state=('ativo' if app.automark_var.get() else 'desligado') if app.chest_signals.ready else 'indisponível'
         title_for(automark,'AutoMark · Beta · '+state)
     app.automark_var.trace_add('write',automark_summary);automark_summary()
@@ -93,15 +99,6 @@ def build_settings(app, parent, *, bg, muted):
         note(imports,'Ative a conexão uma vez para usar Enviar ao Hexen Map na extensão. Sem conexão, você pode baixar o JSON e importar o arquivo.')
         ttk.Button(imports,text='Como trazer meus coletados?',style='Quiet.TButton',command=app.show_appsample_export).pack(fill='x',pady=3)
 
-    performance=section('Desempenho')
-    app.performance_var=tk.StringVar(value='Global' if app.settings.get('performance_mode')=='global' else 'Leve')
-    app.performance_var.trace_add('write',lambda *args:title_for(performance,'Desempenho · '+app.performance_var.get()))
-    title_for(performance,'Desempenho · '+app.performance_var.get())
-    box=ttk.Combobox(performance,textvariable=app.performance_var,values=['Leve','Global'],state='readonly')
-    box.pack(fill='x',pady=3);box.bind('<<ComboboxSelected>>',app.change_performance_mode)
-    note(performance,'Leve · recomendado: carrega o entorno conforme necessário. Após viagens longas, pode levar um instante para recuperar a posição.')
-    note(performance,'Global: prepara o mapa e as camadas selecionadas. Consome mais memória e pode aumentar o uso de CPU e o tempo de carregamento. A mudança é salva automaticamente.')
-
     shortcuts=section('Atalhos')
     app.key_vars={}
     for action,label in (('panel','Abrir / recolher painel'),('visibility','Mostrar / ocultar ícones'),('collect','Confirmar coleta próxima'),('undo','Desfazer coleta')):
@@ -117,6 +114,7 @@ def build_settings(app, parent, *, bg, muted):
     note(diagnostics,'Use estas opções se os marcadores não reaparecerem após voltar ao jogo.')
     ttk.Button(diagnostics,text='Recarregar reconhecimento',command=app.reload_reference).pack(fill='x',pady=3)
     note(diagnostics,'Reinicia a localização visual sem alterar coletas ou filtros.')
+    note(diagnostics,'Em tela cheia, se os ícones não aparecerem, teste o modo janela sem bordas. A sobreposição externa pode não aparecer em tela cheia exclusiva.')
     ttk.Label(diagnostics,textvariable=app.status,wraplength=280,foreground=muted).pack(fill='x',pady=5)
     note(diagnostics,'AutoMark: '+app.chest_signals.reason)
     note(diagnostics,'Os prazos conhecidos de reset usam o servidor América. Recursos sem regra confirmada não recebem um temporizador genérico.')
