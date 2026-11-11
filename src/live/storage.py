@@ -118,7 +118,8 @@ def read_settings(path: Path) -> dict:
         if not all(isinstance(value,str) and value in allowed for value in keys.values()) or len(set(keys.values())) != len(DEFAULT_KEYS):
             keys = dict(DEFAULT_KEYS)
         result={"categories": [v for v in data["categories"] if isinstance(v, str)], "hotkeys": keys}
-        result['performance_mode']='global' if data.get('performance_mode')=='global' else 'light'
+        # Keep the internal bounded backend; old preferences must not preload maps.
+        result['performance_mode']='light'
         result['capture_visible']=data.get('capture_visible') is True
         result['automark']=data.get('automark') is True
         if isinstance(data.get("regional"),dict):

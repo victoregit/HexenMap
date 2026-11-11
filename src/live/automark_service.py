@@ -13,6 +13,20 @@ import cv2
 logger=logging.getLogger(__name__)
 
 
+def synchronization_message(state):
+    return {
+        'disabled':'AutoMark desligado.',
+        'references_loading':'Carregando referências…',
+        'game_not_focused':'Volte ao Genshin para sincronizar a tela e a posição.',
+        'capture_failed':'Não foi possível capturar a tela do jogo.',
+        'not_gameplay':'Feche o mapa ou menu para sincronizar pelo minimapa.',
+        'locating':'Tela reconhecida · localizando sua posição…',
+        'synchronizing':'Sincronizando tela e posição…',
+        'screen_ready':'Tela e posição sincronizadas · aproxime-se de um baú para calibrar o HUD.',
+        'ready':'Tela, posição e HUD sincronizados.',
+    }.get(state,'Aguardando sincronização…')
+
+
 def normalized_hud(frame,reference_height):
     """Match HUD templates at their capture scale, not a few coarse factors."""
     height,width=frame.shape[:2]
@@ -27,11 +41,19 @@ class AutoMarkService:
         self.emit=emit;self.stop=stop;self.native=None;self.key=None;self.last_log=None;self.log_at=-float('inf')
         self.idle_at=None;self.circle=None
         self.status='idle'
+        self.sync_state='disabled';self.sync_context=None;self.sync_samples=0
+        self.calibration_context=None
         self.gameplay=GameplayGate();self.recovery=OpeningRecovery();self.continuity=None
         self.circle_checked=-float('inf')
 
     def report(self,state,now,located=False):
         self.status=state
+        if state=='sampling':
+            self.sync_samples=self.sync_samples+1 if located else 0
+            self.sync_state=('locating' if not located else 'synchronizing' if self.sync_samples<3
+                             else 'screen_ready' if self.signals.detected_hud_height is None else 'ready')
+        else:
+            self.sync_samples=0;self.sync_state=state
         details=(state,self.signals.state,located,tuple((k,round(v,2)) for k,v in self.signals.scores.items()))
         # Log transitions; while armed, retain one diagnostic sample per second.
         if details[:3]!=self.last_log or state=='sampling' and now-self.log_at>=2:
@@ -44,9 +66,11 @@ class AutoMarkService:
         if self.idle_at is None:self.idle_at=now
         if self.native is not None and now-self.idle_at>=5:
             self.native.close_capture()
+            if hasattr(self.native,'close_graphics_capture'):self.native.close_graphics_capture()
 
     def poll(self,now):
         enabled,generation,epoch,pack,snapshot=self.context()
+        self.sync_context=(generation,epoch)
         if not enabled or not self.signals.ready:self.idle('disabled',now);return .25
         if pack is None:self.idle('references_loading',now);return .25
         if self.native is None:
@@ -55,8 +79,12 @@ class AutoMarkService:
         if not rect.is_found or not self.native.foreground(rect):self.idle('game_not_focused',now);return .25
         rect_key=(rect.hwnd,rect.x,rect.y,rect.width,rect.height)
         key=(generation,epoch,rect_key)
+        if key!=self.calibration_context:
+            self.signals.reset_calibration();self.sync_samples=0
+            self.calibration_context=key
         if key!=self.key:
             self.signals.reset();self.circle=None;self.key=key
+            self.sync_samples=0
             self.gameplay.reset();self.recovery.clear();self.continuity=None
             logger.info('AutoMark context client=%sx%s reference=%sx%s generation=%s epoch=%s',
                         rect.width,rect.height,*self.signals.reference_size,generation,epoch)
@@ -69,7 +97,7 @@ class AutoMarkService:
             if geometry==rect_key and observed_epoch==epoch and len(snapshot)>3:anchor=snapshot[3]
         if obs.surface=='minimap' or obs.continuity_id:
             if self.continuity is not None and obs.continuity_id!=self.continuity:
-                self.signals.reset();self.recovery.clear()
+                self.signals.reset();self.recovery.clear();self.sync_samples=0
             self.continuity=obs.continuity_id
         # This native client capture excludes the overlay itself. Only the HUD
         # strip plus the reward/interact rectangles are read, not a full screen.
@@ -121,10 +149,11 @@ class AutoMarkService:
         event=self.signals.advance(reading,obs,stamp,gameplay_confirmed=True)
         if self.signals.state=='unresolved_opening':
             self.emit(('automark_unresolved',epoch))
-        self.report('sampling',stamp,obs.fresh(stamp) and obs.surface=='minimap')
+        self.report('sampling',stamp,obs.fresh(stamp) and obs.surface=='minimap'
+                    and obs.player is not None and obs.circle is not None)
         if event:
             logger.info('AutoMark event=%s opening_age=%.3f',event.token,stamp-event.stamp)
-            self.emit(('automark_event',epoch,event))
+            self.emit(('automark_event',epoch,event,generation))
         return .125
 
     def run(self):
@@ -138,4 +167,6 @@ class AutoMarkService:
                 self.stop.wait(max(.005,interval-(time.monotonic()-start)))
         finally:
             self.signals.reset()
-            if self.native is not None:self.native.close_capture()
+            if self.native is not None:
+                self.native.close_capture()
+                if hasattr(self.native,'close_graphics_capture'):self.native.close_graphics_capture()

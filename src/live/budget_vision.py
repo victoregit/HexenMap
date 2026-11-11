@@ -158,6 +158,7 @@ class BudgetRecognizer:
         if len({tile.raster.pack_index for tile,fit in fits})>1:return Observation('hidden',stamp,reason='Camada ambígua')
         tile,(matrix,confidence,error)=fits[0]
         self.last[surface]=tile
+        self.store.protected_key=tile.key
         center=circle[:2] if circle else (w*.5,h*.5)
         self.position=tuple(cv2.invertAffineTransform(matrix)@np.array([*center,1.]))
         p=self.packs[tile.raster.pack_index]

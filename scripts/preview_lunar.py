@@ -70,12 +70,12 @@ def check(scale,screen):
     width,height=app.panel_normal_size
     assert root.winfo_width()==width,(root.winfo_width(),width)
     assert root.winfo_height()==height,(root.winfo_height(),height)
-    for button in (app.items_tab,app.settings_tab,app.visibility_button):
+    for button in (app.items_tab,app.settings_tab,app.capture_eye):
         assert button.winfo_width()>20,(button,button.winfo_width())
         assert button.winfo_rooty()+button.winfo_height()<=root.winfo_rooty()+height
     assert app.category_browser.winfo_height()>=45
     app.show_settings();root.update_idletasks()
-    assert len(app.settings_sections)==6 and all(not s['open'] for s in app.settings_sections)
+    assert len(app.settings_sections)==5 and all(not s['open'] for s in app.settings_sections)
     for section in app.settings_sections:
         section['button'].invoke();root.update_idletasks()
         assert sum(s['open'] for s in app.settings_sections)==1

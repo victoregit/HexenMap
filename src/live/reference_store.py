@@ -212,6 +212,7 @@ class IndexedMatcher(TerrainMatcher):
 class ReferenceStore:
     def __init__(self,features,mode='light'):
         self.features=features;self.mode=mode;self.cache=OrderedDict();self.bytes=0;self.evictions=0
+        self.protected_key=None
         import psutil
         self.global_limit=min(2*1024**3,int(psutil.virtual_memory().available*.4))
 
@@ -232,10 +233,13 @@ class ReferenceStore:
         return value
 
     def evict(self):
-        _,value=self.cache.popitem(last=False);self.bytes-=value.bytes;self.evictions+=1
+        # Failed search candidates must not displace the last verified terrain.
+        # Still evict it when it alone exceeds the available byte budget.
+        key=next((key for key in self.cache if key!=self.protected_key),next(iter(self.cache)))
+        value=self.cache.pop(key);self.bytes-=value.bytes;self.evictions+=1
 
     def close(self):
-        self.cache.clear();self.bytes=0
+        self.cache.clear();self.bytes=0;self.protected_key=None
 
     def diagnostics(self):
         return {'mode':self.mode,'resident_blocks':len(self.cache),'reference_bytes_estimated':self.bytes,

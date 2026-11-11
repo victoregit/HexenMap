@@ -15,7 +15,7 @@ from src.live.storage import read_settings,write_json,DEFAULT_KEYS
 def test_performance_preference_defaults_and_roundtrip_preserve_selection(tmp_path):
     path=tmp_path/'settings.json'
     assert read_settings(path)['performance_mode']=='light'
-    for mode,expected in [('global','global'),('light','light'),('unknown','light')]:
+    for mode,expected in [('global','light'),('light','light'),('unknown','light')]:
         write_json(path,{'categories':['plant'],'hotkeys':DEFAULT_KEYS,'performance_mode':mode})
         data=read_settings(path)
         assert data['performance_mode']==expected and data['categories']==['plant']

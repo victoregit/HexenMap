@@ -264,6 +264,7 @@ class DesktopApp(ProfileControls,CompactPanel):
         from src.live.identity import VERSION
         rect=self.native.game();obs=self.session.observation
         report={'versao':VERSION,'janela_encontrada':rect.is_found,'area_cliente':[rect.width,rect.height],
+            'posicao_cliente':[rect.x,rect.y],'area_desktop':list(self.native.desktop_bounds()),
             'dpi':self.native.dpi_scale(rect.hwnd) if rect.hwnd else None,
             'jogo_em_foco':self.native.foreground(rect),'tipos_selecionados':sorted(self.session.selected),
             'overlay_oculto':self.session.hidden,'mapa':self.session.map_id,'camada':self.session.layer_id,
@@ -275,6 +276,7 @@ class DesktopApp(ProfileControls,CompactPanel):
                        'erro_grafico':getattr(self.native,'graphics_error','')},
             'automark':{'ativado':self.settings.get('automark',False),'referencias_prontas':self.chest_signals.ready,
                         'estado':self.automark_service.status,'fase':self.chest_signals.state,
+                        'motivo_referencias':self.chest_signals.reason,
                         'pontuacoes':self.chest_signals.scores.copy(),
                         'altura_hud_detectada':self.chest_signals.detected_hud_height}}
         self.root.clipboard_clear();self.root.clipboard_append(json.dumps(report,ensure_ascii=False,indent=2))
@@ -553,7 +555,7 @@ class DesktopApp(ProfileControls,CompactPanel):
                         or not self.session.observation.fresh(time.monotonic()) or self.session.hidden):
                     self.native.interactive(self.input_hwnd,False)
                     self.native.hide(self.input_hwnd)
-                elif changed:
+                else:
                     self._sync_input(rect)
         except Exception:
             logger.exception("Falha na interação dos marcadores")
@@ -588,7 +590,10 @@ class DesktopApp(ProfileControls,CompactPanel):
             self.native.hide(self.input_hwnd)
             self.input_active=False;self.input_placement=None
             return
-        placements=tuple((round(p.x),round(p.y),getattr(p,'geometry',LEGACY)) for p in self.visible_pins)
+        from src.live.input_regions import nearby_placements
+        _,x,y=self.native.pointer()
+        radius=120*getattr(self,'panel_dpi',1.)
+        placements=nearby_placements(self.visible_pins,x-rect.x,y-rect.y,radius)
         key=(self.rect_key(rect),self.selection_epoch,placements)
         if key!=self.input_boxes:
             raw=self.input_regions.get(key,placements,scope=key[:2])
@@ -809,7 +814,8 @@ class DesktopApp(ProfileControls,CompactPanel):
                             try:performance.close()
                             except OSError:pass
                             performance=None;logger.warning('Diagnóstico de desempenho interrompido')
-                    interval=.05 if rect.is_found and self.native.foreground(rect) and recognizer is not None and self.session.selected and not self.session.hidden else .25
+                    tracking_requested=bool(self.session.selected) or (self.settings.get('automark') and self.chest_signals.ready)
+                    interval=.05 if rect.is_found and self.native.foreground(rect) and recognizer is not None and tracking_requested and not self.session.hidden else .25
                     self.stop_event.wait(max(.005,interval-elapsed))
 
         except Exception as exc:
@@ -870,13 +876,14 @@ class DesktopApp(ProfileControls,CompactPanel):
                     self.panel_shortcut()
                 elif isinstance(action,tuple) and action[0]=='performance_fallback':
                     if action[1]==self.selection_epoch:
-                        self.settings['performance_mode']='light';self.performance_var.set('Leve')
+                        self.settings['performance_mode']='light'
                         self.session.notice='Cobertura global indisponível por memória. Modo Leve ativado.'
                         if len(action)>2 and action[2]:self.reload_reference()
                         self.persist_settings()
                 elif action=="visibility": self.toggle_visibility()
                 elif isinstance(action,tuple) and action[0]=='automark_event':
                     if (foreground and action[1]==self.selection_epoch and self.settings.get('automark')
+                            and (len(action)<4 or action[3]==self.automark_generation)
                             and self.chest_signals.ready and not self.region_loading):
                         outcome=self.automark.apply(action[2],self.session,time.monotonic())
                         logger.info('AutoMark result=%s reason=%s event=%s candidates=%s',outcome,
@@ -896,9 +903,6 @@ class DesktopApp(ProfileControls,CompactPanel):
             controls=self.control_rectangles(rect)
             pins=outside_controls(pins,controls)
             if pins and not self.control_down:
-                placements=tuple((round(p.x),round(p.y),getattr(p,'geometry',LEGACY)) for p in pins)
-                self.input_regions.get((self.rect_key(rect),self.selection_epoch,placements),placements,
-                                       scope=(self.rect_key(rect),self.selection_epoch))
                 pins=[p for p in pins if not self.session.is_collected(p.item.id)]
             exclusion_key=(rect.width,rect.height,tuple(controls))
             if self.overlay_hwnd and rect.width>0 and rect.height>0 and exclusion_key!=self.overlay_exclusions:
@@ -930,8 +934,8 @@ class DesktopApp(ProfileControls,CompactPanel):
             elif foreground and self.session.observation.surface!="hidden" and not self.session.observation.fresh(time.monotonic()):
                 status="Localização atrasada · ícones ocultos"
             status+=" · cobertura em validação"
-            status+=' · '+('Global' if self.settings.get('performance_mode')=='global' else 'Leve')
             if self.status.get()!=status:self.status.set(status)
+            self.update_automark_sync()
             if self.notice.get()!=self.session.notice:self.notice.set(self.session.notice)
             if self.listener and self.listener.registration_errors:
                 self.notice.set("Um atalho está em uso por outro programa. Escolha outra tecla e salve.")

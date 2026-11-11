@@ -39,15 +39,20 @@ class ChestSignals:
         self.methods={};self.alternatives={};self.scores={};self.state='idle'
         self.hud_scale=1.
         self.layout_size=None;self.detected_hud_height=None
+        self.scale_probe=0
         self.reason='Aguardando conferência de uma abertura real de baú.'
         self.phase=None;self.token=0;self.quiet=None;self.last_stamp=None
         self.opening_count=0;self.loot_seen=-math.inf;self.gem_seen=-math.inf;self.exp_seen=-math.inf
         try:
-            root=Path(directory).resolve();data=json.loads((root/'manifest.json').read_text(encoding='utf-8'))
+            root=Path(directory).resolve()
+            if not (root/'manifest.json').is_file():
+                self.reason='Referências do AutoMark ausentes nesta instalação.';return
+            data=json.loads((root/'manifest.json').read_text(encoding='utf-8'))
             validation=data.get('validation',{})
             if (data.get('schema')!=1 or (validation.get('approved') is not True and not review_only)
                     or not validation.get('positive_sessions') or not validation.get('negative_sessions')
-                    or not validation.get('reviewed_at')):return
+                    or not validation.get('reviewed_at')):
+                self.reason='Referências do AutoMark sem validação aprovada.';return
             # Legacy client_size records where artwork was captured, not a lock
             # on the player's display. Preserve the original pixels and hashes.
             size=data.get('reference_size',data.get('client_size'))
@@ -78,13 +83,19 @@ class ChestSignals:
                 if anchor not in ('left','center','right'):raise ValueError('Âncora inválida')
                 self.anchors[role]=anchor
             self.ready=True;self.reason='Beta: escala automática da janela, referência Full HD. HUD em português; mudanças na interface do jogo ainda exigem conferência. F10 desfaz.'
-        except (OSError,ValueError,KeyError,TypeError,cv2.error):
+        except (OSError,ValueError,KeyError,TypeError,cv2.error) as exc:
+            self.reason=f'Referências do AutoMark inválidas: {type(exc).__name__}: {exc}'
             self.templates.clear()
 
     def reset(self):
         self.phase=None;self.quiet=None;self.last_stamp=None
         self.opening_count=0;self.loot_seen=-math.inf;self.gem_seen=-math.inf;self.exp_seen=-math.inf
         self.state='idle'
+
+    def reset_calibration(self):
+        self.reset()
+        self.layout_size=None;self.detected_hud_height=None;self.scale_probe=0
+        self.hud_scale=1.
 
     def region(self,role,roi,width,height,hud_height=None):
         """Uniform HUD scaling, with side/center anchoring for wider displays."""
@@ -122,7 +133,7 @@ class ChestSignals:
 
     def read_signals(self,width,height,get_crop):
         if self.layout_size!=(width,height):
-            self.layout_size=(width,height);self.detected_hud_height=None
+            self.layout_size=(width,height);self.detected_hud_height=None;self.scale_probe=0
         self.hud_scale=(self.detected_hud_height or height)/DESIGN_SIZE[1];self.scores={};result={};crops={}
         heights=[self.detected_hud_height] if self.detected_hud_height else [height]
         width_height=width*self.reference_size[1]/self.reference_size[0]
@@ -132,7 +143,13 @@ class ChestSignals:
             entries=[(template,roi,threshold,self.methods.get(role,'grayscale')),*self.alternatives.get(role,[])]
             for template,roi,threshold,method in entries:
                 scores=[]
-                for hud_height in heights:
+                search_heights=heights
+                # Probe one additional HUD scale per sample until the chest
+                # glyph establishes it. Keep qualified thresholds unchanged.
+                if role=='opening' and self.detected_hud_height is None:
+                    factors=(.9,1.1,.8,1.2)
+                    search_heights=[*heights,height*factors[self.scale_probe%len(factors)]]
+                for hud_height in search_heights:
                     box=self.region(role,roi,width,height,hud_height)
                     if box not in crops:
                         crop=get_crop(box) if min(box[2:])>0 else None
@@ -144,7 +161,9 @@ class ChestSignals:
                     result[role]=True
                     if role=='opening':
                         self.detected_hud_height=hud_height;self.hud_scale=hud_height/DESIGN_SIZE[1]
+                        heights=[hud_height]
                     break
+        self.scale_probe+=1
         return result
 
     def measure(self,frame):

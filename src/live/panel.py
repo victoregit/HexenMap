@@ -192,17 +192,24 @@ class CompactPanel(PanelLayout):
 
     def change_automark(self):
         self.settings['automark']=self.automark_var.get() and self.chest_signals.ready
-        self.automark.reset();self.automark_generation+=1
+        self.resync_automark()
         self.persist_settings()
 
-    def change_performance_mode(self,event=None):
-        mode='global' if self.performance_var.get()=='Global' else 'light'
-        if mode==self.settings.get('performance_mode','light'):return
-        self.settings['performance_mode']=mode
-        self.session.notice='Preparando cobertura global…' if mode=='global' else 'Modo Leve: carregando o entorno sob demanda.'
-        self.reload_reference()
-        try:self.persist_settings()
-        except OSError as exc:self.session.notice=str(exc)
+    def resync_automark(self):
+        self.automark.reset();self.automark_generation+=1
+        if hasattr(self,'automark_sync_text'):
+            self.automark_sync_text.set('Volte ao Genshin para sincronizar a tela e a posição.'
+                                       if self.settings.get('automark') else 'AutoMark desligado.')
+
+    def update_automark_sync(self):
+        from src.live.automark_service import synchronization_message
+        if not self.settings.get('automark'):text='AutoMark desligado.'
+        elif self.session.hidden:text='Mostre o overlay para sincronizar o AutoMark.'
+        elif self.region_loading:text='Carregando referências…'
+        elif self.automark_service.sync_context!=(self.automark_generation,self.selection_epoch):
+            text='Sincronizando tela e posição…'
+        else:text=synchronization_message(self.automark_service.sync_state)
+        if self.automark_sync_text.get()!=text:self.automark_sync_text.set(text)
 
     def show_settings(self):
         self.tabs.select(self.prefs)
@@ -242,11 +249,29 @@ class CompactPanel(PanelLayout):
         self.panel_dragged |= abs(dx)+abs(dy) > 4
         width, height = (self.compact_size, self.compact_size) if self.panel_collapsed else getattr(self,'panel_normal_size',(360,540))
         rect = self.native.game()
-        if not self.panel_detached and rect.is_found and not rect.is_minimized:
+        if (self.panel_collapsed or not self.panel_detached) and rect.is_found and not rect.is_minimized:
             left,top,right,bottom=rect.x,rect.y,rect.x+rect.width,rect.y+rect.height
         else:left,top,right,bottom=self.panel_desktop_bounds()
         x = max(left, min(x+dx, right-width)); y = max(top, min(y+dy, bottom-height))
         self.move_panel_to(x,y)
+        if self.panel_collapsed and rect.is_found:
+            self._compact_offset=(x-rect.x,y-rect.y)
+
+    def compact_position(self,game,follow=False):
+        """Keep the collapsed eye inside the client, including offset monitors."""
+        x,y=self.last_panel_position
+        if game.is_found and not game.is_minimized and min(game.width,game.height)>0:
+            left,top,right,bottom=game.x,game.y,game.x+game.width,game.y+game.height
+            if follow and hasattr(self,'_compact_offset'):
+                x,y=left+self._compact_offset[0],top+self._compact_offset[1]
+            margin=min(12,max(0,(min(game.width,game.height)-self.compact_size)//2))
+            x=max(left+margin,min(x,right-self.compact_size-margin))
+            y=max(top+margin,min(y,bottom-self.compact_size-margin))
+            self._compact_offset=(x-left,y-top)
+        else:
+            left,top,right,bottom=self.panel_desktop_bounds()
+            x=max(left,min(x,right-self.compact_size));y=max(top,min(y,bottom-self.compact_size))
+        return round(x),round(y)
 
     def panel_desktop_bounds(self):
         if hasattr(self.native,'desktop_bounds'):return self.native.desktop_bounds()
@@ -265,7 +290,7 @@ class CompactPanel(PanelLayout):
         self.last_panel_position=(x,y)
 
     def panel_mode_label(self):
-        return 'Fixar painel ao jogo' if self.panel_detached else 'Usar janela independente'
+        return 'Fixar ao Genshin' if self.panel_detached else 'Desprender do Genshin'
 
     def toggle_panel_mode(self):
         self.close_layers()
@@ -298,7 +323,7 @@ class CompactPanel(PanelLayout):
         try:bounds=self.native.control_bounds(self.root.winfo_id())
         except (OSError,tk.TclError):return False
         if bounds is None:return False
-        target=tuple(self.last_panel_position)
+        target=self.compact_position(self.native.game())
         def complete():
             self._panel_transition=None
             game=self.native.game()
@@ -355,6 +380,7 @@ class CompactPanel(PanelLayout):
             self.root.deiconify();self.root.lift()
             if self.panel_detached:self.root.focus_force()
         self.root.update_idletasks();self.native.panel(self.root.winfo_id())
+        if collapsed:self.move_panel_to(*self.compact_position(self.native.game()))
         self._layout_busy=False
         self.panel_suspended=False
         if save:self.finish_panel_drag()
@@ -372,6 +398,9 @@ class CompactPanel(PanelLayout):
             if self.panel_suspended:
                 self.native.show_panel(self.root.winfo_id());self.panel_suspended=False
             return
+        if self.panel_collapsed and rect.is_found and not rect.is_minimized:
+            position=self.compact_position(rect,follow=True)
+            if position!=self.last_panel_position:self.move_panel_to(*position)
         # Never float above unrelated applications. Keep controls available without a game.
         allowed = not rect.is_found or self.native.menu_foreground(rect)
         if not allowed and not self.panel_suspended:

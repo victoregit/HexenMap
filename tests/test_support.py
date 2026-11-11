@@ -71,6 +71,7 @@ def test_dialog_keeps_draft_on_error_and_does_not_block_tk():
             dialog.submit();deadline=time.monotonic()+3
             while dialog.busy and time.monotonic()<deadline:root.update();time.sleep(.01)
             assert dialog.sent
+            assert not dialog.window.winfo_exists()
         dialog.close()
     finally:
         release.set();app.compact.stop();root.destroy()

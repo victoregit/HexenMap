@@ -5,6 +5,19 @@ import struct
 import time
 import numpy as np
 import cv2
+from src.live.marker_art import LEGACY
+
+
+def nearby_placements(pins,x,y,radius=120):
+    """Limit click-mask work, without changing which symbols are rendered."""
+    result=[]
+    for pin in pins:
+        geometry=getattr(pin,'geometry',LEGACY)
+        left,top,right,bottom=geometry.bounds(round(pin.x),round(pin.y))
+        dx=max(left-x,0,x-right);dy=max(top-y,0,y-bottom)
+        if dx*dx+dy*dy<=radius*radius:
+            result.append((round(pin.x),round(pin.y),geometry))
+    return tuple(result)
 
 
 @lru_cache(maxsize=256)

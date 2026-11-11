@@ -61,10 +61,12 @@ def test_collapsed_animated_button_hides_over_other_apps_and_returns_without_foc
     calls=[]
     panel.root=SimpleNamespace(winfo_id=lambda:10,withdraw=lambda:calls.append('hide'))
     panel.close_layers=lambda:calls.append('close')
+    panel.last_panel_position=(10,10)
+    panel.compact_position=lambda rect,follow=False:(10,10)
     panel.native=SimpleNamespace(menu_foreground=lambda rect:rect.foreground,show_panel=lambda hwnd:calls.append('show'))
-    panel.sync_panel_visibility(SimpleNamespace(is_found=True,foreground=False))
+    panel.sync_panel_visibility(SimpleNamespace(is_found=True,is_minimized=False,foreground=False))
     assert panel.panel_suspended and calls==['close','hide']
-    panel.sync_panel_visibility(SimpleNamespace(is_found=True,foreground=True))
+    panel.sync_panel_visibility(SimpleNamespace(is_found=True,is_minimized=False,foreground=True))
     assert not panel.panel_suspended and calls==['close','hide','show']
 
 

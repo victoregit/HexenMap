@@ -79,6 +79,21 @@ def pack_for(raster,layer='surface'):
                     (.8,0,.2,.2),(0,0,.2,.2),'test','map',layer,'pixels',(raster,))
 
 
+def test_bounded_search_retains_verified_terrain_without_increasing_cache(raster,tmp_path):
+    features=FeatureCache(tmp_path/'cache')
+    tiles=[Block(raster,box) for box in ((0,0,320,320),(128,0,448,320),(0,128,320,448))]
+    store=ReferenceStore(features)
+    verified=store.get(tiles[0]);store.protected_key=tiles[0].key
+    for tile in (tiles[1],tiles[2],tiles[1],tiles[2]):
+        store.get(tile)
+        assert len(store.cache)==2 and store.bytes<=CACHE_BYTES
+        assert store.cache[tiles[0].key] is verified
+    store.protected_key=tiles[2].key
+    store.get(tiles[1])
+    assert tiles[0].key not in store.cache and tiles[2].key in store.cache
+    store.close();assert store.protected_key is None and not store.cache
+
+
 def configure_gameplay(monkeypatch):
     import src.live.budget_vision as module
     monkeypatch.setattr(module,'template_visible',lambda frame,template,roi:False)

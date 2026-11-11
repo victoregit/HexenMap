@@ -24,6 +24,13 @@ def moving():
     return display
 
 
+def test_reacquired_map_does_not_inherit_previous_pan_prediction():
+    display=moving()
+    obs=replace(observation(1.15,30),continuity_id=1)
+    assert np.array_equal(display.present(obs,1.175).world_to_screen,obs.world_to_screen)
+    assert display.velocity is None
+
+
 def test_translation_prediction_reduces_sample_hold_error_without_extending_freshness():
     display=moving()
     obs=observation(1.10,20)

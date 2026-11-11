@@ -1,5 +1,52 @@
 # Launcher e instalador Windows
 
+## Revisão local de compatibilidade e interação (ainda sem novo instalador)
+
+- Preservadas as correções recentes de captura gráfica em Windows sem
+  `MinimumUpdateInterval` e de ancoragem do botão recolhido à área do jogo.
+- AutoMark procura também escalas de HUD entre 80% e 120% em passos de 10%,
+  uma escala adicional por amostra, mantendo os limiares e a confirmação de
+  abertura/recompensa. Diagnóstico diferencia referências ausentes e inválidas.
+- Ao ativar AutoMark, sincroniza captura/HUD e posição atual; exige três
+  amostras localizadas para indicar tela/posição sincronizadas. A escala final
+  continua sendo confirmada visualmente ao aparecer o sinal de baú. Ajustes
+  mostram o andamento e oferecem Sincronizar novamente. Ressincronizar descarta
+  calibração e aberturas anteriores; eventos carregam a geração correspondente.
+- Report fecha após recebimento confirmado; falhas mantêm o texto.
+- Launcher aparece na barra de tarefas e no Alt+Tab, recebendo foco ao abrir.
+- Fixar/desprender fica acessível no início dos Ajustes. Leve/Global sai da
+  interface; preferências antigas passam ao backend limitado sob demanda.
+- Ctrl prepara somente regiões de clique a até 120 pixels lógicos do cursor,
+  sem limitar quais baús são desenhados. Não prepara máscaras com Ctrl solto.
+- O mapa não herda previsão de movimento de uma localização anterior após
+  mudança de continuidade. Captura gráfica libera recursos do AutoMark inativo
+  e pode reiniciar com a mesma geometria; removida uma cópia temporária de frame.
+- Investigação de instabilidade do minimapa: cache sob demanda preserva o último
+  bloco de terreno reconhecido durante buscas alternativas, mantendo o limite
+  de dois blocos e o orçamento de memória. Se necessário para respeitar esse
+  orçamento, a referência protegida também pode ser liberada. Testes cobrem
+  buscas repetidas e troca de referência; eficácia sobre os relatos de perda
+  visual ainda requer validação em jogo.
+- Corrigido o erro de incerteza após suavizar uma pequena correção do minimapa:
+  o ponto intermediário considera metade da discrepância mais o erro da
+  referência absoluta. Quando essa combinação excede 2,5 pixels, mantém a
+  referência absoluta verificada em vez de criar uma combinação inviável para
+  o próximo frame. Limites de fluxo, validade e comportamento do mapa M
+  permanecem iguais. Regressão reproduzida com LK/RANSAC real em imagem parada;
+  78 testes relevantes passaram. Cadência da captura não foi alterada nesta etapa.
+
+Validação local: replay de duas sessões positivas e uma negativa, cada uma em
+1366×768, 1920×1080 e 2560×1440, mantém os eventos esperados e nenhum evento
+negativo. Redimensionamentos são sintéticos, não validação em outros PCs.
+Benchmark sintético de 1.000 ícones: construção da máscara passa de 26,12 ms
+para 3,22 ms e o tamanho da região de 339.872 para 27.232 bytes com 78 ícones
+próximos. Esses números não medem latência total nem RAM do jogo/app.
+
+Pendentes de validação real: fullscreen exclusivo/sem bordas, AutoMark nos PCs
+dos testadores e comparação da RAM total em exploração prolongada. A captura
+gráfica existente continua como recuperação de GDI; não há garantia de
+sobreposição externa em fullscreen exclusivo.
+
 Implementação inicial de 10/11/2026. Artefatos locais de teste; publicação de
 release e autorização para redistribuir o conjunto de mapas/arte continuam separadas.
 
@@ -29,6 +76,18 @@ atualização por usuário naquela conta diferente. Isso evita mover atalhos e
 registro para o administrador informado. Atualize pela conta que instalou.
 
 ## Atualização ao abrir
+
+### Requisito para a próxima versão após 1.0.5
+
+- Manter o Hexen Map identificável na barra de tarefas e no Alt+Tab durante
+  verificação, download, validação e instalação da atualização.
+- Exibir a etapa atual e o progresso do download, permitindo trazer a janela
+  de volta à frente sem interromper a atualização.
+- Durante a troca do launcher pelo instalador, manter uma janela de status
+  visível até a reabertura do aplicativo, sem deixar a atualização parecer
+  encerrada ou travada. Preservar o fluxo automático, sem cliques obrigatórios.
+- Validar atualização real de 1.0.5 para a próxima versão: barra de tarefas,
+  Alt+Tab, continuidade do status e preservação dos saves.
 
 O launcher mostra uma abertura breve, centralizada, com animação giratória,
 sem botões nem cliques no fluxo normal. Consulta até 30 Releases públicas de

@@ -147,7 +147,7 @@ app.display_motion=SimpleNamespace(reset=lambda:None)
 app.refresh_counts=lambda:None
 try:
  section=next(s for s in app.settings_sections if s['title']=='Perfis')
- assert len(app.settings_sections)==7
+ assert len(app.settings_sections)==6
  section['button'].invoke();root.update()
  app.new_profile_name.set('Conta secundária');app.create_profile();root.update()
  assert app.profile_store.name()=='Conta secundária'

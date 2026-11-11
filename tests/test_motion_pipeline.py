@@ -38,6 +38,51 @@ def pipeline(monkeypatch,surface='map'):
 def frame(x): return np.full((100,100),x,dtype=np.uint8)
 
 
+def test_small_minimap_correction_remains_trackable_on_next_stationary_frame(monkeypatch):
+    motion,pending,calls=pipeline(monkeypatch,'minimap')
+    # Exercise real LK/RANSAC; mocking follow would hide the 2.5px rejection.
+    monkeypatch.setattr('src.live.motion.follow',follow)
+    image=np.random.default_rng(42).integers(0,255,(200,240),dtype=np.uint8)
+    circle=(110.,90.,65.)
+    obs=Observation('minimap',100,np.eye(2,3),.95,.3,circle=circle,
+                    player=circle[:2],map_id='teyvat',layer_id='surface')
+    motion.previous=image;motion.previous_surface='minimap';motion.circle=circle
+    motion.current=obs;motion.last_absolute=100;motion.last_submit=100
+    motion.anchor_stamp=100;motion.anchor_frame=image;motion.anchor_motion=np.eye(3)
+    motion.future=Future()
+    corrected=obs.world_to_screen.copy();corrected[0,2]=2.8
+    motion.future.set_result(replace(obs,world_to_screen=corrected))
+    try:
+        result=motion.observe(image,100.05)
+        assert result.surface=='minimap'
+        assert result.world_to_screen[0,2]==pytest.approx(1.4,abs=.01)
+        assert result.position_uncertainty_px<=2.5
+        assert motion.observe(image,100.1).surface=='minimap'
+    finally:motion.close()
+
+
+@pytest.mark.parametrize('error,existing_uncertainty',[(2.,0.),(.3,2.),(.3,2.8)])
+def test_minimap_does_not_blend_when_combined_error_exceeds_tracking_budget(monkeypatch,error,existing_uncertainty):
+    motion,pending,calls=pipeline(monkeypatch,'minimap')
+    image=frame(0);circle=(50.,50.,40.)
+    obs=Observation('minimap',100,np.eye(2,3),.95,.3,circle=circle,
+                    player=circle[:2],map_id='teyvat',layer_id='surface')
+    motion.previous=image;motion.previous_surface='minimap';motion.circle=circle
+    motion.current=obs;motion.last_absolute=100;motion.last_submit=100
+    motion.anchor_stamp=100;motion.anchor_frame=image;motion.anchor_motion=np.eye(3)
+    motion.future=Future()
+    corrected=obs.world_to_screen.copy();corrected[0,2]=2.8
+    absolute=replace(obs,world_to_screen=corrected,error_px=error,
+                     position_uncertainty_px=existing_uncertainty)
+    motion.future.set_result(absolute)
+    try:
+        result=motion.observe(image,100.05)
+        assert result.world_to_screen[0,2]==pytest.approx(2.8)
+        assert result.position_uncertainty_px==existing_uncertainty
+        assert result.error_px==error
+    finally:motion.close()
+
+
 def test_pending_absolute_rebased_through_each_verified_frame(monkeypatch):
     motion,pending,calls=pipeline(monkeypatch)
     assert motion.observe(frame(0),100).surface=='hidden'
