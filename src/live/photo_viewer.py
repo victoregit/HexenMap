@@ -1,4 +1,5 @@
 """Bounded photo viewport: zoom renders only the visible crop, never a huge bitmap."""
+from src.live.i18n import tr as _tr
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image,ImageTk
@@ -8,14 +9,14 @@ from src.live.theme import BG,MUTED,place_dialog
 class PhotoViewer:
     def __init__(self,parent,image,on_close=lambda:None,*,native=None,game=None):
         self.image=image.copy();self.on_close=on_close;self.zoom=1.;self.offset=None;self.job=None
-        self.window=tk.Toplevel(parent);self.window.title('Foto do local · Hexen Map')
+        self.window=tk.Toplevel(parent);self.window.title(_tr('Foto do local · Hexen Map'))
         if native is not None and game is not None:
             self.window.withdraw();self.window.overrideredirect(True)
         self.window.configure(bg=BG);self.window.minsize(300,240)
         toolbar=ttk.Frame(self.window,padding=8);toolbar.pack(fill='x')
-        ttk.Button(toolbar,text='Ajustar à janela',command=self.fit,takefocus=False).pack(side='left')
-        ttk.Button(toolbar,text='Fechar',command=self.close,takefocus=False).pack(side='right')
-        hint=ttk.Label(toolbar,text='Roda: zoom · arraste para mover · Esc: fechar',foreground=MUTED,wraplength=380)
+        ttk.Button(toolbar,text=_tr('Ajustar à janela'),command=self.fit,takefocus=False).pack(side='left')
+        ttk.Button(toolbar,text=_tr('Fechar'),command=self.close,takefocus=False).pack(side='right')
+        hint=ttk.Label(toolbar,text=_tr('Roda: zoom · arraste para mover · Esc: fechar'),foreground=MUTED,wraplength=380)
         hint.pack(side='left',padx=10,fill='x',expand=True)
         hint.bind('<Configure>',lambda event:hint.configure(wraplength=max(100,event.width)) if int(hint.cget('wraplength'))!=max(100,event.width) else None)
         self.canvas=tk.Canvas(self.window,bg=BG,highlightthickness=0);self.canvas.pack(fill='both',expand=True)

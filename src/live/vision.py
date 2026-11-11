@@ -1,6 +1,7 @@
 """Screen recognition and current-frame SIFT registration, with rejection gates."""
 from __future__ import annotations
 
+from src.live.i18n import tr as _tr
 from dataclasses import dataclass
 from functools import lru_cache
 import math
@@ -22,7 +23,7 @@ class Observation:
     error_px: float = math.inf
     circle: tuple[float, float, float] | None = None
     player: tuple[float, float] | None = None
-    reason: str = "Localizando…"
+    reason: str = _tr("Localizando…")
     map_id: str | None = None
     layer_id: str | None = None
     continuity_id: int = 0
@@ -59,7 +60,7 @@ class TerrainMatcher:
         self.sift = cv2.SIFT_create(nfeatures=budget, contrastThreshold=0.025)
         self.keys, self.descriptors = self.sift.detectAndCompute(gray(terrain.image), None)
         if self.descriptors is None or len(self.keys) < 20:
-            raise ValueError("A referência não contém detalhes suficientes para localização")
+            raise ValueError(_tr("A referência não contém detalhes suficientes para localização"))
         self.matcher = cv2.FlannBasedMatcher(dict(algorithm=1,trees=4),dict(checks=96))
         self.matcher.add([self.descriptors])
         self.matcher.train()
@@ -262,7 +263,7 @@ recognizers are retained, rather than loading every floor into the hot loop.
         for factory in factories:
             if cancelled():
                 from src.live.reference import ReferenceCancelled
-                raise ReferenceCancelled('Seleção substituída')
+                raise ReferenceCancelled(_tr('Seleção substituída'))
             try: pack=factory()
             except (ValueError,OSError): continue
             index=len(self.factories);self.factories.append(factory)
@@ -271,16 +272,16 @@ recognizers are retained, rather than loading every floor into the hot loop.
             for terrain in (pack.terrain,*pack.extra_terrain):
                 if cancelled():
                     from src.live.reference import ReferenceCancelled
-                    raise ReferenceCancelled('Seleção substituída')
+                    raise ReferenceCancelled(_tr('Seleção substituída'))
                 _,descriptors=self.sift.detectAndCompute(gray(terrain.image),None)
                 if descriptors is not None and len(descriptors)>=20:
                     self.matcher.add([descriptors]);self.owners.append(index)
         if not self.factories or not self.owners:
-            raise ValueError("Nenhuma camada com referência compatível instalada")
+            raise ValueError(_tr("Nenhuma camada com referência compatível instalada"))
         self.matcher.train()
 
     def observe(self,frame,stamp):
-        if frame is None or frame.size==0: return Observation('hidden',stamp,reason='Captura indisponível')
+        if frame is None or frame.size==0: return Observation('hidden',stamp,reason=_tr('Captura indisponível'))
         h,w=frame.shape[:2]
         is_map=template_visible(frame,self.pack.map_ui,self.pack.map_ui_roi)
         if is_map:
@@ -288,11 +289,11 @@ recognizers are retained, rather than loading every floor into the hot loop.
         elif (template_visible(frame,self.pack.gameplay_ui,self.pack.gameplay_ui_roi) or
               foreground_ui_visible(frame,self.pack.gameplay_ui,self.pack.gameplay_ui_roi)):
             circle=confirmed_circle(frame,self.circle_hint)
-            if circle is None: return Observation('hidden',stamp,reason='Minimapa não reconhecido')
+            if circle is None: return Observation('hidden',stamp,reason=_tr('Minimapa não reconhecido'))
             self.circle_hint=circle
             x,y,r=circle
             crop=frame[max(0,int(y-r)):int(y+r),max(0,int(x-r)):int(x+r)]
-        else: return Observation('hidden',stamp,reason='Menu, carregamento ou tela não reconhecida')
+        else: return Observation('hidden',stamp,reason=_tr('Menu, carregamento ou tela não reconhecida'))
         _,query=self.sift.detectAndCompute(gray(crop),None)
         votes={}
         if query is not None:
@@ -320,7 +321,7 @@ recognizers are retained, rather than loading every floor into the hot loop.
         if len(valid)==1:
             self.last=valid[0][0]
             return valid[0][1]
-        return Observation("hidden",stamp,reason="Camada ambígua" if valid else "Mapa ou camada não reconhecidos")
+        return Observation("hidden",stamp,reason=_tr("Camada ambígua") if valid else _tr("Mapa ou camada não reconhecidos"))
 
 
 class ScreenRecognizer:
@@ -359,7 +360,7 @@ class ScreenRecognizer:
     def observe(self, frame: np.ndarray, captured_at: float | None = None) -> Observation:
         stamp = time.monotonic() if captured_at is None else captured_at
         if frame is None or frame.size == 0:
-            return Observation("hidden", stamp, reason="Captura indisponível")
+            return Observation("hidden", stamp, reason=_tr("Captura indisponível"))
         h, w = frame.shape[:2]
         circle = None
         # Require positive visual UI evidence; textured menus are not gameplay.
@@ -371,7 +372,7 @@ class ScreenRecognizer:
               foreground_ui_visible(frame,self.pack.gameplay_ui,self.pack.gameplay_ui_roi)):
             circle = confirmed_circle(frame,self.circle_hint)
             if circle is None:
-                return Observation("hidden", stamp, reason="Minimapa não reconhecido")
+                return Observation("hidden", stamp, reason=_tr("Minimapa não reconhecido"))
             self.circle_hint=circle
             surface = "minimap"
             cx, cy, r = circle
@@ -380,7 +381,7 @@ class ScreenRecognizer:
             # Exclude the player arrow and minimap border from feature matching.
             cv2.circle(mask, (round(cx), round(cy)), max(8, round(r*.17)), 0, -1)
         else:
-            return Observation("hidden", stamp, reason="Menu, carregamento ou tela não reconhecida")
+            return Observation("hidden", stamp, reason=_tr("Menu, carregamento ou tela não reconhecida"))
         fit=None
         masks=[mask]
         if circle:
@@ -420,7 +421,7 @@ class ScreenRecognizer:
                 self.raster_fallback=TerrainMatcher(Terrain(image,terrain.world_to_image*1.25,terrain.source))
             fit=self.raster_fallback.match(frame,mask)
         if fit is None:
-            return Observation("hidden", stamp, reason="Localizando no mapa selecionado…")
+            return Observation("hidden", stamp, reason=_tr("Localizando no mapa selecionado…"))
         matrix, confidence, error = fit
         player = None
         if circle:

@@ -1,4 +1,5 @@
 """On-demand public AppSample comments; no account access or progress writes."""
+from src.live.i18n import tr as _tr
 from concurrent.futures import Future
 from dataclasses import dataclass
 from html.parser import HTMLParser
@@ -73,14 +74,14 @@ def parse_comments(payload):
     data = payload.get('data') if isinstance(payload, dict) else None
     rows = data.get('comments') if isinstance(data, dict) else None
     if not isinstance(rows, list):
-        raise ValueError('Formato de comentários não reconhecido')
+        raise ValueError(_tr('Formato de comentários não reconhecido'))
     comments = []
     for row in rows[:50]:
         if not isinstance(row, dict):
             continue
         translations = row.get('trans')
         translated = translations.get('pt') if isinstance(translations, dict) else None
-        text = plain(translated or row.get('content'))
+        text = _tr(plain(translated or row.get('content')))
         image = row.get('image', '')
         image = ('https://game-cdn.appsample.com' + image
                  if isinstance(image, str) and re.fullmatch(r'/gim/comments/[A-Za-z0-9_./-]+', image) else '')
@@ -125,26 +126,26 @@ class HintService:
         with urlopen('https://cache-proxy.lemonapi.com/skywise/comment/v1?' + query, timeout=8) as response:
             raw = response.read(MAX_BYTES + 1)
         if len(raw) > MAX_BYTES:
-            raise ValueError('Resposta de comentários grande demais')
+            raise ValueError(_tr('Resposta de comentários grande demais'))
         return json.loads(raw)
 
     @staticmethod
     def _fetch_image(url):
         with urlopen(url, timeout=8) as response:
             if not photo_url(response.geturl()):
-                raise ValueError('Origem da foto inválida')
+                raise ValueError(_tr('Origem da foto inválida'))
             raw = response.read(8 * 1024 * 1024 + 1)
         if len(raw) > 8 * 1024 * 1024:
-            raise ValueError('Foto grande demais')
+            raise ValueError(_tr('Foto grande demais'))
         return raw
 
     @staticmethod
     def _decode_image(raw):
         if len(raw) > 8 * 1024 * 1024:
-            raise ValueError('Foto grande demais')
+            raise ValueError(_tr('Foto grande demais'))
         with Image.open(io.BytesIO(raw)) as image:
             if image.width * image.height > 16_000_000:
-                raise ValueError('Dimensões de foto grandes demais')
+                raise ValueError(_tr('Dimensões de foto grandes demais'))
             image = ImageOps.exif_transpose(image).convert('RGB')
             image.thumbnail((960, 640), Image.Resampling.LANCZOS)
             return image.copy()

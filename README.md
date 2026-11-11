@@ -6,7 +6,7 @@
 
 Explore o **Genshin Impact** com pins sobre o minimapa e o mapa M, acompanhe suas coletas e aproveite o progresso que você já marcou no AppSample. Escolha os itens no painel, recolha a janela e continue jogando.
 
-**Windows 10/11 · Overlay externo · Versão de teste**
+**Windows 10/11 · Overlay externo · 2.0.0 · Versão de teste**
 
 ## O que o Hexen Map oferece
 
@@ -15,10 +15,10 @@ Explore o **Genshin Impact** com pins sobre o minimapa e o mapa M, acompanhe sua
 | **Pins no minimapa e no mapa M** | Mostra os itens selecionados sobre os mapas nativos, acompanhando o alinhamento reconhecido na tela. |
 | **AutoMark de baús · Beta** | Combina sinais de abertura e recompensas para registrar um baú próximo quando a associação é confiável. |
 | **Importação do AppSample** | Aproveita seus coletados com prévia, mesclagem e backup, sem precisar marcar tudo novamente. |
-| **Catálogo em português** | Organiza recursos em subgrupos e permite buscar por nomes, aliases e texto sem acentos. Categorias ainda não identificadas ficam sinalizadas. |
+| **Português e inglês** | Interface, catálogo, inicialização e instalador nos dois idiomas. A busca aceita nomes e aliases; categorias ainda não identificadas ficam sinalizadas. |
 | **Fotos dos pontos** | Clique na foto do cartão para ampliar, usar zoom e arrastar a imagem. |
 | **Painel independente** | Pode ser movido, redimensionado pelas bordas e recolhido. Em Ajustes, aumente textos e controles para 125% ou 150%. |
-| **Mapa geral de Teyvat** | O planetinha abre uma janela navegável da superfície, com zoom, filtros e coletas compartilhados. Usa imagens locais instaladas; muitos pontos próximos formam grupos clicáveis. |
+| **Mapa global e áreas separadas** | O planetinha permite consultar Teyvat, os seis mapas permanentes separados e suas camadas instaladas. Zoom, fotos, filtros e coletas são compartilhados; a navegação é independente do rastreamento. |
 
 O aplicativo usa reconhecimento de imagem externo. Não lê memória do jogo, não injeta código e não controla o personagem. O reconhecimento pode perder o alinhamento; nessas situações, os pins são ocultados enquanto a posição é recuperada.
 
@@ -44,7 +44,30 @@ O aplicativo usa reconhecimento de imagem externo. Não lê memória do jogo, n�
 | **F9** | Confirmar uma coleta próxima ou escolher entre candidatos. |
 | **F10** | Desfazer a última coleta da sessão. |
 
-Os atalhos são configuráveis nos **Ajustes**. Suas opções ficam em seções recolhíveis: painel e compartilhamento, AutoMark, coletados do AppSample, desempenho, atalhos e diagnóstico. O controle de compartilhamento define se o overlay aparece nas capturas; ele não desliga o reconhecimento.
+Em **Ajustes → Idioma / Language**, escolha **Português (Brasil)** ou **English** e reabra o aplicativo para aplicar. O instalador também permite escolher o idioma. A preferência é compartilhada entre perfis e preservada nas atualizações automáticas.
+
+Os atalhos são configuráveis nos **Ajustes**. Suas opções ficam em seções recolhíveis: perfis, painel e compartilhamento, coletados do AppSample, atalhos e diagnóstico. O AutoMark fica acima do rodapé do painel principal. O controle de compartilhamento define se o overlay aparece nas capturas; ele não desliga o reconhecimento.
+
+A tradução da interface não altera o idioma do Genshin. O **AutoMark beta** também usa pares de ícones de recompensa, sem depender dos textos do jogo. As referências textuais em português continuam como alternativa; o funcionamento com HUD em inglês foi confirmado em teste local.
+
+## Mapas e troca automática
+
+A expansão em validação local inclui **Enkanomiya, Despenhadeiro subterrâneo,
+Mar das Eras Passadas, Montanha Sagrada Antiga, Templo do Espaço e Lua Gélida**,
+além de Teyvat. O seletor **Automático · Detectar mapa** procura a nova área pelo
+minimapa ou pelo mapa M quando a localização atual é perdida. Também é possível
+fixar um mapa/camada manualmente. Durante a identificação, não são exibidos pins
+sem localização válida.
+
+O mapa global do planetinha abre na área reconhecida ou na última consultada.
+Você pode navegar por outros mapas sem mudar o rastreamento do jogo; **Área atual**
+retorna ao contexto reconhecido. As 44 camadas próprias dos mapas separados têm
+imagens e filtros próprios. A expansão geral das cavernas de Teyvat e mapas de
+eventos não faz parte desta etapa.
+
+Os recursos ficam instalados para uso offline e são carregados sob demanda.
+A verificação técnica não substitui a validação dentro do jogo: esta expansão
+permanece uma compilação local de teste antes da próxima release.
 
 ## Traga seus coletados do AppSample
 

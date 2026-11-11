@@ -1,4 +1,5 @@
 """Cached personal HoYoLAB artwork and shared pin drawing/input geometry."""
+from src.live.i18n import tr as _tr
 from dataclasses import dataclass
 from functools import lru_cache
 import hashlib
@@ -27,13 +28,13 @@ def _load_chest_art(category):
         meta=json.loads((bundle_dir()/'data/assets/chests/SOURCE.json').read_text(encoding='utf-8'))['icons'][category]
         directory=install_dir()/'userData/assets/chests'
         path=(directory/meta['file']).resolve()
-        if not path.is_relative_to(directory.resolve()):raise ValueError('Asset outside personal directory')
+        if not path.is_relative_to(directory.resolve()):raise ValueError(_tr('Asset outside personal directory'))
         raw=path.read_bytes()
-        if hashlib.sha256(raw).hexdigest()!=meta['sha256']:raise ValueError('Artwork hash mismatch')
+        if hashlib.sha256(raw).hexdigest()!=meta['sha256']:raise ValueError(_tr('Artwork hash mismatch'))
         with Image.open(path) as source:
             image=source.convert('RGBA')
         box=image.getbbox()
-        if not box or max(image.size)>4096:raise ValueError('Invalid chest artwork')
+        if not box or max(image.size)>4096:raise ValueError(_tr('Invalid chest artwork'))
         return image.crop(box)
     except (OSError,ValueError,KeyError) as exc:
         LOG.warning('Arte pessoal de %s indisponível; usando símbolo existente: %s',category,exc)

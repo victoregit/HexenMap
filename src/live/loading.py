@@ -1,4 +1,5 @@
 """Latest request wins; no Tk calls, global catalog mutation or personal writes."""
+from src.live.i18n import tr as _tr
 from collections import OrderedDict
 import queue
 import threading
@@ -21,7 +22,7 @@ class ProcessCatalogSource:
 
     def __call__(self, identifier):
         with self.lock:
-            if self.closed:raise RuntimeError('Carregador encerrado')
+            if self.closed:raise RuntimeError(_tr('Carregador encerrado'))
             self.generation+=1;generation=self.generation
             if self.timer:self.timer.cancel();self.timer=None
             if self.pool is None:self.pool=ProcessPoolExecutor(max_workers=1,mp_context=multiprocessing.get_context('spawn'))

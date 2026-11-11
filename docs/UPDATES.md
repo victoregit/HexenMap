@@ -1,5 +1,82 @@
 # Launcher e instalador Windows
 
+## Versão 2.0.0 — expansão de mapas
+
+- Nova versão principal para o registro compartilhado de mapas, reconhecimento
+  automático e navegação global independente. Inclui Teyvat, Enkanomiya,
+  Despenhadeiro subterrâneo, Mar das Eras Passadas, Montanha Sagrada Antiga,
+  Temple of Space e Frost Moon, com 44 camadas dos mapas separados.
+- Integra a correção local aprovada do minimapa, confirmação do AutoMark por
+  ícones de recompensa e diagnóstico visual opcional. Mantém os IDs e o progresso.
+- Recursos e limites de validação estão nas [notas da versão](releases/v2.0.0.md).
+  A preparação desta versão não publica a release automaticamente.
+
+## Correção local aprovada — minimapa e AutoMark
+
+- Recuperação de movimento no minimapa remove iluminação suave quando a mudança
+  do cone da câmera causa rejeição dos pontos. Só entra após a falha original,
+  em intervalos de até 500 ms, sem reduzir limites geométricos ou manter pins antigos.
+  A função de recuperação compartilhada com o AutoMark foi preservada.
+- Diagnóstico detalhado das perdas e gravação local opcional do canto do minimapa,
+  limitada a 20 segundos e 50 MiB, com exportação manual. Não envia capturas.
+- Correção do minimapa e funcionamento do AutoMark confirmados pelo usuário.
+  Os mapas novos ainda exigem sua validação própria antes da release.
+
+- Perdas de alinhamento com o minimapa ainda visível não iniciam buscas pesadas
+  em outros mapas. Após uma posição confirmada, a busca requer evidência de
+  carregamento/menu ou mapa M e cinco segundos sem localização válida.
+- A busca fica pausada durante a sequência de abertura/recompensa e não desativa
+  nem reinicia o AutoMark. A troca de mapa realmente confirmada mantém a
+  invalidação do contexto, dos candidatos e das aberturas anteriores.
+- Confirmação alternativa por dois ícones distintos entre EXP, gema e Mora.
+  Não depende de Obtido/Obtained ou dos nomes traduzidos das recompensas.
+  A abertura, a posição comprovada e a ausência de ambiguidade continuam exigidas.
+- Pacote adicional `icon-signals.json`, com nomes próprios de arquivos, preserva
+  as referências textuais existentes. Se estiver inválido, o pacote anterior
+  continua funcionando. Não há redução dos limiares de reconhecimento.
+- Replays positivos/negativos, com textos desconsiderados e sem gemas ou sem EXP,
+  passaram em 1366×768 e redimensionamentos sintéticos FHD/QHD. O funcionamento
+  no HUD real em inglês foi confirmado localmente pelo jogador.
+
+## Em desenvolvimento — mapas separados e mapa global
+
+- Registro compartilhado dos sete mapas permanentes, com nomes PT/EN, limites
+  publicados e 44 camadas próprias dos mapas separados. IDs e coletas permanecem
+  no catálogo AppSample original; cavernas de Teyvat não foram ampliadas.
+- Modo Automático recupera mapas pelo minimapa e pelo M. Após cinco segundos sem
+  localização válida e evidência de transição, busca em segundo plano, no máximo um candidato por segundo,
+  e exige três quadros válidos e distintos. Resultados de contextos antigos são
+  rejeitados e AutoMark é ressicronizado nas transições.
+- O caminho estável de Teyvat continua usando o mesmo reconhecedor. Índices de
+  recuperação são limitados a 1.200 descritores por mapa, incluindo seus andares;
+  somente o mapa ativo e um candidato usam reconhecimento detalhado simultâneo.
+- Mapa global permite escolher mapa/camada independentemente do jogo. Coletas e
+  Desfazer usam o escopo consultado; Área atual volta ao contexto reconhecido.
+  Imagens e índices do mapa anterior são liberados ao trocar de área.
+- Preparação reproduzível: `scripts/prepare_separate_maps.py` e
+  `scripts/prepare_map_layers.py`. Auditoria: `scripts/audit_map_expansion.py`.
+  Capturas, logs e caches de reconhecimento não entram nos pacotes.
+- Medição local de 55 quadros estáveis de Teyvat: acréscimo médio de 0,0055 ms
+  (0,07%). Índice de recuperação: aproximadamente 15 MiB. Esses números não
+  representam validação em todas as áreas, resoluções ou condições de jogo.
+- Aceite em jogo dos mapas novos, em janela/fullscreen, permanece pendente.
+  A release pública anterior não foi substituída.
+
+## Em desenvolvimento — português e inglês
+
+- Instalador oferece seleção de idioma. Ajustes do painel principal mostram
+  `Idioma / Language`; alterações passam a valer ao reabrir o aplicativo.
+- Interface, mensagens de inicialização e nomes revisados do catálogo recebem
+  apresentação em inglês. IDs, grupos internos, regras, coordenadas, nomes de
+  perfis existentes e progresso continuam preservados. Busca aceita os aliases
+  nos dois idiomas.
+- Preferência em `%LOCALAPPDATA%\HexenMap\language.json`, fora da pasta `state`.
+  Instalações com `state-dir.txt` usam a pasta pessoal apontada pela instalação,
+  inclusive quando abertas com outra conta de administrador. Atualizações
+  silenciosas preservam a escolha do aplicativo.
+- O idioma da interface é independente do HUD do jogo. O pacote adicional de
+  ícones permite confirmar recompensas sem depender dos textos traduzidos.
+
 ## Versão 1.0.7 — óculis, interação e painel
 
 - AutoMark de baús fica acima do rodapé, com interruptor estilizado,

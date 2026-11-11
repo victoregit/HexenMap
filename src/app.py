@@ -9,6 +9,7 @@ import sys
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from src.live.i18n import tr as _tr
 from src.live.regions import RegionalCatalog
 from src.live.reference import load_pack, ReferenceUnavailable
 from src.live.reference_store import read_spec
@@ -34,7 +35,7 @@ def main() -> int:
             try:
                 worker_package=worker(package)
                 if [i.id for i in worker_package.items]!=[i.id for i in items]:
-                    raise ValueError('Catálogo do processo auxiliar não corresponde à instalação')
+                    raise ValueError(_tr('Catálogo do processo auxiliar não corresponde à instalação'))
             finally:worker.close()
             default='as-map-2 / surface'
             layer=settings.get('regional',{}).get(package,{}).get('layer',default)
@@ -49,7 +50,7 @@ def main() -> int:
                           layer_id=None if layerid=='automática' else layerid,coordinate_system=space)
             elif layerid=='automática':
                 candidates=list(references.glob('*/*/manifest.json' if mapid=='*' else '*/manifest.json'))
-                if not candidates: raise ReferenceUnavailable('Nenhuma camada com referência instalada')
+                if not candidates: raise ReferenceUnavailable(_tr('Nenhuma camada com referência instalada'))
                 for candidate in candidates:
                     read_spec(candidate.parent,region_id=region,map_id=candidate.parent.parent.name if mapid=='*' else mapid,
                               layer_id=candidate.parent.name,coordinate_system=space)
@@ -82,11 +83,11 @@ def main() -> int:
     except Exception as exc:
         logging.exception("Não foi possível iniciar")
         from src.live.alerts import showerror
-        showerror(DISPLAY_NAME, f"Não foi possível iniciar: {exc}\n\nO aplicativo será encerrado. Nenhum progresso vazio substituirá suas marcações.")
+        showerror(_tr(DISPLAY_NAME), _tr('Não foi possível iniciar: {0}\n\nO aplicativo será encerrado. Nenhum progresso vazio substituirá suas marcações.', exc))
         return 1
 
 
 if __name__ == "__main__":
     import multiprocessing
     multiprocessing.freeze_support()
-    raise SystemExit(main())
+    raise SystemExit(_tr(main()))

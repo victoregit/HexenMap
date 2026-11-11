@@ -11,6 +11,7 @@ import tkinter as tk
 if __package__ in (None, ''):
     sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 
+from src.live.i18n import tr as _tr
 from src.live.identity import VERSION
 from src.live.storage import bundle_dir
 from src.live.updates import discover, download, overlay_running
@@ -50,7 +51,7 @@ class Launcher:
         self.events = queue.Queue()
         self.busy = False
         self.root = tk.Tk()
-        self.root.title('Hexen Map')
+        self.root.title(_tr('Hexen Map'))
         assets=bundle_dir()/'data/assets/brand'
         self.root.iconbitmap(str(assets/'app.ico'))
         # A regular window remains reachable through the taskbar and Alt+Tab.
@@ -69,8 +70,8 @@ class Launcher:
         self.spinner=tk.Label(frame,image=self.loading_frames[0],bg='#142132',borderwidth=0)
         self.spinner.pack(pady=(0,18))
         self.animation_index=0
-        tk.Label(frame,text='HEXEN MAP',bg='#142132',fg='#dfc48d',font=('Segoe UI',20,'bold')).pack()
-        self.status = tk.StringVar(value='Verificando atualizações…')
+        tk.Label(frame,text=_tr('HEXEN MAP'),bg='#142132',fg='#dfc48d',font=('Segoe UI',20,'bold')).pack()
+        self.status = tk.StringVar(value=_tr('Verificando atualizações…'))
         tk.Label(frame,textvariable=self.status,bg='#142132',fg='#a0adbd',wraplength=280,
                  justify='center',height=2,width=34,font=('Segoe UI',10)).pack(pady=(12,0))
         self.root.update_idletasks()
@@ -117,7 +118,7 @@ class Launcher:
             self.open_app()
             return
         self.busy = True
-        self.status.set('Verificando atualizações no GitHub…')
+        self.status.set(_tr('Verificando atualizações no GitHub…'))
         threading.Thread(target=self.worker,name='ReleaseCheck',daemon=True).start()
 
     def worker(self):
@@ -126,7 +127,7 @@ class Launcher:
             if release is None:
                 self.events.put(('current',None))
                 return
-            self.events.put(('status',f'Baixando atualização {release.version}…'))
+            self.events.put(('status',_tr('Baixando atualização {0}…',release.version)))
             path = download(release,self.home/'updates',lambda value:self.events.put(('progress',value)))
             self.events.put(('install',path))
         except Exception as exc:
@@ -137,12 +138,12 @@ class Launcher:
             while True:
                 kind,value = self.events.get_nowait()
                 if kind == 'progress':
-                    self.status.set(f'Atualizando… {int(value*100)}%')
+                    self.status.set(_tr('Atualizando… {0}%', int(value*100)))
                 elif kind == 'status':
-                    self.status.set(value)
+                    self.status.set(_tr(value))
                 elif kind == 'current':
                     self.busy = False
-                    self.status.set('Você está na versão mais recente disponível.')
+                    self.status.set(_tr('Você está na versão mais recente disponível.'))
                     self.open_app()
                     return
                 elif kind == 'error':
@@ -178,7 +179,7 @@ class Launcher:
                              env={**os.environ,'PYINSTALLER_RESET_ENVIRONMENT':'1'})
         except OSError as exc:
             self.log_error(exc)
-            self.status.set('Não foi possível abrir o Hexen Map. Reinstale o aplicativo.')
+            self.status.set(_tr('Não foi possível abrir o Hexen Map. Reinstale o aplicativo.'))
             self.root.after(4000,self.close)
             return
         self.root.destroy()

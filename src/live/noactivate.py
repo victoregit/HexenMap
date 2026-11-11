@@ -1,4 +1,5 @@
 """Keep clicks on our own Tk overlay controls from activating their window."""
+from src.live.i18n import tr as _tr
 import ctypes as ct
 from ctypes import wintypes as wt
 import os
@@ -44,9 +45,9 @@ class NoActivate:
             for hwnd in (root,*children):
                 if hwnd in self.handles:continue
                 pid=wt.DWORD();self.u.GetWindowThreadProcessId(hwnd,ct.byref(pid))
-                if pid.value!=os.getpid():raise ValueError('Somente janelas do próprio overlay podem ser protegidas')
+                if pid.value!=os.getpid():raise ValueError(_tr('Somente janelas do próprio overlay podem ser protegidas'))
                 if not self.api.SetWindowSubclass(hwnd,self.callback,1,0):
-                    raise OSError('Não foi possível impedir a ativação do controle do overlay')
+                    raise OSError(_tr('Não foi possível impedir a ativação do controle do overlay'))
                 self.handles.add(hwnd);added.append(hwnd)
         except Exception:
             for hwnd in added:

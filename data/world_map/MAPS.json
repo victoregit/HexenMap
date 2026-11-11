@@ -1,0 +1,852 @@
+{
+  "schema": 1,
+  "source": "https://genshin-impact-map.appsample.com/",
+  "checked_at": "2026-11-11",
+  "maps": [
+    {
+      "map_id": "as-map-2",
+      "source_id": 2,
+      "key": "teyvat",
+      "names": {
+        "pt-BR": "Teyvat",
+        "en-US": "Teyvat"
+      },
+      "dataset": "appsample-teyvat-v72",
+      "source": "https://game-cdn.appsample.com/gim/map-teyvat/v72-rc1",
+      "base_zoom": 12,
+      "max_zoom": 15,
+      "tile_bounds": {
+        "10": {
+          "minX": -2,
+          "maxX": 1,
+          "minY": -2,
+          "maxY": 2
+        },
+        "11": {
+          "minX": -4,
+          "maxX": 3,
+          "minY": -4,
+          "maxY": 5
+        },
+        "12": {
+          "minX": -8,
+          "maxX": 7,
+          "minY": -8,
+          "maxY": 11
+        },
+        "13": {
+          "minX": -16,
+          "maxX": 15,
+          "minY": -16,
+          "maxY": 22
+        },
+        "14": {
+          "minX": -32,
+          "maxX": 31,
+          "minY": -32,
+          "maxY": 43
+        },
+        "15": {
+          "minX": -64,
+          "maxX": 63,
+          "minY": -64,
+          "maxY": 86
+        }
+      },
+      "coordinate_system": "appsample-webmercator-z14",
+      "layer": "surface",
+      "validation": "pending_live_validation",
+      "layers": []
+    },
+    {
+      "map_id": "as-map-7",
+      "source_id": 7,
+      "key": "enkanomiya",
+      "names": {
+        "pt-BR": "Enkanomiya",
+        "en-US": "Enkanomiya"
+      },
+      "dataset": "appsample-enkanomiya-v26",
+      "source": "https://game-cdn.appsample.com/gim/map-enkanomiya/v26",
+      "base_zoom": 12,
+      "max_zoom": 13,
+      "tile_bounds": {
+        "10": {
+          "minX": -2,
+          "maxX": 1,
+          "minY": -2,
+          "maxY": 1
+        },
+        "11": {
+          "minX": -4,
+          "maxX": 3,
+          "minY": -4,
+          "maxY": 3
+        },
+        "12": {
+          "minX": -8,
+          "maxX": 7,
+          "minY": -8,
+          "maxY": 7
+        },
+        "13": {
+          "minX": -16,
+          "maxX": 15,
+          "minY": -16,
+          "maxY": 15
+        }
+      },
+      "coordinate_system": "appsample-webmercator-z14",
+      "layer": "surface",
+      "validation": "pending_live_validation",
+      "layers": []
+    },
+    {
+      "map_id": "as-map-9",
+      "source_id": 9,
+      "key": "chasm",
+      "names": {
+        "pt-BR": "Despenhadeiro subterrâneo",
+        "en-US": "The Chasm: Underground Mines"
+      },
+      "dataset": "appsample-chasm-v0",
+      "source": "https://game-cdn.appsample.com/gim/map-chasm/v0",
+      "base_zoom": 12,
+      "max_zoom": 13,
+      "tile_bounds": {
+        "10": {
+          "minX": -2,
+          "maxX": 1,
+          "minY": -2,
+          "maxY": 1
+        },
+        "11": {
+          "minX": -4,
+          "maxX": 3,
+          "minY": -4,
+          "maxY": 3
+        },
+        "12": {
+          "minX": -8,
+          "maxX": 7,
+          "minY": -8,
+          "maxY": 7
+        },
+        "13": {
+          "minX": -16,
+          "maxX": 15,
+          "minY": -16,
+          "maxY": 15
+        }
+      },
+      "coordinate_system": "appsample-webmercator-z14",
+      "layer": "surface",
+      "validation": "pending_live_validation",
+      "layers": []
+    },
+    {
+      "map_id": "as-map-34",
+      "source_id": 34,
+      "key": "sea-of-bygone-eras",
+      "names": {
+        "pt-BR": "Mar das Eras Passadas",
+        "en-US": "Sea of Bygone Eras"
+      },
+      "dataset": "appsample-sea-of-bygone-eras-v1",
+      "source": "https://game-cdn.appsample.com/gim/map-bygone-eras/v1",
+      "base_zoom": 12,
+      "max_zoom": 13,
+      "tile_bounds": {
+        "10": {
+          "minX": -2,
+          "maxX": 1,
+          "minY": -2,
+          "maxY": 1
+        },
+        "11": {
+          "minX": -4,
+          "maxX": 3,
+          "minY": -4,
+          "maxY": 3
+        },
+        "12": {
+          "minX": -8,
+          "maxX": 7,
+          "minY": -8,
+          "maxY": 7
+        },
+        "13": {
+          "minX": -16,
+          "maxX": 15,
+          "minY": -16,
+          "maxY": 15
+        }
+      },
+      "coordinate_system": "appsample-webmercator-z14",
+      "layer": "surface",
+      "validation": "pending_live_validation",
+      "layers": [
+        {
+          "layer_id": "as-layer-125-157",
+          "name": "B1",
+          "area": 1,
+          "source": "https://game-cdn.appsample.com/gim/overlays/157-x0g8.png",
+          "bounds": {
+            "west": -0.22019,
+            "south": 0.01863,
+            "east": -0.13503,
+            "north": 0.1031
+          }
+        },
+        {
+          "layer_id": "as-layer-125-166",
+          "name": "B2",
+          "area": 1,
+          "source": "https://game-cdn.appsample.com/gim/overlays/166-zwjs.png",
+          "bounds": {
+            "west": -0.18954,
+            "south": 0.037,
+            "east": -0.11434,
+            "north": 0.09022
+          }
+        },
+        {
+          "layer_id": "as-layer-126-158",
+          "name": "B1",
+          "area": 2,
+          "source": "https://game-cdn.appsample.com/gim/overlays/158-kug7.png",
+          "bounds": {
+            "west": 0.02017,
+            "south": -0.1255,
+            "east": 0.08919,
+            "north": -0.05477
+          }
+        },
+        {
+          "layer_id": "as-layer-127-159",
+          "name": "B1",
+          "area": 3,
+          "source": "https://game-cdn.appsample.com/gim/overlays/159-xwky.png",
+          "bounds": {
+            "west": 0.13649,
+            "south": -0.07297,
+            "east": 0.22989,
+            "north": 0.00704
+          }
+        },
+        {
+          "layer_id": "as-layer-128-160",
+          "name": "B1",
+          "area": 4,
+          "source": "https://game-cdn.appsample.com/gim/overlays/160-wg8a.png",
+          "bounds": {
+            "west": 0.15486,
+            "south": -0.03897,
+            "east": 0.2098,
+            "north": 0.01494
+          }
+        },
+        {
+          "layer_id": "as-layer-128-161",
+          "name": "B2",
+          "area": 4,
+          "source": "https://game-cdn.appsample.com/gim/overlays/161-xp80.png",
+          "bounds": {
+            "west": 0.16482,
+            "south": -0.01683,
+            "east": 0.19538,
+            "north": 0.03331
+          }
+        },
+        {
+          "layer_id": "as-layer-130-167",
+          "name": "B1",
+          "area": 5,
+          "source": "https://game-cdn.appsample.com/gim/overlays/167-4crh.png",
+          "bounds": {
+            "west": -0.30698,
+            "south": -0.09305,
+            "east": -0.19607,
+            "north": -0.01683
+          }
+        },
+        {
+          "layer_id": "as-layer-131-168",
+          "name": "B1",
+          "area": 6,
+          "source": "https://game-cdn.appsample.com/gim/overlays/168-wkxp.png",
+          "bounds": {
+            "west": -0.24448,
+            "south": -0.13666,
+            "east": -0.14044,
+            "north": 0.00893
+          }
+        }
+      ]
+    },
+    {
+      "map_id": "as-map-36",
+      "source_id": 36,
+      "key": "ancient_sacred_mountain",
+      "names": {
+        "pt-BR": "Montanha Sagrada Antiga",
+        "en-US": "Ancient Sacred Mountain"
+      },
+      "dataset": "appsample-ancient_sacred_mountain-v2",
+      "source": "https://game-cdn.appsample.com/gim/map-ancient-sacred/v2",
+      "base_zoom": 12,
+      "max_zoom": 12,
+      "tile_bounds": {
+        "10": {
+          "minX": -2,
+          "maxX": 1,
+          "minY": -2,
+          "maxY": 1
+        },
+        "11": {
+          "minX": -4,
+          "maxX": 3,
+          "minY": -4,
+          "maxY": 3
+        },
+        "12": {
+          "minX": -8,
+          "maxX": 7,
+          "minY": -8,
+          "maxY": 7
+        }
+      },
+      "coordinate_system": "appsample-webmercator-z14",
+      "layer": "surface",
+      "validation": "pending_live_validation",
+      "layers": [
+        {
+          "layer_id": "as-layer-164-221",
+          "name": "B1",
+          "area": 1,
+          "source": "https://game-cdn.appsample.com/gim/overlays/221-ya07.png",
+          "bounds": {
+            "west": -0.48565,
+            "south": -0.32394,
+            "east": 0.44496,
+            "north": 0.3811
+          }
+        },
+        {
+          "layer_id": "as-layer-164-222",
+          "name": "B2",
+          "area": 1,
+          "source": "https://game-cdn.appsample.com/gim/overlays/222-dycb.png",
+          "bounds": {
+            "west": -0.09734,
+            "south": -0.1236,
+            "east": 0.06798,
+            "north": 0.07313
+          }
+        },
+        {
+          "layer_id": "as-layer-164-223",
+          "name": "B3",
+          "area": 1,
+          "source": "https://game-cdn.appsample.com/gim/overlays/223-0qmb.png",
+          "bounds": {
+            "west": 0.04944,
+            "south": -0.1303,
+            "east": 0.50573,
+            "north": 0.30385
+          }
+        }
+      ]
+    },
+    {
+      "map_id": "as-map-37",
+      "source_id": 37,
+      "key": "temple_of_space",
+      "names": {
+        "pt-BR": "Templo do Espaço",
+        "en-US": "Temple of Space"
+      },
+      "dataset": "appsample-temple_of_space-rc1",
+      "source": "https://game-cdn.appsample.com/gim/map-temple-of-space/rc1",
+      "base_zoom": 12,
+      "max_zoom": 13,
+      "tile_bounds": {
+        "10": {
+          "minX": -2,
+          "maxX": 1,
+          "minY": -2,
+          "maxY": 1
+        },
+        "11": {
+          "minX": -4,
+          "maxX": 3,
+          "minY": -4,
+          "maxY": 3
+        },
+        "12": {
+          "minX": -8,
+          "maxX": 7,
+          "minY": -8,
+          "maxY": 7
+        },
+        "13": {
+          "minX": -16,
+          "maxX": 15,
+          "minY": -16,
+          "maxY": 15
+        }
+      },
+      "coordinate_system": "appsample-webmercator-z14",
+      "layer": "surface",
+      "validation": "pending_live_validation",
+      "layers": [
+        {
+          "layer_id": "as-layer-197-279",
+          "name": "B1",
+          "area": 1,
+          "source": "https://game-cdn.appsample.com/gim/overlays/279-8wsd.png",
+          "bounds": {
+            "west": -0.29292,
+            "south": -0.08747,
+            "east": -0.22123,
+            "north": -0.05625
+          }
+        },
+        {
+          "layer_id": "as-layer-197-280",
+          "name": "L1",
+          "area": 1,
+          "source": "https://game-cdn.appsample.com/gim/overlays/280-zhuk.png",
+          "bounds": {
+            "west": -0.33888,
+            "south": -0.12588,
+            "east": -0.22741,
+            "north": -0.01235
+          }
+        },
+        {
+          "layer_id": "as-layer-197-281",
+          "name": "L2",
+          "area": 1,
+          "source": "https://game-cdn.appsample.com/gim/overlays/281-r196.png",
+          "bounds": {
+            "west": -0.29429,
+            "south": -0.08403,
+            "east": -0.25862,
+            "north": -0.06997
+          }
+        },
+        {
+          "layer_id": "as-layer-197-282",
+          "name": "L3",
+          "area": 1,
+          "source": "https://game-cdn.appsample.com/gim/overlays/282-36bh.png",
+          "bounds": {
+            "west": -0.29944,
+            "south": -0.09245,
+            "east": -0.25527,
+            "north": -0.05762
+          }
+        },
+        {
+          "layer_id": "as-layer-198-283",
+          "name": "B1",
+          "area": 2,
+          "source": "https://game-cdn.appsample.com/gim/overlays/283-kznp.png",
+          "bounds": {
+            "west": -0.03567,
+            "south": 0.20381,
+            "east": 0.03308,
+            "north": 0.28984
+          }
+        },
+        {
+          "layer_id": "as-layer-199-284",
+          "name": "B2",
+          "area": 3,
+          "source": "https://game-cdn.appsample.com/gim/overlays/284-k9r8.png",
+          "bounds": {
+            "west": -0.03704,
+            "south": -0.25142,
+            "east": 0.12005,
+            "north": -0.06551
+          }
+        },
+        {
+          "layer_id": "as-layer-199-285",
+          "name": "B1",
+          "area": 3,
+          "source": "https://game-cdn.appsample.com/gim/overlays/285-zc4e.png",
+          "bounds": {
+            "west": 0.03773,
+            "south": -0.12588,
+            "east": 0.09364,
+            "north": -0.07683
+          }
+        },
+        {
+          "layer_id": "as-layer-200-286",
+          "name": "B1",
+          "area": 4,
+          "source": "https://game-cdn.appsample.com/gim/overlays/286-0lh0.png",
+          "bounds": {
+            "west": -0.15797,
+            "south": -0.04838,
+            "east": 0.10858,
+            "north": 0.18558
+          }
+        },
+        {
+          "layer_id": "as-layer-201-288",
+          "name": "L1",
+          "area": 5,
+          "source": "https://game-cdn.appsample.com/gim/overlays/288-y15n.png",
+          "bounds": {
+            "west": -0.01475,
+            "south": 0.03224,
+            "east": 0.00652,
+            "north": 0.05282
+          }
+        },
+        {
+          "layer_id": "as-layer-201-289",
+          "name": "L2",
+          "area": 5,
+          "source": "https://game-cdn.appsample.com/gim/overlays/289-zovz.png",
+          "bounds": {
+            "west": -0.01657,
+            "south": 0.02581,
+            "east": 0.00885,
+            "north": 0.05514
+          }
+        },
+        {
+          "layer_id": "as-layer-202-290",
+          "name": "L2",
+          "area": 6,
+          "source": "https://game-cdn.appsample.com/gim/overlays/290-rj64.png",
+          "bounds": {
+            "west": -0.035,
+            "south": 0.0367,
+            "east": -0.00307,
+            "north": 0.06929
+          }
+        },
+        {
+          "layer_id": "as-layer-202-291",
+          "name": "L1",
+          "area": 6,
+          "source": "https://game-cdn.appsample.com/gim/overlays/291-5qi0.png",
+          "bounds": {
+            "west": -0.01921,
+            "south": 0.02603,
+            "east": 0.01273,
+            "north": 0.05797
+          }
+        },
+        {
+          "layer_id": "as-layer-203-292",
+          "name": "B1",
+          "area": 7,
+          "source": "https://game-cdn.appsample.com/gim/overlays/292-sfl8.png",
+          "bounds": {
+            "west": -0.08459,
+            "south": 0.08167,
+            "east": -0.02071,
+            "north": 0.12859
+          }
+        },
+        {
+          "layer_id": "as-layer-203-293",
+          "name": "B2",
+          "area": 7,
+          "source": "https://game-cdn.appsample.com/gim/overlays/293-3d8t.png",
+          "bounds": {
+            "west": -0.07688,
+            "south": 0.07703,
+            "east": -0.01367,
+            "north": 0.13426
+          }
+        },
+        {
+          "layer_id": "as-layer-203-294",
+          "name": "B3",
+          "area": 7,
+          "source": "https://game-cdn.appsample.com/gim/overlays/294-7jmj.png",
+          "bounds": {
+            "west": -0.07014,
+            "south": 0.10582,
+            "east": -0.04888,
+            "north": 0.12708
+          }
+        },
+        {
+          "layer_id": "as-layer-204-295",
+          "name": "B1",
+          "area": 8,
+          "source": "https://game-cdn.appsample.com/gim/overlays/295-2539.png",
+          "bounds": {
+            "west": -0.08148,
+            "south": 0.05702,
+            "east": -0.0637,
+            "north": 0.0692
+          }
+        }
+      ]
+    },
+    {
+      "map_id": "as-map-40",
+      "source_id": 40,
+      "key": "frost_moon",
+      "names": {
+        "pt-BR": "Lua Gélida",
+        "en-US": "Frost Moon"
+      },
+      "dataset": "appsample-frost_moon-rc3",
+      "source": "https://game-cdn.appsample.com/gim/map-moon/rc3",
+      "base_zoom": 12,
+      "max_zoom": 14,
+      "tile_bounds": {
+        "10": {
+          "minX": -2,
+          "maxX": 1,
+          "minY": -2,
+          "maxY": 1
+        },
+        "11": {
+          "minX": -4,
+          "maxX": 3,
+          "minY": -4,
+          "maxY": 3
+        },
+        "12": {
+          "minX": -8,
+          "maxX": 7,
+          "minY": -5,
+          "maxY": 4
+        },
+        "13": {
+          "minX": -16,
+          "maxX": 15,
+          "minY": -9,
+          "maxY": 8
+        },
+        "14": {
+          "minX": -32,
+          "maxX": 31,
+          "minY": -17,
+          "maxY": 16
+        }
+      },
+      "coordinate_system": "appsample-webmercator-z14",
+      "layer": "surface",
+      "validation": "pending_live_validation",
+      "layers": [
+        {
+          "layer_id": "as-layer-206-299",
+          "name": "B1",
+          "area": 1,
+          "source": "https://game-cdn.appsample.com/gim/overlays/299-9n8s.png",
+          "bounds": {
+            "west": -0.44632,
+            "south": -0.0799,
+            "east": -0.24041,
+            "north": 0.08717
+          }
+        },
+        {
+          "layer_id": "as-layer-206-300",
+          "name": "B2",
+          "area": 1,
+          "source": "https://game-cdn.appsample.com/gim/overlays/300-515c.png",
+          "bounds": {
+            "west": -0.35227,
+            "south": -0.01871,
+            "east": -0.30823,
+            "north": 0.02123
+          }
+        },
+        {
+          "layer_id": "as-layer-207-301",
+          "name": "L1",
+          "area": 2,
+          "source": "https://game-cdn.appsample.com/gim/overlays/301-tt7g.png",
+          "bounds": {
+            "west": 0.30128,
+            "south": -0.03345,
+            "east": 0.45021,
+            "north": 0.1105
+          }
+        },
+        {
+          "layer_id": "as-layer-208-302",
+          "name": "B1",
+          "area": 3,
+          "source": "https://game-cdn.appsample.com/gim/overlays/302-p6qk.png",
+          "bounds": {
+            "west": 0.22219,
+            "south": 0.08019,
+            "east": 0.28205,
+            "north": 0.13098
+          }
+        },
+        {
+          "layer_id": "as-layer-209-303",
+          "name": "L1",
+          "area": 4,
+          "source": "https://game-cdn.appsample.com/gim/overlays/303-dayl.png",
+          "bounds": {
+            "west": 0.3575,
+            "south": -0.02493,
+            "east": 0.38428,
+            "north": -0.00015
+          }
+        },
+        {
+          "layer_id": "as-layer-210-304",
+          "name": "B1",
+          "area": 5,
+          "source": "https://game-cdn.appsample.com/gim/overlays/304-kbne.png",
+          "bounds": {
+            "west": 0.34739,
+            "south": -0.01493,
+            "east": 0.39527,
+            "north": 0.03071
+          }
+        },
+        {
+          "layer_id": "as-layer-211-305",
+          "name": "B1",
+          "area": 6,
+          "source": "https://game-cdn.appsample.com/gim/overlays/305-1l65.png",
+          "bounds": {
+            "west": 0.34276,
+            "south": 0.0059,
+            "east": 0.3952,
+            "north": 0.0569
+          }
+        },
+        {
+          "layer_id": "as-layer-212-306",
+          "name": "B1",
+          "area": 7,
+          "source": "https://game-cdn.appsample.com/gim/overlays/306-tbbr.png",
+          "bounds": {
+            "west": 0.45433,
+            "south": -0.09429,
+            "east": 0.50013,
+            "north": -0.04925
+          }
+        },
+        {
+          "layer_id": "as-layer-213-307",
+          "name": "B1",
+          "area": 8,
+          "source": "https://game-cdn.appsample.com/gim/overlays/307-hp8o.png",
+          "bounds": {
+            "west": 0.26557,
+            "south": -0.0283,
+            "east": 0.30275,
+            "north": 0.00146
+          }
+        },
+        {
+          "layer_id": "as-layer-213-308",
+          "name": "B2",
+          "area": 8,
+          "source": "https://game-cdn.appsample.com/gim/overlays/308-yj3x.png",
+          "bounds": {
+            "west": 0.26585,
+            "south": -0.02238,
+            "east": 0.29683,
+            "north": 0.00329
+          }
+        },
+        {
+          "layer_id": "as-layer-214-309",
+          "name": "B1",
+          "area": 9,
+          "source": "https://game-cdn.appsample.com/gim/overlays/309-xx0f.png",
+          "bounds": {
+            "west": 0.36262,
+            "south": -0.00249,
+            "east": 0.40157,
+            "north": 0.04099
+          }
+        },
+        {
+          "layer_id": "as-layer-214-310",
+          "name": "B2",
+          "area": 9,
+          "source": "https://game-cdn.appsample.com/gim/overlays/310-3441.png",
+          "bounds": {
+            "west": 0.36916,
+            "south": 0.01739,
+            "east": 0.39428,
+            "north": 0.04261
+          }
+        },
+        {
+          "layer_id": "as-layer-214-311",
+          "name": "B3",
+          "area": 9,
+          "source": "https://game-cdn.appsample.com/gim/overlays/311-aw53.png",
+          "bounds": {
+            "west": 0.36348,
+            "south": 0.00354,
+            "east": 0.40088,
+            "north": 0.03873
+          }
+        },
+        {
+          "layer_id": "as-layer-214-312",
+          "name": "B4",
+          "area": 9,
+          "source": "https://game-cdn.appsample.com/gim/overlays/312-6ssv.png",
+          "bounds": {
+            "west": 0.36602,
+            "south": 0.00061,
+            "east": 0.39601,
+            "north": 0.02916
+          }
+        },
+        {
+          "layer_id": "as-layer-215-313",
+          "name": "B1",
+          "area": 10,
+          "source": "https://game-cdn.appsample.com/gim/overlays/313-9jyc.png",
+          "bounds": {
+            "west": 0.38827,
+            "south": -0.02749,
+            "east": 0.41981,
+            "north": 0.00305
+          }
+        },
+        {
+          "layer_id": "as-layer-215-314",
+          "name": "B2",
+          "area": 10,
+          "source": "https://game-cdn.appsample.com/gim/overlays/314-08hj.png",
+          "bounds": {
+            "west": 0.38141,
+            "south": -0.02594,
+            "east": 0.42921,
+            "north": 0.01368
+          }
+        },
+        {
+          "layer_id": "as-layer-216-315",
+          "name": "B1",
+          "area": 11,
+          "source": "https://game-cdn.appsample.com/gim/overlays/315-vunw.png",
+          "bounds": {
+            "west": 0.56934,
+            "south": 0.00721,
+            "east": 0.59998,
+            "north": 0.03476
+          }
+        }
+      ]
+    }
+  ]
+}

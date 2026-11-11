@@ -1,4 +1,5 @@
 """Compact exploration controls with user-supplied branding."""
+from src.live.i18n import tr as _tr
 import tkinter as tk
 import webbrowser
 from tkinter import ttk
@@ -47,35 +48,35 @@ class CompactPanel(PanelLayout):
         self.shell=tk.Frame(self.root,bg=BG);self.shell.pack(fill='both',expand=True)
         header=tk.Frame(self.shell,bg=BG);header.pack(fill='x',padx=14,pady=(8,6))
         branding=tk.Frame(header,bg=BG);branding.pack(side='left')
-        title=tk.Label(branding,text=DISPLAY_NAME,bg=BG,fg=TEXT,font=('Segoe UI',14,'bold'),anchor='w');title.pack(fill='x')
-        subtitle=tk.Label(branding,text='Seu companheiro de exploração',bg=BG,fg=MUTED,font=('Segoe UI',8),anchor='w');subtitle.pack(fill='x')
+        title=tk.Label(branding,text=_tr(DISPLAY_NAME),bg=BG,fg=TEXT,font=('Segoe UI',14,'bold'),anchor='w');title.pack(fill='x')
+        subtitle=tk.Label(branding,text=_tr('Seu companheiro de exploração'),bg=BG,fg=MUTED,font=('Segoe UI',8),anchor='w');subtitle.pack(fill='x')
         self.profile_caption=subtitle
         if hasattr(self,'profile_store'):
-            name=self.profile_store.name();subtitle.configure(text='Perfil: '+(name if len(name)<=24 else name[:23]+'…'))
+            name=self.profile_store.name();subtitle.configure(text=_tr('Perfil: ')+(name if len(name)<=24 else name[:23]+'…'))
         for widget in (header,branding,title,subtitle):
             widget.bind('<Button-1>',self.start_panel_drag)
             widget.bind('<B1-Motion>',self.drag_panel)
             widget.bind('<ButtonRelease-1>',self.finish_panel_drag)
         collapse=ttk.Button(header,text='—',width=3,style='Quiet.TButton',command=self.collapse_to_game)
-        collapse.pack(side='right');Tooltip(collapse,'Recolher o painel e voltar ao jogo (F8).')
+        collapse.pack(side='right');Tooltip(collapse,_tr('Recolher o painel e voltar ao jogo (F8).'))
         self.capture_eye=tk.Canvas(header,width=28,height=28,bg=BG,highlightthickness=0,cursor='hand2',takefocus=1)
         self.capture_eye.pack(side='right',padx=3)
         self.capture_eye.bind('<Button-1>',lambda e:self.toggle_capture_visibility())
         self.capture_eye.bind('<Return>',lambda e:self.toggle_capture_visibility())
         self.capture_eye.bind('<space>',lambda e:self.toggle_capture_visibility())
         self.paint_capture_eye()
-        Tooltip(self.capture_eye,'Mostrar ou ocultar o overlay no compartilhamento de tela.')
+        Tooltip(self.capture_eye,_tr('Mostrar ou ocultar o overlay no compartilhamento de tela.'))
         self.planet_button=NationMapButton(header,self.open_world_map,bg=BG)
         self.planet_button.pack(side='right',padx=2)
-        Tooltip(self.planet_button,'Abrir mapa geral de Teyvat: arraste, aproxime e confira seus coletados.')
+        Tooltip(self.planet_button,_tr('Abrir mapa global: escolha a área, arraste, aproxime e confira seus coletados.'))
         self.tabs=ttk.Notebook(self.shell,style='Compact.TNotebook');self.tabs.pack(fill='both',expand=True,padx=14)
         self.explore=ttk.Frame(self.tabs);self.prefs=ttk.Frame(self.tabs)
-        self.tabs.add(self.explore,text='Itens');self.tabs.add(self.prefs,text='Ajustes')
+        self.tabs.add(self.explore,text=_tr('Itens'));self.tabs.add(self.prefs,text=_tr('Ajustes'))
         navigation=ttk.Frame(self.shell,style='Card.TFrame',padding=4)
         navigation.pack(fill='x',padx=14,pady=(0,8),before=self.tabs)
         navigation.columnconfigure((0,1),weight=1)
-        self.items_tab=ttk.Button(navigation,text='⌖  Itens',command=lambda:self.tabs.select(self.explore))
-        self.settings_tab=ttk.Button(navigation,text='☷  Ajustes',command=self.show_settings)
+        self.items_tab=ttk.Button(navigation,text=_tr('⌖  Itens'),command=lambda:self.tabs.select(self.explore))
+        self.settings_tab=ttk.Button(navigation,text=_tr('☷  Ajustes'),command=self.show_settings)
         self.items_tab.grid(row=0,column=0,sticky='ew',padx=(0,3))
         self.settings_tab.grid(row=0,column=1,sticky='ew',padx=(3,0))
         def sync_navigation(event=None):
@@ -84,7 +85,7 @@ class CompactPanel(PanelLayout):
             self.settings_tab.configure(style='Nav.TButton' if exploring else 'Nav.Selected.TButton')
         self.tabs.bind('<<NotebookTabChanged>>',sync_navigation);sync_navigation()
         self.region_names={'AppSample':'appsample'}
-        self.region_var=tk.StringVar(value='AppSample')
+        self.region_var=tk.StringVar(value=_tr('AppSample'))
         self.layer_var=tk.StringVar();self.territory_path=tk.StringVar()
         search=ttk.Frame(self.explore);search.pack(fill='x')
         self.category_query=tk.StringVar()
@@ -96,7 +97,7 @@ class CompactPanel(PanelLayout):
         magnifier.create_oval(3,4,13,14,outline=MUTED);magnifier.create_line(12,13,17,18,fill=MUTED)
         magnifier.bind('<Button-1>',lambda e:search_entry.focus_set())
         search_entry.pack(side='left',fill='x',expand=True)
-        placeholder=tk.Label(search,text='O que você quer encontrar?',bg=ROW,fg=MUTED,font=('Segoe UI',9),cursor='xterm')
+        placeholder=tk.Label(search,text=_tr('O que você quer encontrar?'),bg=ROW,fg=MUTED,font=('Segoe UI',9),cursor='xterm')
         def search_hint(*args):
             if not self.category_query.get() and self.root.focus_get()!=search_entry:placeholder.place(in_=search_entry,x=7,y=5)
             else:placeholder.place_forget()
@@ -107,9 +108,9 @@ class CompactPanel(PanelLayout):
         self.category_query.trace_add('write',search_hint);search_hint()
         self.category_query.trace_add('write',lambda *a:self.filter_categories())
         hints=ttk.Frame(self.explore);hints.pack(fill='x',pady=(5,3))
-        ttk.Label(hints,text='Seleção',foreground=MUTED,font=('Segoe UI',8)).pack(side='left')
-        ttk.Button(hints,text='Limpar seleção',style='Quiet.TButton',command=lambda:self.set_categories(False)).pack(side='right')
-        ttk.Button(hints,text='Selecionar todos',style='Quiet.TButton',command=lambda:self.set_categories(True)).pack(side='right')
+        ttk.Label(hints,text=_tr('Seleção'),foreground=MUTED,font=('Segoe UI',8)).pack(side='left')
+        ttk.Button(hints,text=_tr('Limpar seleção'),style='Quiet.TButton',command=lambda:self.set_categories(False)).pack(side='right')
+        ttk.Button(hints,text=_tr('Selecionar todos'),style='Quiet.TButton',command=lambda:self.set_categories(True)).pack(side='right')
         listing=ttk.Frame(self.explore);listing.pack(fill='both',expand=True,pady=(1,0))
         canvas=CategoryBrowser(listing,self.choose_categories,height=150)
         scroll=ttk.Scrollbar(listing,orient='vertical',command=canvas.yview);scroll.pack(side='right',fill='y')
@@ -118,29 +119,29 @@ class CompactPanel(PanelLayout):
         self.category_vars={};self.category_labels={};self.category_widgets=[]
         self.populate_region_controls()
         self.candidates=ttk.Combobox(self.explore,state='readonly')
-        self.confirm_button=ttk.Button(self.explore,text='Confirmar selecionado',command=self.confirm_candidate)
+        self.confirm_button=ttk.Button(self.explore,text=_tr('Confirmar selecionado'),command=self.confirm_candidate)
         self.progress_text=tk.StringVar();self.progress_value=tk.DoubleVar()
         information=tk.Frame(self.shell,bg=BG);information.pack(side='bottom',fill='x',before=self.tabs,padx=16,pady=(5,5))
         self.build_automark_controls(information)
         tk.Frame(information,bg=BORDER,height=1).pack(fill='x',pady=(0,5))
         tk.Label(information,textvariable=self.progress_text,bg=BG,fg=MUTED,font=('Segoe UI',8),wraplength=325,anchor='w').pack(fill='x')
-        self.status=tk.StringVar(value='Procurando o Genshin…');summary=tk.StringVar()
-        def summarize_status(*args):summary.set(self.status.get().split(' · ')[0])
+        self.status=tk.StringVar(value=_tr('Procurando o Genshin…'));summary=tk.StringVar()
+        def summarize_status(*args):summary.set(_tr(self.status.get().split(' · ')[0]))
         self.status.trace_add('write',summarize_status);summarize_status()
         tk.Label(information,textvariable=summary,bg=BG,fg=MUTED,font=('Segoe UI',8),wraplength=325,anchor='w').pack(fill='x',pady=(2,0))
         self.notice=tk.StringVar()
         notice_label=tk.Label(information,textvariable=self.notice,bg=BG,fg=GOLD,font=('Segoe UI',8),wraplength=325,anchor='w')
         footer=ttk.Frame(information);footer.pack(fill='x',pady=(7,0))
-        play=ttk.Button(footer,text='Jogar',style='Primary.TButton',width=7,command=self.collapse_to_game)
-        play.pack(side='right');Tooltip(play,'Recolher o painel e devolver o foco ao Genshin.')
+        play=ttk.Button(footer,text=_tr('Jogar'),style='Primary.TButton',width=7,command=self.collapse_to_game)
+        play.pack(side='right');Tooltip(play,_tr('Recolher o painel e devolver o foco ao Genshin.'))
         bottom=tk.Frame(footer,bg=BG);bottom.pack(side='left',fill='x',expand=True)
-        self.report_button=ttk.Button(bottom,text='Report',style='Quiet.TButton',command=lambda:report_problem(self.root))
+        self.report_button=ttk.Button(bottom,text=_tr('Report'),style='Quiet.TButton',command=lambda:report_problem(self.root))
         self.report_button.pack(side='left')
-        self.support_button=ttk.Button(bottom,text='Apoiar',style='Quiet.TButton',
+        self.support_button=ttk.Button(bottom,text=_tr('Apoiar'),style='Quiet.TButton',
                                       command=lambda:webbrowser.open('https://buymeacoffee.com/victorsilva'))
         self.support_button.pack(side='left',padx=(2,0))
-        Tooltip(self.support_button,'Apoiar o Hexen Map no Buy Me a Coffee.')
-        self.version_label=tk.Label(information,text=f'v{VERSION}',bg=BG,fg=MUTED,
+        Tooltip(self.support_button,_tr('Apoiar o Hexen Map no Buy Me a Coffee.'))
+        self.version_label=tk.Label(information,text=_tr('v{0}', VERSION),bg=BG,fg=MUTED,
                                     font=('Segoe UI',8),anchor='e')
         self.version_label.pack(fill='x',pady=(2,0))
         def show_notice(*args):
@@ -165,12 +166,12 @@ class CompactPanel(PanelLayout):
 
     def build_scope_controls(self,parent):
         scope=ttk.Frame(parent);scope.pack(fill='x',pady=(0,2))
-        self.source_caption=tk.Label(scope,text='◎  Mapa  ⌄',bg=BG,fg=TEXT,font=('Segoe UI',9),anchor='w',pady=7,cursor='hand2',takefocus=1)
+        self.source_caption=tk.Label(scope,text=_tr('◎  Mapa  ⌄'),bg=BG,fg=TEXT,font=('Segoe UI',9),anchor='w',pady=7,cursor='hand2',takefocus=1)
         self.source_caption.pack(side='left',fill='x',expand=True)
         self.source_caption.bind('<Button-1>',self.open_layers)
         self.source_caption.bind('<Return>',self.open_layers)
-        Tooltip(self.source_caption,'Selecionar mapa do AppSample. A seleção permanece fixa ao viajar.')
-        layer_caption=tk.Label(scope,text='Superfície',bg=BG,fg=TEXT,font=('Segoe UI',8),cursor='hand2')
+        Tooltip(self.source_caption,_tr('Escolher detecção automática ou fixar um mapa do AppSample.'))
+        layer_caption=tk.Label(scope,text=_tr('Superfície'),bg=BG,fg=TEXT,font=('Segoe UI',8),cursor='hand2')
         layer_caption.pack(side='right')
         layer_caption.bind('<Button-1>',self.open_layers)
         button=tk.Canvas(scope,width=30,height=30,bg=BG,highlightthickness=0,cursor='hand2');button.pack(side='right',padx=(8,0))
@@ -178,13 +179,13 @@ class CompactPanel(PanelLayout):
         for cy in (20,15,10):button.create_polygon(7,cy,15,cy-4,23,cy,15,cy+4,fill=BG,outline=GOLD)
         button.bind('<Button-1>',self.open_layers)
         button.configure(takefocus=1);button.bind('<Return>',self.open_layers);button.bind('<space>',self.open_layers)
-        Tooltip(button,'Escolher mapa e camada. A seleção permanece fixa ao viajar.')
+        Tooltip(button,_tr('Escolher mapa e camada, ou reconhecer automaticamente ao viajar.'))
         def show_territory(*args):
             path=self.territory_path.get().split(' · ',1)
             name=path[0]
             self.source_caption.configure(text='◎  '+(name if len(name)<=24 else name[:23]+'…')+'  ⌄')
             layer=path[1] if len(path)>1 else 'Camada'
-            layer_caption.configure(text=layer if len(layer)<=18 else layer[:17]+'…')
+            layer_caption.configure(text=_tr(layer) if len(layer)<=18 else _tr(layer[:17])+'…')
         self.territory_path.trace_add('write',show_territory);show_territory()
 
     def build_automark_controls(self,parent):
@@ -212,15 +213,15 @@ class CompactPanel(PanelLayout):
         self.automark_card.pack(fill='x',pady=(0,8))
         row=tk.Frame(self.automark_card,bg=ROW);row.pack(fill='x')
         self.automark_var=tk.BooleanVar(value=self.settings.get('automark',False))
-        self.automark_toggle=ttk.Checkbutton(row,text='AutoMark de baús · Beta',style='AutoMark.TCheckbutton',
+        self.automark_toggle=ttk.Checkbutton(row,text=_tr('AutoMark de baús · Beta'),style='AutoMark.TCheckbutton',
             variable=self.automark_var,command=self.change_automark)
         self.automark_toggle.pack(side='left',fill='x',expand=True)
         self.automark_resync_button=ttk.Button(row,text='↻',width=3,style='Card.Quiet.TButton',command=self.resync_automark)
         self.automark_resync_button.pack(side='right',padx=(4,0))
-        Tooltip(self.automark_resync_button,'Sincronizar novamente a tela e a posição do AutoMark.')
-        Tooltip(self.automark_toggle,'Reconhece a abertura e as recompensas para marcar um baú próximo sem ambiguidade. Use Desfazer para corrigir uma coleta.')
-        self.automark_sync_text=tk.StringVar(value='Volte ao Genshin para sincronizar a tela e a posição.'
-            if self.settings.get('automark') else 'AutoMark desligado.')
+        Tooltip(self.automark_resync_button,_tr('Sincronizar novamente a tela e a posição do AutoMark.'))
+        Tooltip(self.automark_toggle,_tr('Reconhece a abertura e as recompensas para marcar um baú próximo sem ambiguidade. Use Desfazer para corrigir uma coleta.'))
+        self.automark_sync_text=tk.StringVar(value=_tr('Volte ao Genshin para sincronizar a tela e a posição.')
+            if self.settings.get('automark') else _tr('AutoMark desligado.'))
         self.automark_sync_label=tk.Label(self.automark_card,textvariable=self.automark_sync_text,
             bg=ROW,fg=MUTED,anchor='w',justify='left',wraplength=260,font=('Segoe UI',8))
         self.automark_sync_label.bind('<Configure>',lambda event:self.automark_sync_label.configure(wraplength=max(100,event.width))
@@ -232,7 +233,7 @@ class CompactPanel(PanelLayout):
             else:self.automark_sync_label.pack_forget()
             if not ready:
                 self.automark_toggle.state(['disabled'])
-                self.automark_sync_text.set('Indisponível: confira as referências em Ajustes → Diagnóstico.')
+                self.automark_sync_text.set(_tr('Indisponível: confira as referências em Ajustes → Diagnóstico.'))
         self.automark_var.trace_add('write',refresh);refresh()
 
     def change_automark(self):
@@ -243,25 +244,25 @@ class CompactPanel(PanelLayout):
     def resync_automark(self):
         self.automark.reset();self.automark_generation+=1
         if hasattr(self,'automark_sync_text'):
-            self.automark_sync_text.set('Volte ao Genshin para sincronizar a tela e a posição.'
-                                       if self.settings.get('automark') else 'AutoMark desligado.')
+            self.automark_sync_text.set(_tr('Volte ao Genshin para sincronizar a tela e a posição.')
+                                       if self.settings.get('automark') else _tr('AutoMark desligado.'))
 
     def update_automark_sync(self):
         from src.live.automark_service import synchronization_message
-        if not self.chest_signals.ready:text='Indisponível: confira as referências em Ajustes → Diagnóstico.'
-        elif not self.settings.get('automark'):text='AutoMark desligado.'
-        elif self.session.hidden:text='Mostre o overlay para sincronizar o AutoMark.'
-        elif self.region_loading:text='Carregando referências…'
+        if not self.chest_signals.ready:text=_tr('Indisponível: confira as referências em Ajustes → Diagnóstico.')
+        elif not self.settings.get('automark'):text=_tr('AutoMark desligado.')
+        elif self.session.hidden:text=_tr('Mostre o overlay para sincronizar o AutoMark.')
+        elif self.region_loading:text=_tr('Carregando referências…')
         elif self.automark_service.sync_context!=(self.automark_generation,self.selection_epoch):
-            text='Sincronizando tela e posição…'
-        else:text=synchronization_message(self.automark_service.sync_state)
-        if self.automark_sync_text.get()!=text:self.automark_sync_text.set(text)
+            text=_tr('Sincronizando tela e posição…')
+        else:text=_tr(synchronization_message(self.automark_service.sync_state))
+        if self.automark_sync_text.get()!=text:self.automark_sync_text.set(_tr(text))
 
     def show_settings(self):
         self.tabs.select(self.prefs)
 
     def capture_label(self):
-        return 'Compartilhamento: ícones visíveis' if self.settings.get('capture_visible',False) else 'Compartilhamento: ícones ocultos'
+        return _tr('Compartilhamento: ícones visíveis') if self.settings.get('capture_visible',False) else _tr('Compartilhamento: ícones ocultos')
 
     def paint_capture_eye(self):
         c=self.capture_eye;c.delete('all');visible=self.settings.get('capture_visible',False)
@@ -272,12 +273,12 @@ class CompactPanel(PanelLayout):
         value=not self.settings.get('capture_visible',False)
         try:self.native.set_capture_visible(value)
         except OSError as exc:
-            self.session.notice=str(exc);return
+            self.session.notice=_tr(str(exc));return
         self.settings['capture_visible']=value
-        self.paint_capture_eye();self.capture_button.configure(text=self.capture_label())
-        self.session.notice='Overlay visível no compartilhamento de tela.' if value else 'Overlay oculto no compartilhamento de tela.'
+        self.paint_capture_eye();self.capture_button.configure(text=_tr(self.capture_label()))
+        self.session.notice=_tr('Overlay visível no compartilhamento de tela.') if value else _tr('Overlay oculto no compartilhamento de tela.')
         try:self.persist_settings()
-        except OSError as exc:self.session.notice=f'Visibilidade alterada; preferência não salva: {exc}'
+        except OSError as exc:self.session.notice=_tr('Visibilidade alterada; preferência não salva: {0}', exc)
 
     def panel_undo(self):
         if getattr(self,'region_loading',False):return
@@ -336,7 +337,7 @@ class CompactPanel(PanelLayout):
         self.last_panel_position=(x,y)
 
     def panel_mode_label(self):
-        return 'Fixar ao Genshin' if self.panel_detached else 'Desprender do Genshin'
+        return _tr('Fixar ao Genshin') if self.panel_detached else _tr('Desprender do Genshin')
 
     def toggle_panel_mode(self):
         self.close_layers()
@@ -346,14 +347,14 @@ class CompactPanel(PanelLayout):
         self.root.attributes('-topmost',not self.panel_detached)
         self.update_panel_constraints()
         self.root.update_idletasks();self.native.panel(self.root.winfo_id())
-        self.panel_mode_button.configure(text=self.panel_mode_label())
+        self.panel_mode_button.configure(text=_tr(self.panel_mode_label()))
         self.panel_suspended=False
         self.root.deiconify()
         self.finish_panel_drag()
 
     def finish_panel_drag(self, event=None):
         try: self.persist_settings()
-        except OSError as exc: self.session.notice = str(exc)
+        except OSError as exc: self.session.notice = _tr(str(exc))
 
     def expand_or_drag(self, event):
         if not self.panel_dragged:
@@ -491,7 +492,7 @@ class CompactPanel(PanelLayout):
         popup.configure(bg=BG, highlightbackground=GOLD, highlightthickness=1)
         place_dialog(popup,self.root,(340,300))
         top = ttk.Frame(popup); top.pack(fill='x', padx=8, pady=6)
-        ttk.Label(top, text='Mapas e camadas').pack(side='left')
+        ttk.Label(top, text=_tr('Mapas e camadas')).pack(side='left')
         ttk.Button(top, text='×', width=3, command=self.close_layers).pack(side='right')
         query = tk.StringVar()
         entry = ttk.Entry(popup, textvariable=query); entry.pack(fill='x', padx=8)
@@ -535,7 +536,7 @@ class CompactPanel(PanelLayout):
         self.category_browser.schedule_paint()
         # Counts cover the territory, independently of the visible categories.
         try:self.persist_settings()
-        except OSError as exc:self.session.notice=f'Falha ao salvar preferências: {exc}'
+        except OSError as exc:self.session.notice=_tr('Falha ao salvar preferências: {0}', exc)
 
     def filter_categories(self):
         job=getattr(self,'category_filter_job',None)

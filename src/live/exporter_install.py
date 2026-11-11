@@ -1,4 +1,5 @@
 """Materialize the bundled, self-contained exporter in a permanent local folder."""
+from src.live.i18n import tr as _tr
 import hashlib
 import json
 from pathlib import Path
@@ -15,7 +16,7 @@ def prepare_extension(source=None,destination=None):
         source=install_dir()/'build/exporter-bundle/HexenMapExporter'
     contents={name:(source/name).read_bytes() for name in FILES}
     manifest=json.loads(contents['manifest.json'].decode('utf-8-sig'))
-    if manifest.get('manifest_version')!=3:raise ValueError('Extensão incluída inválida')
+    if manifest.get('manifest_version')!=3:raise ValueError(_tr('Extensão incluída inválida'))
     digest=hashlib.sha256()
     for name,raw in sorted(contents.items()):digest.update(name.encode()+b'\0'+raw)
     # Keep paths fixed across runs, independent of PyInstaller's temporary folder.
@@ -26,6 +27,6 @@ def prepare_extension(source=None,destination=None):
     for name,raw in contents.items():
         path=folder/name
         if path.exists():
-            if path.read_bytes()!=raw:raise ValueError('A pasta local da extensão foi alterada. Preserve-a e escolha uma instalação limpa.')
+            if path.read_bytes()!=raw:raise ValueError(_tr('A pasta local da extensão foi alterada. Preserve-a e escolha uma instalação limpa.'))
         else:path.write_bytes(raw)
     return folder

@@ -1,4 +1,5 @@
 """Compact settings sections; technical controls remain available on demand."""
+from src.live.i18n import tr as _tr, LANGUAGES, get_language, save_language
 import tkinter as tk
 from tkinter import ttk
 from src.live.storage import HOTKEY_OPTIONS
@@ -20,7 +21,22 @@ def build_settings(app, parent, *, bg, muted):
     body.bind('<Configure>',body_changed)
     canvas.bind('<Configure>',canvas_changed)
     app.settings_sections=[]
-    app.panel_mode_button=ttk.Button(body,text=app.panel_mode_label(),command=app.toggle_panel_mode)
+    language_row=ttk.Frame(body);language_row.pack(fill='x',pady=(4,8))
+    ttk.Label(language_row,text='Idioma / Language').pack(anchor='w')
+    language_var=tk.StringVar(value=LANGUAGES[get_language()])
+    language_box=ttk.Combobox(language_row,textvariable=language_var,
+                              values=list(LANGUAGES.values()),state='readonly')
+    language_box.pack(fill='x',pady=3)
+    language_status=tk.StringVar()
+    ttk.Label(language_row,textvariable=language_status,wraplength=280,foreground=muted).pack(fill='x')
+    def change_language(event=None):
+        try:
+            save_language(next(code for code,label in LANGUAGES.items() if label==language_var.get()))
+            language_status.set(_tr('Idioma salvo. Reabra o aplicativo para aplicar.'))
+        except OSError as exc:
+            language_status.set(_tr('Não foi possível salvar o idioma: {0}',exc))
+    language_box.bind('<<ComboboxSelected>>',change_language)
+    app.panel_mode_button=ttk.Button(body,text=_tr(app.panel_mode_label()),command=app.toggle_panel_mode)
     app.panel_mode_button.pack(fill='x',pady=(4,8))
 
     def note(container,text):
@@ -39,11 +55,11 @@ def build_settings(app, parent, *, bg, muted):
             opening=not state['open']
             for item in app.settings_sections:
                 if item['open']:
-                    item['open']=False;item['body'].pack_forget();item['button'].configure(text='▸ '+item['title'])
+                    item['open']=False;item['body'].pack_forget();item['button'].configure(text='▸ '+_tr(item['title']))
             if opening:
-                state['open']=True;content.pack(fill='x');button.configure(text='▾ '+state['title'])
+                state['open']=True;content.pack(fill='x');button.configure(text='▾ '+_tr(state['title']))
             canvas.yview_moveto(0)
-        button=ttk.Button(frame,text='▸ '+title,style='Section.TButton',command=toggle)
+        button=ttk.Button(frame,text='▸ '+_tr(title),style='Section.TButton',command=toggle)
         button.pack(fill='x');state['button']=button;app.settings_sections.append(state)
         content.section_state=state
         return content
@@ -53,51 +69,53 @@ def build_settings(app, parent, *, bg, muted):
         build_profile_controls(app,section('Perfis'),note)
 
     appearance=section('Painel e compartilhamento')
-    app.panel_scale_var=tk.StringVar(value=str(app.settings.get('panel',{}).get('scale',100))+'%')
-    ttk.Label(appearance,text='Tamanho dos textos e controles').pack(anchor='w')
+    app.panel_scale_var=tk.StringVar(value=_tr(str(app.settings.get('panel',{}).get('scale',100)))+'%')
+    ttk.Label(appearance,text=_tr('Tamanho dos textos e controles')).pack(anchor='w')
     scale_box=ttk.Combobox(appearance,textvariable=app.panel_scale_var,values=['100%','125%','150%'],state='readonly',width=10)
     scale_box.pack(fill='x',pady=3);scale_box.bind('<<ComboboxSelected>>',app.change_panel_scale)
-    ttk.Button(appearance,text='Restaurar tamanho padrão',command=app.reset_panel_size).pack(fill='x',pady=3)
-    note(appearance,'Puxe as bordas da janela para aumentar o painel. No modo fixado, use a alça no canto inferior direito. Tamanho e escala são salvos.')
-    ttk.Label(appearance,text='Mapa e camada do rastreamento').pack(anchor='w',pady=(6,0))
+    ttk.Button(appearance,text=_tr('Restaurar tamanho padrão'),command=app.reset_panel_size).pack(fill='x',pady=3)
+    note(appearance,_tr('Puxe as bordas da janela para aumentar o painel. No modo fixado, use a alça no canto inferior direito. Tamanho e escala são salvos.'))
+    ttk.Label(appearance,text=_tr('Mapa e camada do rastreamento')).pack(anchor='w',pady=(6,0))
     app.build_scope_controls(appearance)
-    note(appearance,'Janela independente: mova o painel para fora da área do jogo. Fixado ao jogo: acompanha o foco do Genshin.')
-    app.capture_button=ttk.Button(appearance,text=app.capture_label(),command=app.toggle_capture_visibility)
+    note(appearance,_tr('Janela independente: mova o painel para fora da área do jogo. Fixado ao jogo: acompanha o foco do Genshin.'))
+    app.capture_button=ttk.Button(appearance,text=_tr(app.capture_label()),command=app.toggle_capture_visibility)
     app.capture_button.pack(fill='x',pady=3)
-    note(appearance,'Controla se os ícones aparecem no compartilhamento de tela. Não desliga o reconhecimento. Para incluir os pins, compartilhe a tela inteira; só a janela do jogo pode não incluí-los.')
+    note(appearance,_tr('Controla se os ícones aparecem no compartilhamento de tela. Não desliga o reconhecimento. Para incluir os pins, compartilhe a tela inteira; só a janela do jogo pode não incluí-los.'))
 
     if app.catalogs.appsample_available:
         imports=section('Coletados do AppSample')
-        note(imports,'Traga os itens que você já marcou no site. A prévia pede confirmação e a mesclagem preserva seu progresso com backup.')
-        ttk.Button(imports,text='Abrir pasta da extensão…',command=app.open_exporter_folder).pack(fill='x',pady=3)
-        note(imports,'Instalação manual: no Chrome ou Edge, abra Extensões, ative Modo do desenvolvedor e use Carregar sem compactação. Selecione a pasta aberta pelo botão acima. Não mova nem apague essa pasta após instalar.')
-        ttk.Button(imports,text='Importar arquivo de coletados…',command=app.import_appsample_progress).pack(fill='x',pady=3)
-        ttk.Button(imports,text='Ativar conexão com a extensão…',command=app.install_browser_connector).pack(fill='x',pady=3)
-        note(imports,'Ative a conexão uma vez para usar Enviar ao Hexen Map na extensão. Sem conexão, você pode baixar o JSON e importar o arquivo.')
-        ttk.Button(imports,text='Como trazer meus coletados?',style='Quiet.TButton',command=app.show_appsample_export).pack(fill='x',pady=3)
+        note(imports,_tr('Traga os itens que você já marcou no site. A prévia pede confirmação e a mesclagem preserva seu progresso com backup.'))
+        ttk.Button(imports,text=_tr('Abrir pasta da extensão…'),command=app.open_exporter_folder).pack(fill='x',pady=3)
+        note(imports,_tr('Instalação manual: no Chrome ou Edge, abra Extensões, ative Modo do desenvolvedor e use Carregar sem compactação. Selecione a pasta aberta pelo botão acima. Não mova nem apague essa pasta após instalar.'))
+        ttk.Button(imports,text=_tr('Importar arquivo de coletados…'),command=app.import_appsample_progress).pack(fill='x',pady=3)
+        ttk.Button(imports,text=_tr('Ativar conexão com a extensão…'),command=app.install_browser_connector).pack(fill='x',pady=3)
+        note(imports,_tr('Ative a conexão uma vez para usar Enviar ao Hexen Map na extensão. Sem conexão, você pode baixar o JSON e importar o arquivo.'))
+        ttk.Button(imports,text=_tr('Como trazer meus coletados?'),style='Quiet.TButton',command=app.show_appsample_export).pack(fill='x',pady=3)
 
     shortcuts=section('Atalhos')
     app.key_vars={}
     for action,label in (('panel','Abrir / recolher painel'),('visibility','Mostrar / ocultar ícones'),('collect','Confirmar coleta próxima'),('undo','Desfazer coleta')):
         row=ttk.Frame(shortcuts);row.pack(fill='x',pady=4)
-        ttk.Label(row,text=label).pack(side='left')
-        var=tk.StringVar(value=app.settings['hotkeys'][action]);app.key_vars[action]=var
+        ttk.Label(row,text=_tr(label)).pack(side='left')
+        var=tk.StringVar(value=_tr(app.settings['hotkeys'][action]));app.key_vars[action]=var
         ttk.Combobox(row,textvariable=var,values=HOTKEY_OPTIONS,state='readonly',width=13).pack(side='right')
-    ttk.Button(shortcuts,text='Salvar atalhos',command=app.save_keys).pack(fill='x',pady=6)
-    note(shortcuts,'Funcionam com o jogo em foco. Ctrl + clique abre o cartão de coleta; segurar Ctrl revela os itens já pegos em cinza.')
+    ttk.Button(shortcuts,text=_tr('Salvar atalhos'),command=app.save_keys).pack(fill='x',pady=6)
+    note(shortcuts,_tr('Funcionam com o jogo em foco. Ctrl + clique abre o cartão de coleta; segurar Ctrl revela os itens já pegos em cinza.'))
 
     diagnostics=section('Diagnóstico · avançado')
-    ttk.Button(diagnostics,text='Copiar diagnóstico para suporte',command=app.copy_diagnostics).pack(fill='x',pady=3)
-    note(diagnostics,'Use estas opções se os marcadores não reaparecerem após voltar ao jogo.')
-    ttk.Button(diagnostics,text='Recarregar reconhecimento',command=app.reload_reference).pack(fill='x',pady=3)
-    note(diagnostics,'Reinicia a localização visual sem alterar coletas ou filtros.')
-    note(diagnostics,'Em tela cheia, se os ícones não aparecerem, teste o modo janela sem bordas. A sobreposição externa pode não aparecer em tela cheia exclusiva.')
+    ttk.Button(diagnostics,text=_tr('Copiar diagnóstico para suporte'),command=app.copy_diagnostics).pack(fill='x',pady=3)
+    ttk.Button(diagnostics,text=_tr('Gravar / encerrar teste do minimapa…'),command=app.record_minimap_test).pack(fill='x',pady=3)
+    ttk.Button(diagnostics,text=_tr('Exportar teste do minimapa…'),command=app.export_minimap_test).pack(fill='x',pady=3)
+    note(diagnostics,_tr('Use estas opções se os marcadores não reaparecerem após voltar ao jogo.'))
+    ttk.Button(diagnostics,text=_tr('Recarregar reconhecimento'),command=app.reload_reference).pack(fill='x',pady=3)
+    note(diagnostics,_tr('Reinicia a localização visual sem alterar coletas ou filtros.'))
+    note(diagnostics,_tr('Em tela cheia, se os ícones não aparecerem, teste o modo janela sem bordas. A sobreposição externa pode não aparecer em tela cheia exclusiva.'))
     ttk.Label(diagnostics,textvariable=app.status,wraplength=280,foreground=muted).pack(fill='x',pady=5)
-    note(diagnostics,'AutoMark: '+app.chest_signals.reason)
-    note(diagnostics,'Os prazos conhecidos de reset usam o servidor América. Recursos sem regra confirmada não recebem um temporizador genérico.')
-    ttk.Button(diagnostics,text='Exportação manual (avançado)…',style='Quiet.TButton',command=lambda:app.show_appsample_export(manual=True)).pack(fill='x',pady=3)
+    note(diagnostics,_tr('AutoMark: ')+_tr(app.chest_signals.reason))
+    note(diagnostics,_tr('Os prazos conhecidos de reset usam o servidor América. Recursos sem regra confirmada não recebem um temporizador genérico.'))
+    ttk.Button(diagnostics,text=_tr('Exportação manual (avançado)…'),style='Quiet.TButton',command=lambda:app.show_appsample_export(manual=True)).pack(fill='x',pady=3)
     ttk.Separator(body).pack(fill='x',pady=(12,6))
-    ttk.Button(body,text='Encerrar Hexen Map',style='Quiet.TButton',command=app.close).pack(fill='x',pady=(0,8))
+    ttk.Button(body,text=_tr('Encerrar Hexen Map'),style='Quiet.TButton',command=app.close).pack(fill='x',pady=(0,8))
 
     def wheel(event):
         # Do not scroll a short collapsed page into an empty region.

@@ -1,4 +1,5 @@
 """Independent, offline Teyvat map; no capture, tracking or game commands."""
+from src.live.i18n import tr as _tr
 import ctypes as ct
 import math,time
 from types import SimpleNamespace
@@ -6,9 +7,10 @@ import tkinter as tk
 from tkinter import ttk,messagebox
 import numpy as np
 from PIL import ImageTk
-from src.live.theme import BG,TEXT,MUTED,ACCENT,place_dialog
+from src.live.theme import BG,TEXT,MUTED,ACCENT,place_dialog,Tooltip
 from src.live.world_tiles import WorldTiles,screen_to_world
 from src.live.world_index import WorldIndex
+from src.live.map_registry import installed_scopes,map_name,scope_name
 from src.live.presentation import MarkerCanvas
 from src.live.marker_art import draw_pin,marker_geometry,LEGACY
 from src.live.marker_menu import MarkerMenu
@@ -26,25 +28,40 @@ class MapCardNative:
 
 class WorldMap:
     def __init__(self,app):
-        self.app=app;self.window=tk.Toplevel(app.root);self.window.title('Teyvat · Mapa geral · Hexen Map')
+        self.app=app;self.window=tk.Toplevel(app.root);self.window.title(_tr('Mapa geral · Hexen Map'))
         self.window.configure(bg=BG);self.window.minsize(520,380)
         self.window._lunar_signature=app.root._lunar_signature;self.window._lunar_native=app.native
         self.window._visual_scale=getattr(app.root,'_visual_scale',1.)
-        self.tiles=WorldTiles();self.photos={};self.card=None;self.closed=False
+        self.scopes=installed_scopes()
+        if not self.scopes:self.scopes=[('as-map-2','surface')]
+        obs=app.session.observation
+        current=(obs.map_id,obs.layer_id) if obs.fresh(time.monotonic()) else None
+        self.recognized_scope=current
+        saved=tuple(app.settings.get('world_map',{}).get('scope',()))
+        self.scope=current if current in self.scopes else saved if saved in self.scopes else self.scopes[0]
+        self.tiles=WorldTiles(map_id=self.scope[0],layer=self.scope[1]);self.photos={};self.card=None;self.closed=False
         self.index=None;self.index_source=id(app.session.items)
-        self.index_future=self.tiles.pool.submit(WorldIndex,app.session.items)
+        self.index_future=self.tiles.pool.submit(WorldIndex,app.session.items,*self.scope)
         self.zoom=9.;a,b,c,d=self.tiles.bounds;self.cx=(a+c)/2;self.cy=(b+d)/2
         self.dirty=True;self.need_fit=True;self.job=None;self.last_progress=0.;self.collected=set();self.shown=[];self.clusters={}
         toolbar=ttk.Frame(self.window,padding=8);toolbar.pack(fill='x')
         ttk.Button(toolbar,text='−',width=3,command=lambda:self.zoom_at(-.5)).pack(side='left')
         ttk.Button(toolbar,text='+',width=3,command=lambda:self.zoom_at(.5)).pack(side='left',padx=3)
-        ttk.Button(toolbar,text='Ver Teyvat inteiro',command=self.fit).pack(side='left',padx=5)
-        ttk.Button(toolbar,text='Desfazer',command=self.undo).pack(side='left')
-        self.reveal=tk.BooleanVar();ttk.Checkbutton(toolbar,text='Mostrar coletados',variable=self.reveal,command=self.invalidate).pack(side='right')
-        ttk.Label(self.window,text='Teyvat · Superfície · tipos e coletas compartilhados com o painel',foreground=MUTED).pack(fill='x',padx=10)
+        ttk.Button(toolbar,text=_tr('Ver mapa inteiro'),command=self.fit).pack(side='left',padx=5)
+        ttk.Button(toolbar,text=_tr('Desfazer'),command=self.undo).pack(side='left')
+        self.reveal=tk.BooleanVar();ttk.Checkbutton(toolbar,text=_tr('Mostrar coletados'),variable=self.reveal,command=self.invalidate).pack(side='right')
+        selection=ttk.Frame(self.window);selection.pack(fill='x',padx=10)
+        self.scope_names={scope_name((m,l)):(m,l) for m,l in self.scopes}
+        self.scope_var=tk.StringVar(value=next(k for k,v in self.scope_names.items() if v==self.scope))
+        self.scope_box=ttk.Combobox(selection,textvariable=self.scope_var,values=list(self.scope_names),state='readonly',width=34)
+        self.scope_box.pack(side='left',fill='x',expand=True)
+        self.scope_box.bind('<<ComboboxSelected>>',lambda event:self.select_scope(self.scope_names[self.scope_var.get()]))
+        area_button=ttk.Button(selection,text=_tr('Área atual'),command=self.current_area)
+        area_button.pack(side='right',padx=(6,0))
+        Tooltip(area_button,_tr('Voltar ao último mapa reconhecido no jogo, sem alterar o rastreamento.'))
         self.canvas=tk.Canvas(self.window,bg='#19252D',highlightthickness=0);self.canvas.pack(fill='both',expand=True,padx=8,pady=6)
-        self.status=tk.StringVar(value='Carregando mapa local…');ttk.Label(self.window,textvariable=self.status,foreground=MUTED).pack(fill='x',padx=10)
-        ttk.Label(self.window,text='Arraste para navegar · roda para zoom · clique no ponto para coletar | AppSample / HoYoverse',foreground=MUTED,font=('Segoe UI',8),wraplength=800).pack(fill='x',padx=10,pady=(2,8))
+        self.status=tk.StringVar(value=_tr('Carregando mapa local…'));ttk.Label(self.window,textvariable=self.status,foreground=MUTED).pack(fill='x',padx=10)
+        ttk.Label(self.window,text=_tr('Arraste para navegar · roda para zoom · clique no ponto para coletar | AppSample / HoYoverse'),foreground=MUTED,font=('Segoe UI',8),wraplength=800).pack(fill='x',padx=10,pady=(2,8))
         self.renderer=MarkerCanvas(self.canvas,self.draw_pin)
         self.canvas.bind('<Configure>',lambda event:self.fit() if self.need_fit else self.invalidate())
         self.canvas.bind('<MouseWheel>',lambda event:self.zoom_at(.25 if event.delta>0 else -.25,event.x,event.y))
@@ -55,6 +72,31 @@ class WorldMap:
         scale=getattr(app.root,'_lunar_signature',1.)
         bounds=app.native.work_area(self.window.winfo_rootx(),self.window.winfo_rooty())
         self.window.minsize(min(round(520*scale),bounds[2]-bounds[0]-24),min(round(380*scale),bounds[3]-bounds[1]-round(48*scale)))
+
+    def select_scope(self,scope):
+        if scope not in self.scopes or scope==self.scope:return
+        self.close_card();self.index_future.cancel();self.tiles.close()
+        self.scope=scope;self.index=None;self.photos.clear();self.shown=[];self.clusters={}
+        self.renderer.clear();self.canvas.delete('tiles')
+        self.tiles=WorldTiles(map_id=scope[0],layer=scope[1])
+        self.index_future=self.tiles.pool.submit(WorldIndex,self.app.session.items,*scope)
+        self.scope_var.set(next(k for k,v in self.scope_names.items() if v==scope))
+        self.app.settings['world_map']={'scope':list(scope)}
+        try:self.app.persist_settings()
+        except OSError as exc:self.status.set(_tr('Falha ao salvar preferências: {0}',exc))
+        self.fit();self.invalidate()
+
+    def current_area(self):
+        obs=self.app.session.observation
+        fresh=obs.fresh(time.monotonic())
+        scope=(obs.map_id,obs.layer_id) if fresh else getattr(self.app,'last_recognized_scope',None) or self.recognized_scope
+        if scope in self.scopes:
+            self.recognized_scope=scope
+            self.select_scope(scope)
+            if fresh and obs.player is not None:
+                self.cx,self.cy=obs.player;self.clamp();self.invalidate()
+            else:self.fit()
+        else:self.status.set(_tr('Localização atual ainda não reconhecida.'))
 
     def invalidate(self):self.dirty=True
     def fit(self):
@@ -90,15 +132,15 @@ class WorldMap:
         native=self.app.native;hwnd=native.u.GetAncestor(self.window.winfo_id(),2) or self.window.winfo_id()
         rect=GameWindowRect(self.window.winfo_rootx(),self.window.winfo_rooty(),self.window.winfo_width(),self.window.winfo_height(),False,True,hwnd)
         def change(identifier,value):
-            try:self.app.session.set_collected(identifier,value,map_scope=('as-map-2','surface'))
+            try:self.app.session.set_collected(identifier,value,map_scope=self.scope)
             except Exception as exc:
-                messagebox.showerror('Coleta não salva',str(exc),parent=self.window);return
+                messagebox.showerror(_tr('Coleta não salva'),_tr(str(exc)),parent=self.window);return
             self.app.refresh_counts()
             self.last_progress=0.;self.close_card();self.invalidate()
         self.card=MarkerMenu(self.window,MapCardNative(native,hwnd),rect,items,self.app.session,change,self.close_card,
                              event.x_root,event.y_root,self.app.marker_hints)
     def undo(self):
-        self.close_card();self.app.session.undo(map_scope=('as-map-2','surface'))
+        self.close_card();self.app.session.undo(map_scope=self.scope)
         self.app.refresh_counts();self.last_progress=0.;self.invalidate()
     def close_card(self):
         if self.card:card=self.card;self.card=None;card.destroy()
@@ -106,7 +148,7 @@ class WorldMap:
         if category.startswith('cluster:'):
             count=category.split(':')[1]
             canvas.create_oval(x-12,y-12,x+12,y+12,fill='#332E46',outline=ACCENT)
-            canvas.create_text(x,y,text=count,fill=TEXT,font=('Segoe UI',8))
+            canvas.create_text(x,y,text=_tr(count),fill=TEXT,font=('Segoe UI',8))
         else:draw_pin(canvas,category,x,y,**kwargs)
 
     def draw(self):
@@ -149,12 +191,12 @@ class WorldMap:
         self.shown=self.renderer.render(pins,lambda key:False if key in self.clusters else self.app.session.is_collected(key),budget_ms=8.)
         if len(self.shown)<len(pins):self.dirty=True
         self.canvas.tag_lower('tiles')
-        state=f'{len(ids):,} pontos'.replace(',','.')
-        if self.clusters:state+=f' · {len(self.clusters)} grupos — clique para aproximar'
+        state=_tr('{0} pontos',f'{len(ids):,}'.replace(',','.'))
+        if self.clusters:state+=_tr(' · {0} grupos — clique para aproximar',len(self.clusters))
         if not selected:state='Selecione os tipos de itens no painel para mostrar os pontos.'
         if not self.tiles.levels:state='Imagens locais não instaladas. Os pontos usam o catálogo atual.'
-        elif self.tiles.pending:state+=' · carregando imagens locais…'
-        self.status.set(state)
+        elif self.tiles.pending:state+=_tr(' · carregando imagens locais…')
+        self.status.set(_tr(state))
 
     def poll(self):
         if self.closed:return
@@ -163,7 +205,7 @@ class WorldMap:
         if id(self.app.session.items)!=self.index_source:
             self.close_card();self.index_source=id(self.app.session.items);self.index=None
             self.renderer.clear();self.shown=[];self.clusters={}
-            self.index_future=self.tiles.pool.submit(WorldIndex,self.app.session.items)
+            self.index_future=self.tiles.pool.submit(WorldIndex,self.app.session.items,*self.scope)
         now=time.monotonic()
         selection=frozenset(self.app.session.selected)
         if selection!=getattr(self,'selection',None):self.selection=selection;self.dirty=True;self.close_card()

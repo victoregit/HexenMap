@@ -1,8 +1,10 @@
 """Conservative chest-opening events; missing qualified visual evidence disables writes."""
+from src.live.i18n import tr as _tr
 from dataclasses import dataclass
 import hashlib
 import json
 import math
+import logging
 from pathlib import Path
 from functools import lru_cache
 
@@ -40,19 +42,20 @@ class ChestSignals:
         self.hud_scale=1.
         self.layout_size=None;self.detected_hud_height=None
         self.scale_probe=0
-        self.reason='Aguardando conferência de uma abertura real de baú.'
+        self.reason=_tr('Aguardando conferência de uma abertura real de baú.')
         self.phase=None;self.token=0;self.quiet=None;self.last_stamp=None
         self.opening_count=0;self.loot_seen=-math.inf;self.gem_seen=-math.inf;self.exp_seen=-math.inf
+        self.icon_seen={k:-math.inf for k in ('adventure_icon','gem_icon','mora_icon')}
         try:
             root=Path(directory).resolve()
             if not (root/'manifest.json').is_file():
-                self.reason='Referências do AutoMark ausentes nesta instalação.';return
+                self.reason=_tr('Referências do AutoMark ausentes nesta instalação.');return
             data=json.loads((root/'manifest.json').read_text(encoding='utf-8'))
             validation=data.get('validation',{})
             if (data.get('schema')!=1 or (validation.get('approved') is not True and not review_only)
                     or not validation.get('positive_sessions') or not validation.get('negative_sessions')
                     or not validation.get('reviewed_at')):
-                self.reason='Referências do AutoMark sem validação aprovada.';return
+                self.reason=_tr('Referências do AutoMark sem validação aprovada.');return
             # Legacy client_size records where artwork was captured, not a lock
             # on the player's display. Preserve the original pixels and hashes.
             size=data.get('reference_size',data.get('client_size'))
@@ -61,35 +64,58 @@ class ChestSignals:
                 self.reference_size=tuple(size)
             def decode(entry):
                 path=(root/entry['file']).resolve()
-                if not path.is_relative_to(root):raise ValueError('Template fora da pasta')
+                if not path.is_relative_to(root):raise ValueError(_tr('Template fora da pasta'))
                 raw=path.read_bytes()
-                if hashlib.sha256(raw).hexdigest()!=entry['sha256']:raise ValueError('Template alterado')
+                if hashlib.sha256(raw).hexdigest()!=entry['sha256']:raise ValueError(_tr('Template alterado'))
                 template=cv2.imdecode(np.frombuffer(raw,np.uint8),cv2.IMREAD_GRAYSCALE)
                 roi=tuple(float(v) for v in entry['roi']);threshold=float(entry['threshold'])
                 if (template is None or min(template.shape)<6 or float(template.std())<5
                         or len(roi)!=4 or min(roi)<0 or min(roi[2:])<=0
                         or roi[0]+roi[2]>1 or roi[1]+roi[3]>1 or not .85<=threshold<1):
-                    raise ValueError('Sinal inválido')
+                    raise ValueError(_tr('Sinal inválido'))
                 method=entry.get('method','grayscale')
-                if method not in ('grayscale','white_glyph','local_contrast'):raise ValueError('Método visual inválido')
+                if method not in ('grayscale','white_glyph','local_contrast'):raise ValueError(_tr('Método visual inválido'))
                 return template,roi,threshold,method
             for role in ('opening','loot','primogem','adventure_exp'):
-                if role=='adventure_exp' and role not in data['signals']:continue
+                if role not in data['signals'] and role not in ('opening','loot','primogem'):continue
                 entry=data['signals'][role]
                 template,roi,threshold,method=decode(entry)
                 self.templates[role]=(template,roi,threshold);self.methods[role]=method
                 self.alternatives[role]=[decode(e) for e in entry.get('variants',[])]
                 anchor=entry.get('anchor','center' if role=='opening' else 'left')
-                if anchor not in ('left','center','right'):raise ValueError('Âncora inválida')
+                if anchor not in ('left','center','right'):raise ValueError(_tr('Âncora inválida'))
                 self.anchors[role]=anchor
-            self.ready=True;self.reason='Beta: escala automática da janela, referência Full HD. HUD em português; mudanças na interface do jogo ainda exigem conferência. F10 desfaz.'
+            # Separate managed addition: updates must not replace a user's
+            # existing qualified Portuguese pack or custom HUD references.
+            icon_path=root/'icon-signals.json'
+            if icon_path.is_file():
+                try:
+                    icons=json.loads(icon_path.read_text(encoding='utf-8'))
+                    checked=icons.get('validation',{})
+                    if (icons.get('schema')!=1 or tuple(icons.get('reference_size',()))!=self.reference_size
+                            or checked.get('approved') is not True or not checked.get('positive_sessions')
+                            or not checked.get('negative_sessions') or not checked.get('reviewed_at')):
+                        raise ValueError('Unqualified reward-icon pack')
+                    staged={}
+                    for role in ('adventure_icon','gem_icon','mora_icon'):
+                        e=icons['signals'][role]
+                        staged[role]=(decode(e),[decode(v) for v in e.get('variants',[])])
+                    for role,((template,roi,threshold,method),variants) in staged.items():
+                        self.templates[role]=(template,roi,threshold);self.methods[role]=method
+                        self.alternatives[role]=variants;self.anchors[role]='left'
+                except (OSError,ValueError,KeyError,TypeError,cv2.error):
+                    logging.getLogger(__name__).warning('Reward-icon pack unavailable; keeping qualified text references',exc_info=True)
+            self.ready=True;self.reason=_tr('Beta: escala automática da janela, referência Full HD. HUD em português; mudanças na interface do jogo ainda exigem conferência. F10 desfaz.')
+            if all(k in self.templates for k in ('adventure_icon','gem_icon','mora_icon')):
+                self.reason=_tr('Beta: confirmação por ícones de recompensa, sem depender dos textos do jogo. Inglês em validação. F10 desfaz.')
         except (OSError,ValueError,KeyError,TypeError,cv2.error) as exc:
-            self.reason=f'Referências do AutoMark inválidas: {type(exc).__name__}: {exc}'
+            self.reason=_tr('Referências do AutoMark inválidas: {0}: {1}', type(exc).__name__, exc)
             self.templates.clear()
 
     def reset(self):
         self.phase=None;self.quiet=None;self.last_stamp=None
         self.opening_count=0;self.loot_seen=-math.inf;self.gem_seen=-math.inf;self.exp_seen=-math.inf
+        self.icon_seen={k:-math.inf for k in ('adventure_icon','gem_icon','mora_icon')}
         self.state='idle'
 
     def reset_calibration(self):
@@ -144,6 +170,8 @@ class ChestSignals:
             for template,roi,threshold,method in entries:
                 scores=[]
                 search_heights=heights
+                if role in self.icon_seen:
+                    search_heights=list(dict.fromkeys([*heights,height,width_height]))
                 # Probe one additional HUD scale per sample until the chest
                 # glyph establishes it. Keep qualified thresholds unchanged.
                 if role=='opening' and self.detected_hud_height is None:
@@ -192,9 +220,10 @@ class ChestSignals:
         self.last_stamp=stamp
         opening=signals.get('opening',False)
         loot=signals.get('loot',False);gem=signals.get('primogem',False);exp=signals.get('adventure_exp',False)
+        icons={k:signals.get(k,False) for k in self.icon_seen}
         if self.phase and (self.phase[0]=='done'):
             self.state='duplicate_wave'
-            if not opening and not loot and not gem and not exp:
+            if not opening and not loot and not gem and not exp and not any(icons.values()):
                 if self.quiet is None:self.quiet=stamp
                 if stamp-self.quiet>=1.5:self.phase=None
             else:self.quiet=None
@@ -215,6 +244,7 @@ class ChestSignals:
                 if self.phase is None:
                     self.phase=('opening' if located else 'opening_unlocated',stamp,observation,self.hud_scale)
                     self.loot_seen=-math.inf;self.gem_seen=-math.inf;self.exp_seen=-math.inf
+                    self.icon_seen={k:-math.inf for k in self.icon_seen}
                 elif self.phase[0]=='opening' and located:
                     self.phase=('opening',stamp,observation,self.hud_scale)
                 self.state='armed' if self.phase[0]=='opening' else 'recovering_opening'
@@ -224,14 +254,18 @@ class ChestSignals:
             if loot:self.loot_seen=stamp
             if gem:self.gem_seen=stamp
             if exp:self.exp_seen=stamp
+            for role,visible in icons.items():
+                if visible:self.icon_seen[role]=stamp
             self.state='awaiting_reward'
         else:self.state='awaiting_chest'
         # The game staggers the notifications; both must follow the prompt's
         # disappearance, within one short reward wave, rather than one frame.
         reward=max(self.gem_seen,self.exp_seen)
-        if (self.phase and self.phase[0]=='opening' and abs(self.loot_seen-reward)<=2
-                and self.phase[1]<min(self.loot_seen,reward)
-                and max(self.loot_seen,reward)-self.phase[1]<=6
+        xp,gem_icon,mora=(self.icon_seen[k] for k in ('adventure_icon','gem_icon','mora_icon'))
+        pairs=((self.loot_seen,reward),(xp,gem_icon),(xp,mora),(gem_icon,mora))
+        confirmed_pair=self.phase is not None and any(abs(a-b)<=2 and self.phase[1]<min(a,b)
+                and max(a,b)-self.phase[1]<=6 for a,b in pairs)
+        if (self.phase and self.phase[0]=='opening' and confirmed_pair
                 and 0<stamp-self.phase[1]<=6):
             _,opened,at_open,scale=self.phase;self.token+=1;self.phase=('done',stamp,None);self.quiet=None
             self.state='confirmed'
@@ -279,7 +313,7 @@ class AutoMark:
             return result('marked' if changed else 'ignored','saved' if changed else 'unchanged')
         self.context=self.scope(session)
         self.pending=(now+10,tuple(item.id for _,item in candidates if not session.is_collected(item.id)))
-        session.notice='AutoMark beta: há baús próximos. Use o atalho de coleta para escolher.'
+        session.notice=_tr('AutoMark beta: há baús próximos. Use o atalho de coleta para escolher.')
         return result('ambiguous','multiple_nearby_chests')
 
     def choices(self,session,now):

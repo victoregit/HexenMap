@@ -3,6 +3,12 @@ HEXEN MAP — INSTALAÇÃO E MARCAÇÕES
 Windows 10/11 de 64 bits. Abra Hexen Map pelo menu Iniciar.
 O launcher pede administrador, verifica atualizações e abre o aplicativo.
 
+IDIOMA
+Escolha Português (Brasil) ou English no instalador ou em Ajustes → Idioma / Language.
+Reabra o aplicativo para aplicar. Atualizações automáticas preservam a escolha.
+AutoMark beta também usa ícones de recompensa sem depender do idioma dos textos.
+O funcionamento em inglês foi confirmado em teste local; outras resoluções e escalas seguem em validação.
+
 IMPORTANTE: SEUS ITENS SALVOS
 
 A partir da versão 1.0.1, coletas e preferências ficam em:
@@ -33,6 +39,11 @@ Dados e imagens de terceiros mantêm seus créditos e condições de uso.
 Créditos e licenças acompanham a pasta creditos.
 
 ENGLISH
+
+Choose English or Português (Brasil) in the installer or under
+Settings → Idioma / Language in the main panel. Reopen the app to apply.
+Automatic updates preserve your choice. AutoMark beta also uses reward icons
+without relying on game text. Real English-HUD gameplay still needs validation.
 
 Starting with 1.0.1, saves and preferences live outside the app folder:
 %LOCALAPPDATA%\HexenMap\state
