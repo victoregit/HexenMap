@@ -47,6 +47,18 @@ def terrain_mask(frame: np.ndarray, observation: Observation) -> np.ndarray:
     return mask
 
 
+def terrain_contrast(image: np.ndarray, observation: Observation) -> np.ndarray:
+    """Remove smooth HUD lighting from the minimap, retaining native pixel geometry."""
+    x,y,r=observation.circle
+    h,w=image.shape[:2]
+    left=max(0,math.floor(x-r-14));top=max(0,math.floor(y-r-14))
+    right=min(w,math.ceil(x+r+15));bottom=min(h,math.ceil(y+r+15))
+    result=np.zeros_like(image)
+    if right>left and bottom>top:
+        crop=image[top:bottom,left:right].astype(np.float32)
+        detail=crop-cv2.GaussianBlur(crop,(0,0),1.5)
+        result[top:bottom,left:right]=np.clip(detail*2+128,0,255).astype(np.uint8)
+    return result
 
 
 def follow(previous: np.ndarray, current: np.ndarray, observation: Observation,
@@ -156,12 +168,27 @@ class MotionRecognizer:
                               if getattr(p,'map_id',None) is not None and getattr(p,'layer_id',None) is not None}
 
     def _follow(self,previous,current,observation,stamp):
-        diagnostic={'source_age_s':round(stamp-observation.captured_at,4)}
+        diagnostic={'source_age_s':round(stamp-observation.captured_at,4),'image':'original'}
         token=_flow_diagnostic.set(diagnostic)
-        try:return follow(previous,current,observation,stamp)
+        try:result=follow(previous,current,observation,stamp)
         finally:
             _flow_diagnostic.reset(token)
             self.flow_attempts.append(diagnostic)
+        # A rotating camera cone changes brightness without moving the terrain.
+        # Retry only this photometric failure, with the same geometric gates.
+        # The shared follow() used by AutoMark remains unchanged.
+        if (result is None and diagnostic.get('reason')=='forward_backward_consistency'
+                and observation.surface=='minimap' and observation.circle is not None
+                and 0<=stamp-observation.captured_at<=.5):
+            normalized={'source_age_s':diagnostic['source_age_s'],'image':'terrain_contrast'}
+            token=_flow_diagnostic.set(normalized)
+            try:
+                result=follow(terrain_contrast(previous,observation),
+                              terrain_contrast(current,observation),observation,stamp)
+            finally:
+                _flow_diagnostic.reset(token)
+                self.flow_attempts.append(normalized)
+        return result
 
     def diagnostics(self):
         return dict(self.last_diagnostic)

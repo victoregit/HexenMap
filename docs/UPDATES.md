@@ -1,11 +1,15 @@
 # Launcher e instalador Windows
 
-## Diagnostico do minimapa
+## Correção local aprovada — minimapa e AutoMark
 
-- Separa a observacao visivel da ultima pose verificada e registra rejeicoes.
-- Grava o canto do minimapa mediante inicio explicito, com limites de duracao e espaco, e permite exportacao manual.
-
-## AutoMark — recompensas e recuperacao de mapas
+- Recuperação de movimento no minimapa remove iluminação suave quando a mudança
+  do cone da câmera causa rejeição dos pontos. Só entra após a falha original,
+  em intervalos de até 500 ms, sem reduzir limites geométricos ou manter pins antigos.
+  A função de recuperação compartilhada com o AutoMark foi preservada.
+- Diagnóstico detalhado das perdas e gravação local opcional do canto do minimapa,
+  limitada a 20 segundos e 50 MiB, com exportação manual. Não envia capturas.
+- Correção do minimapa e funcionamento do AutoMark confirmados pelo usuário.
+  Os mapas novos ainda exigem sua validação própria antes da release.
 
 - Perdas de alinhamento com o minimapa ainda visível não iniciam buscas pesadas
   em outros mapas. Após uma posição confirmada, a busca requer evidência de

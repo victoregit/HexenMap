@@ -80,3 +80,12 @@ pelas medições. A próxima evidência necessária é a gravação explícita d
 percurso atual com falha, repetida com AutoMark ligado e desligado, para
 comparar movimento, concorrência e busca de mapas no mesmo cenário. Nenhuma
 captura nova foi iniciada nesta investigação.
+
+## Validação posterior
+
+Após esta auditoria, a comparação visual confirmou que a captura da janela usada
+pelo app não inclui os pins, mesmo quando eles aparecem na captura do desktop.
+Uma nova sequência limpa identificou duas rejeições associadas à mudança do
+cone claro da câmera. A recuperação de contraste passou nesses dois pares,
+preservando a rotina do AutoMark. O usuário aprovou a compilação local seguinte.
+Resultados e limites estão em `MINIMAP-VALIDATION.md`.
