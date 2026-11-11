@@ -48,7 +48,7 @@ Em **Ajustes → Idioma / Language**, escolha **Português (Brasil)** ou **Engli
 
 Os atalhos são configuráveis nos **Ajustes**. Suas opções ficam em seções recolhíveis: perfis, painel e compartilhamento, coletados do AppSample, atalhos e diagnóstico. O AutoMark fica acima do rodapé do painel principal. O controle de compartilhamento define se o overlay aparece nas capturas; ele não desliga o reconhecimento.
 
-A tradução da interface não altera o idioma do Genshin. As referências atuais do **AutoMark exigem o HUD do jogo em português**, inclusive quando o aplicativo está em inglês.
+A tradução da interface não altera o idioma do Genshin. O **AutoMark beta** também usa pares de ícones de recompensa, sem depender dos textos do jogo. As referências textuais em português continuam como alternativa; o funcionamento com HUD em inglês foi confirmado em teste local.
 
 ## Mapas e troca automática
 

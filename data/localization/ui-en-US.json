@@ -1209,5 +1209,6 @@
   "Área atual": "Current area",
   "Localização atual ainda não reconhecida.": "Your current location has not been recognized yet.",
   "Abrir mapa global: escolha a área, arraste, aproxime e confira seus coletados.": "Open the world map: choose an area, pan, zoom and review collected items.",
-  "Voltar ao último mapa reconhecido no jogo, sem alterar o rastreamento.": "Return to the last map recognized in game without changing tracking."
+  "Voltar ao último mapa reconhecido no jogo, sem alterar o rastreamento.": "Return to the last map recognized in game without changing tracking.",
+  "Beta: confirmação por ícones de recompensa, sem depender dos textos do jogo. Inglês em validação. F10 desfaz.": "Beta: reward-icon confirmation without relying on game text. English is being validated. F10 undoes."
 }

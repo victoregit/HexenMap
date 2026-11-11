@@ -62,6 +62,8 @@ def main(output_root=None):
         copy(ROOT/f'data/assets/{kind}/SOURCE.json',Path(f'creditos/{kind}-SOURCE.json'))
     # Only cropped detector templates; never recordings/calibration frames.
     manifest(ROOT/'userData/automark/manifest.json',Path('userData/automark/manifest.json'))
+    icons=ROOT/'userData/automark/icon-signals.json'
+    if icons.is_file():manifest(icons,Path('userData/automark/icon-signals.json'))
     settings={'tracking_mode':'auto','package':'appsample','categories':[],'performance_mode':'light','automark':False,
         'capture_visible':False,'server':'America','regional':{'appsample':{'categories':[],
         'area':None,'layer':'as-map-2 / surface'}},'panel':{'collapsed':False,'detached':True}}
@@ -78,7 +80,8 @@ Windows 10/11 de 64 bits. Não precisa instalar Python, Git ou ferramentas de pr
 
 F8: abrir/recolher painel. Ctrl+clique: marcar/desmarcar um item.
 F9: coletar próximo. F10: desfazer. Atalhos configuráveis em Ajustes.
-Não há bússola ou busca guiada. AutoMark é beta, desligado por padrão e qualificado em HUD PT-BR.
+Não há bússola ou busca guiada. AutoMark é beta e desligado por padrão. Também confirma recompensas por ícones,
+sem depender dos textos do jogo. O funcionamento em inglês foi confirmado em teste local.
 Gerenciamento de memória automático, com carregamento de referências sob demanda.
 Desde a 1.0.1, progresso e preferências ficam em %LOCALAPPDATA%\\HexenMap\\state.
 Faça backup dessa pasta com o app fechado. userData contém recursos e caches.

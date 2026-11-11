@@ -1,5 +1,23 @@
 # Launcher e instalador Windows
 
+## AutoMark — recompensas e recuperacao de mapas
+
+- Perdas de alinhamento com o minimapa ainda visível não iniciam buscas pesadas
+  em outros mapas. Após uma posição confirmada, a busca requer evidência de
+  carregamento/menu ou mapa M e cinco segundos sem localização válida.
+- A busca fica pausada durante a sequência de abertura/recompensa e não desativa
+  nem reinicia o AutoMark. A troca de mapa realmente confirmada mantém a
+  invalidação do contexto, dos candidatos e das aberturas anteriores.
+- Confirmação alternativa por dois ícones distintos entre EXP, gema e Mora.
+  Não depende de Obtido/Obtained ou dos nomes traduzidos das recompensas.
+  A abertura, a posição comprovada e a ausência de ambiguidade continuam exigidas.
+- Pacote adicional `icon-signals.json`, com nomes próprios de arquivos, preserva
+  as referências textuais existentes. Se estiver inválido, o pacote anterior
+  continua funcionando. Não há redução dos limiares de reconhecimento.
+- Replays positivos/negativos, com textos desconsiderados e sem gemas ou sem EXP,
+  passaram em 1366×768 e redimensionamentos sintéticos FHD/QHD. O funcionamento
+  no HUD real em inglês foi confirmado localmente pelo jogador.
+
 ## Em desenvolvimento — mapas separados e mapa global
 
 - Registro compartilhado dos sete mapas permanentes, com nomes PT/EN, limites
@@ -36,8 +54,8 @@
   Instalações com `state-dir.txt` usam a pasta pessoal apontada pela instalação,
   inclusive quando abertas com outra conta de administrador. Atualizações
   silenciosas preservam a escolha do aplicativo.
-- O idioma da interface não qualifica um HUD diferente: AutoMark continua
-  exigindo as referências visuais do jogo em português.
+- O idioma da interface é independente do HUD do jogo. O pacote adicional de
+  ícones permite confirmar recompensas sem depender dos textos traduzidos.
 
 ## Versão 1.0.7 — óculis, interação e painel
 

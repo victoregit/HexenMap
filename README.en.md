@@ -26,7 +26,7 @@ The application uses external image recognition. It does not read game memory, i
 
 Choose **Português (Brasil)** or **English** during installation or under **Settings → Idioma / Language** in the main panel. Reopen the application to apply a change. The preference is shared across profiles and preserved by automatic updates.
 
-Changing the application language does not change Genshin. The current **AutoMark references require the Portuguese game HUD**, including when the application uses English. The AutoMark switch is above the main panel footer.
+Changing the application language does not change Genshin. **AutoMark beta** also recognizes pairs of reward icons without relying on game text. Qualified Portuguese text references remain available as a fallback; English-HUD gameplay was confirmed in local testing. The AutoMark switch is above the main panel footer.
 
 ## Maps and automatic detection
 
