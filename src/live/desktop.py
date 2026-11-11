@@ -58,6 +58,8 @@ class DesktopApp(ProfileControls,CompactPanel):
         self.user_dir.mkdir(exist_ok=True)
         from src.live.personal_state import prepare_state_interactive
         self.state_dir=prepare_state_interactive(install_dir())
+        self.minimap_recording=None
+        self.tracking_diagnostic={}
         self.profile_store=ProfileStore(self.state_dir)
         self.marker_hints=HintService(self.user_dir/'cache/marker-hints')
         self.settings_path=self.state_dir/"settings.json"
@@ -317,10 +319,45 @@ class DesktopApp(ProfileControls,CompactPanel):
                         'motivo_referencias':self.chest_signals.reason,
                         'pontuacoes':self.chest_signals.scores.copy(),
                         'altura_hud_detectada':self.chest_signals.detected_hud_height},
+            'minimap_tracking':getattr(self,'tracking_diagnostic',{}),
             'map_tracking':{'mode':self.settings.get('tracking_mode','auto'),
                             **(search.diagnostics() if search else {})}}
         self.root.clipboard_clear();self.root.clipboard_append(json.dumps(report,ensure_ascii=False,indent=2))
         self.session.notice=_tr('Diagnóstico copiado. Cole no suporte; não contém imagens, conta ou credenciais.')
+
+    def record_minimap_test(self):
+        from src.live.tracking_diagnostics import MinimapRecording
+        from src.live.identity import VERSION
+        previous=getattr(self,'minimap_recording',None)
+        if previous is not None and not previous.done.is_set():
+            previous.stop()
+            self.session.notice=_tr('Gravação do minimapa encerrada.')
+            return
+        if not messagebox.askyesnocancel(_tr('Teste do minimapa'),_tr(
+                'Gravar por até 20 segundos apenas o canto do minimapa? Volte ao jogo, caminhe, corra e gire a câmera. '
+                'Os recortes ficam neste computador; o envio é manual. Repita com AutoMark ligado e desligado.'),parent=self.root):return
+        rect=self.native.game()
+        try:
+            self.minimap_recording=MinimapRecording(self.state_dir.parent/'diagnostics'/'minimap',{
+                'version':VERSION,'client_size':[rect.width,rect.height],
+                'dpi_scale':self.native.dpi_scale(rect.hwnd) if rect.hwnd else None,
+                'automark':bool(self.settings.get('automark'))})
+            self.session.notice=_tr('Gravando teste do minimapa por até 20 segundos. Volte ao jogo.')
+        except OSError as exc:messagebox.showerror(_tr('Teste do minimapa'),str(exc),parent=self.root)
+
+    def export_minimap_test(self):
+        from tkinter import filedialog
+        recording=getattr(self,'minimap_recording',None)
+        if recording is None or not recording.done.is_set():
+            messagebox.showinfo(_tr('Teste do minimapa'),_tr('Conclua uma gravação antes de exportar.'),parent=self.root)
+            return
+        name=filedialog.asksaveasfilename(parent=self.root,title=_tr('Exportar teste do minimapa'),
+                defaultextension='.zip',initialfile='minimap-'+recording.directory.name+'.zip',filetypes=[('ZIP','*.zip')])
+        if name:
+            try:
+                recording.export(Path(name))
+                self.session.notice=_tr('Teste exportado. Nenhum arquivo foi enviado automaticamente.')
+            except (OSError,ValueError) as exc:messagebox.showerror(_tr('Teste do minimapa'),str(exc),parent=self.root)
 
     def install_browser_connector(self):
         from src.live.browser_connector import register_connector
@@ -855,6 +892,17 @@ class DesktopApp(ProfileControls,CompactPanel):
                             'media':round(float(sample.mean()),2),'desvio':round(float(sample.std()),2),
                             'uniforme':bool(float(sample.std())<1)}
                         last_capture_check=started
+                    self.tracking_diagnostic=motion.diagnostics() if motion is not None and frame is not None else {
+                        'surface':'hidden','state':obs.reason,'published':False}
+                    recording=getattr(self,'minimap_recording',None)
+                    if recording is not None and not recording.stopping.is_set():
+                        recording.record(frame,started,{
+                            'tracking':self.tracking_diagnostic,'surface':obs.surface,
+                            'client_size':[rect.width,rect.height],'epoch':epoch,
+                            'map':obs.map_id or context[1],'layer':obs.layer_id or context[2],
+                            'automark':bool(self.settings.get('automark')),
+                            'capture_backend':getattr(self.native,'capture_backend',''),
+                            'world_to_screen':obs.world_to_screen.tolist() if obs.world_to_screen is not None else None})
                     self._publish((self.rect_key(rect),obs,epoch),frame)
                     current=epoch==self.selection_epoch
                     state=(obs.surface,obs.reason,epoch)
@@ -1070,6 +1118,8 @@ class DesktopApp(ProfileControls,CompactPanel):
         self.control_listener.stop()
         if self.overlay_hwnd: self.native.hide(self.overlay_hwnd)
         self.worker.join(timeout=2)
+        recording=getattr(self,'minimap_recording',None)
+        if recording is not None:recording.close()
         self.automark_worker.join(timeout=2)
         if self.telemetry: self.telemetry.close()
         self.root.destroy()

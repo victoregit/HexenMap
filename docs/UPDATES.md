@@ -1,5 +1,10 @@
 # Launcher e instalador Windows
 
+## Diagnostico do minimapa
+
+- Separa a observacao visivel da ultima pose verificada e registra rejeicoes.
+- Grava o canto do minimapa mediante inicio explicito, com limites de duracao e espaco, e permite exportacao manual.
+
 ## AutoMark — recompensas e recuperacao de mapas
 
 - Perdas de alinhamento com o minimapa ainda visível não iniciam buscas pesadas

@@ -104,6 +104,8 @@ def build_settings(app, parent, *, bg, muted):
 
     diagnostics=section('Diagnóstico · avançado')
     ttk.Button(diagnostics,text=_tr('Copiar diagnóstico para suporte'),command=app.copy_diagnostics).pack(fill='x',pady=3)
+    ttk.Button(diagnostics,text=_tr('Gravar / encerrar teste do minimapa…'),command=app.record_minimap_test).pack(fill='x',pady=3)
+    ttk.Button(diagnostics,text=_tr('Exportar teste do minimapa…'),command=app.export_minimap_test).pack(fill='x',pady=3)
     note(diagnostics,_tr('Use estas opções se os marcadores não reaparecerem após voltar ao jogo.'))
     ttk.Button(diagnostics,text=_tr('Recarregar reconhecimento'),command=app.reload_reference).pack(fill='x',pady=3)
     note(diagnostics,_tr('Reinicia a localização visual sem alterar coletas ou filtros.'))
