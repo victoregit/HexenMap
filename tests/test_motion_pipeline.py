@@ -295,3 +295,35 @@ def test_optional_rejection_diagnostic_does_not_change_shared_follow(monkeypatch
     finally:_flow_diagnostic.reset(token)
     assert _flow_diagnostic.get() is None
     assert follow(image,image,observation,100.1) is None
+
+
+def test_expired_global_search_can_use_newly_verified_native_image(monkeypatch):
+    motion,pending,calls=pipeline(monkeypatch,'minimap')
+    motion.observe(frame(0),100.)
+    pending[0].set_result(Observation('minimap',100.,np.eye(2,3),.85,.3,
+        circle=(50.,50.,40.),map_id='teyvat',layer_id='surface'))
+    try:
+        assert motion.observe(frame(0),100.05).surface=='minimap'
+        assert len(motion.registered_frames.frames)==1
+        current=motion.observe(frame(10),101.6)
+        assert current.surface=='minimap' and current.world_to_screen[0,2]==10
+        assert current.captured_at==101.6 and motion.last_absolute==100.
+        assert motion.last_reference_verified==101.6
+        assert motion.observe(frame(80),101.65).surface=='hidden'
+        motion.reset()
+        assert not motion.registered_frames.frames and motion.last_reference_verified==-float('inf')
+    finally:motion.close()
+
+
+def test_delayed_global_reference_keeps_its_original_image_transform(monkeypatch):
+    motion,pending,calls=pipeline(monkeypatch,'minimap')
+    motion.observe(frame(0),100.);motion.observe(frame(5),100.05)
+    pending[0].set_result(Observation('minimap',100.,np.eye(2,3),.85,.3,
+        circle=(50.,50.,40.),map_id='teyvat',layer_id='surface'))
+    try:
+        assert motion.observe(frame(10),100.1).world_to_screen[0,2]==10
+        reference,original=motion.registered_frames.frames[0]
+        assert reference[0,0]==0 and original.world_to_screen[0,2]==0
+        assert motion.observe(frame(11),100.8).world_to_screen[0,2]==11
+        assert len(motion.registered_frames.frames)==1
+    finally:motion.close()
