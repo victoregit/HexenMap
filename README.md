@@ -6,7 +6,7 @@
 
 Explore o **Genshin Impact** com pins sobre o minimapa e o mapa M, acompanhe suas coletas e aproveite o progresso que você já marcou no AppSample. Escolha os itens no painel, recolha a janela e continue jogando.
 
-**Windows 10/11 · Overlay externo · 2.0.0 · Versão de teste**
+**Windows 10/11 · Overlay externo · 2.0.1 · Versão de teste**
 
 ## O que o Hexen Map oferece
 
@@ -33,6 +33,8 @@ O aplicativo usa reconhecimento de imagem externo. Não lê memória do jogo, n�
 
 **O pacote pronto não exige Python nem Node.js.** Clonar o repositório ou copiar somente o `.exe` não instala os pacotes pessoais de mapas, imagens e referências. A cobertura disponível depende dos arquivos presentes na instalação.
 
+O painel pode ficar fixado ao Genshin ou em janela independente. A bandeja do Windows permite reabri-lo ou encerrar o aplicativo. Não há bússola, busca guiada ou atalhos de farm.
+
 ## Controles
 
 | Controle padrão | Ação |
@@ -52,7 +54,7 @@ A tradução da interface não altera o idioma do Genshin. O **AutoMark beta** t
 
 ## Mapas e troca automática
 
-A expansão em validação local inclui **Enkanomiya, Despenhadeiro subterrâneo,
+A série 2.0.x inclui **Enkanomiya, Despenhadeiro subterrâneo,
 Mar das Eras Passadas, Montanha Sagrada Antiga, Templo do Espaço e Lua Gélida**,
 além de Teyvat. O seletor **Automático · Detectar mapa** procura a nova área pelo
 minimapa ou pelo mapa M quando a localização atual é perdida. Também é possível
@@ -67,7 +69,7 @@ eventos não faz parte desta etapa.
 
 Os recursos ficam instalados para uso offline e são carregados sob demanda.
 A verificação técnica não substitui a validação dentro do jogo: esta expansão
-permanece uma compilação local de teste antes da próxima release.
+está disponível na série 2.0.x, com validação em jogo ainda em andamento.
 
 ## Traga seus coletados do AppSample
 
@@ -92,15 +94,16 @@ O envio direto usa **Native Messaging**, por ação explícita, sem servidor ou 
 
 O **AutoMark é beta e vem desligado**. Depende de referências visuais qualificadas na instalação e combina sinais de interação, recompensas e posição para associar a abertura a um único baú próximo.
 
+Ative o AutoMark acima do rodapé e volte ao Genshin para sincronizar. Use **↻** para sincronizar novamente; a preparação inicial não garante uma coleta. O assistente de calibração pessoal ainda não está incluído.
+
 Uma posição incerta ou vários candidatos não autorizam uma coleta automática. A confirmação manual continua disponível, e **F10** desfaz a última marcação da sessão. A validação real ainda não cobre todas as raridades, fundos, resoluções e idiomas.
 
 ## Cobertura, desempenho e estado atual
 
 - **Mapas e camadas:** AppSample é a única fonte operacional de marcadores e referências de terreno. Mapas sem referência válida ficam indisponíveis. Dados importados não equivalem a cobertura integral testada no jogo.
-- **Progresso:** fica em `userData`, junto das preferências e dos pacotes pessoais. Preserve essa pasta e seus backups ao atualizar.
+- **Progresso e preferências:** ficam em `%LOCALAPPDATA%\HexenMap\state`, fora da pasta do programa. Perfis locais permitem separar contas. Preserve os backups e a pasta `userData` com os pacotes pessoais de mapas.
 - **Reposição:** itens permanentes não expiram. Recursos sem regra qualificada mostram **Reposição não confirmada**; não há temporizador universal.
-- **Modo Leve:** padrão, carrega referências próximas sob demanda. Viagens longas podem exigir breve recuperação.
-- **Modo Global:** prepara o mapa e as camadas selecionadas. Consome mais memória e pode aumentar CPU e carregamento. Não carrega todos os mapas instalados; falha de memória retorna ao Leve.
+- **Referências e memória:** gerenciadas automaticamente, com carregamento sob demanda. Não há seletor Leve/Global na interface; viagens longas podem exigir breve recuperação.
 
 **O que já foi conferido:** exportação real no Chrome com 3.755 IDs únicos e validação do arquivo pelo importador. O envio nativo completo pelo navegador e a compatibilidade real no Edge continuam pendentes. Não afirmamos vantagem de precisão, estabilidade ou consumo sobre outros overlays sem comparação controlada.
 

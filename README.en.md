@@ -6,7 +6,7 @@
 
 Explore **Genshin Impact** with pins on the minimap and the full-screen map, track your collected items, and bring along the progress you already marked on AppSample. Choose your items, collapse the panel, and keep playing.
 
-**Windows 10/11 · External overlay · 2.0.0 · Test version**
+**Windows 10/11 · External overlay · 2.0.1 · Test version**
 
 > The interface, reviewed catalog, startup messages and installer support English and Brazilian Portuguese. Supporting documents linked below are primarily in Portuguese.
 
@@ -30,7 +30,7 @@ Changing the application language does not change Genshin. **AutoMark beta** als
 
 ## Maps and automatic detection
 
-The local test expansion includes **Enkanomiya, The Chasm: Underground Mines,
+The 2.0.x series includes **Enkanomiya, The Chasm: Underground Mines,
 Sea of Bygone Eras, Ancient Sacred Mountain, Temple of Space and Frost Moon**,
 in addition to Teyvat. Choose **Automatic · Detect map** to recover your area from
 the minimap or in-game map after tracking is lost, or select a fixed map/floor.
@@ -41,8 +41,8 @@ freely without changing game tracking; **Current area** returns to the recognize
 context. The separate maps include their 44 published floors. Expanding Teyvat's
 cave coverage and temporary event maps is outside this stage.
 
-Installed images work offline and load on demand. The expansion remains a local
-test build: technical checks do not replace in-game acceptance before release.
+Installed images work offline and load on demand. The expansion is available in
+the 2.0.x series; in-game validation across maps and layers remains ongoing.
 
 ## Start playing
 
@@ -52,6 +52,8 @@ test build: technical checks do not replace in-game acceptance before release.
 4. Return to the game. Press **F8** to collapse or reopen the panel.
 
 **The ready-to-use package does not require Python or Node.js.** Cloning this repository or copying the `.exe` alone does not install personal map, image, and reference packs. Available coverage depends on the files included in your installation.
+
+The panel can be attached to Genshin or used as an independent window. The Windows tray can reopen it or exit the app. There is no compass, guided search or farming hotkeys.
 
 ## Controls
 
@@ -64,7 +66,7 @@ test build: technical checks do not replace in-game acceptance before release.
 | **F9** | Confirm a nearby collection or choose between candidates. |
 | **F10** | Undo the session's last collection. |
 
-Hotkeys can be configured under **Ajustes** (Settings). Settings are grouped into collapsible sections for the panel and screen sharing, AutoMark, AppSample progress, performance, hotkeys, and diagnostics. Screen-sharing visibility determines whether the overlay appears in captures; it does not turn recognition off.
+Hotkeys can be configured under **Ajustes** (Settings). Settings are grouped into collapsible sections for profiles, the panel and screen sharing, AppSample progress, hotkeys and diagnostics. The AutoMark switch is above the main panel footer. Screen-sharing visibility determines whether the overlay appears in captures; it does not turn recognition off.
 
 ## Bring your AppSample progress
 
@@ -89,15 +91,16 @@ Direct delivery uses **Native Messaging**, only on an explicit action, without a
 
 **AutoMark is a beta and is off by default.** It requires qualified visual references in your installation and combines interaction, reward, and position signals to associate an opening with one nearby chest.
 
+Enable AutoMark above the footer and return to Genshin to synchronize. Use **↻** to resync; initial preparation does not guarantee a collection. The personal calibration wizard is not included yet.
+
 An uncertain position or multiple candidates do not authorize automatic collection. Manual confirmation remains available, and **F10** undoes the session's last collection. Live validation does not yet cover every rarity, background, resolution, and language.
 
 ## Coverage, performance, and current status
 
 - **Maps and layers:** AppSample is the sole operational source of markers and terrain references. Maps without valid references remain unavailable. Imported data does not mean complete coverage has been tested in the game.
-- **Progress:** stored in `userData`, alongside preferences and personal packs. Keep this folder and its backups when updating.
+- **Progress and preferences:** stored in `%LOCALAPPDATA%\HexenMap\state`, outside the program folder. Local profiles separate accounts. Keep backups and the `userData` folder containing personal map packs.
 - **Respawns:** permanent items never expire. Resources without a qualified rule show **Reposição não confirmada** (Respawn unconfirmed); there is no universal timer.
-- **Leve (Light) mode:** the default; loads nearby references on demand. Long-distance travel may require a brief recovery.
-- **Global mode:** prepares the selected map and layers. Uses more memory and may increase CPU use and loading time. It does not load every installed map; memory failure falls back to Light mode.
+- **References and memory:** managed automatically and loaded on demand. The interface has no Light/Global selector; long-distance travel may require brief recovery.
 
 **Verified so far:** a real Chrome export containing 3,755 unique IDs, with the file accepted by the importer. Full native delivery through the browser and real Edge compatibility remain pending. We do not claim better accuracy, stability, or resource use than other overlays without a controlled comparison.
 
