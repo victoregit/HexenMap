@@ -83,9 +83,9 @@ backups/
 # Generated visual previews and packaged art; approved masters live in data/source/brand.
 /artifacts/
 
-# AI / Assistant task tracking & scratch files
+# Local development helper scripts and scratch files
 tasks/
-ANTIGRAVITY*.md
-*AUDITORIA*.md
-*.bat
+*.local.*
+scratch/
+
 
