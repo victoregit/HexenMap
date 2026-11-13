@@ -118,10 +118,15 @@ class TerrainMatcher:
             return None
         target = dst[good]
         # A tiny patch or single landmark cannot anchor an entire map.
+        # Scale-aware area gate: adapt for compact underground cave layers while
+        # preserving the full-map safeguard against single-landmark false positives.
         h, w = frame.shape[:2]
         area = cv2.contourArea(cv2.convexHull(target))
         usable_area = cv2.countNonZero(mask) if mask is not None else h*w
-        if area < usable_area * 0.08:
+        ref_hull = cv2.contourArea(cv2.convexHull(src[good])) if count >= 3 else 0.0
+        ref_expected_area = float(ref_hull) * (scale ** 2)
+        min_area = min(usable_area * 0.08, max(2500.0, ref_expected_area * 0.20))
+        if area < min_area:
             return None
         predicted = cv2.transform(src[good].reshape(1, -1, 2), matrix)[0]
         error = float(np.percentile(np.linalg.norm(predicted-target, axis=1), 95))

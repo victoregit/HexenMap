@@ -185,16 +185,24 @@ class FeatureCache:
             return points,descriptors
 
     def coarse(self,raster,budget):
-        key=hashlib.sha256(repr((INDEX_VERSION,cv2.__version__,'coarse',raster.digest,budget)).encode()).hexdigest()
+        key=hashlib.sha256(repr((INDEX_VERSION,cv2.__version__,'coarse-v2',raster.digest,budget)).encode()).hexdigest()
         self.verify(raster);value=self.read(key)
         if value is not None:return value
         check_cancel(self.cancelled)
         with Image.open(raster.path) as source:
-            image=source.convert('L');scale=min(1.,1536/max(image.size))
+            image=source.convert('L')
+            arr=np.asarray(image)
+            nz=np.where(arr>8)
+            x0=y0=0
+            if len(nz[0])>0 and (int(np.max(nz[0]))-int(np.min(nz[0]))<image.height*.85 or int(np.max(nz[1]))-int(np.min(nz[1]))<image.width*.85):
+                y0=max(0,int(np.min(nz[0]))-16); y1=min(image.height,int(np.max(nz[0]))+17)
+                x0=max(0,int(np.min(nz[1]))-16); x1=min(image.width,int(np.max(nz[1]))+17)
+                image=image.crop((x0,y0,x1,y1))
+            scale=min(1.,1536/max(image.size))
             if scale!=1:image=image.resize((round(image.width*scale),round(image.height*scale)),Image.Resampling.LANCZOS)
         source.close()
         keys,descriptors=cv2.SIFT_create(nfeatures=budget,contrastThreshold=.025).detectAndCompute(np.asarray(image),None)
-        points=np.float32([k.pt for k in keys]).reshape(-1,2)/scale
+        points=np.float32([k.pt for k in keys]).reshape(-1,2)/scale+np.float32([x0,y0])
         if descriptors is None:descriptors=np.empty((0,128),np.float32)
         check_cancel(self.cancelled);self.write(key,points,descriptors)
         return points,descriptors
