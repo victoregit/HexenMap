@@ -15,6 +15,7 @@ import numpy as np
 from src.live.vision import Observation, ScreenRecognizer, gray, template_visible, detect_circle, foreground_ui_visible,steady_circle
 from src.live.minimap_glyph import pointer_shape
 from src.live.gameplay import GameplayGate
+from src.live.minimap_reference import RegisteredMinimapFrames
 
 logger=logging.getLogger(__name__)
 _flow_diagnostic=ContextVar('flow_diagnostic',default=None)
@@ -155,6 +156,11 @@ class MotionRecognizer:
         self.tracking_status=None
         self.verified_frame=None
         self.verified_observation=None
+        self.registered_frames=RegisteredMinimapFrames()
+        self.last_reference_check=-math.inf
+        self.next_reference_check=-math.inf
+        self.last_reference_verified=-math.inf
+        self.reference_status='unavailable'
         self.last_diagnostic={}
         self.flow_attempts=[]
         self.absolute_status='pending'
@@ -167,8 +173,9 @@ class MotionRecognizer:
         self.expected_scopes={(p.map_id,p.layer_id) for p in packs
                               if getattr(p,'map_id',None) is not None and getattr(p,'layer_id',None) is not None}
 
-    def _follow(self,previous,current,observation,stamp):
-        diagnostic={'source_age_s':round(stamp-observation.captured_at,4),'image':'original'}
+    def _follow(self,previous,current,observation,stamp,*,registered_reference=False):
+        diagnostic={'source_age_s':round(stamp-observation.captured_at,4),'image':'original',
+                    'registered_reference':registered_reference}
         token=_flow_diagnostic.set(diagnostic)
         try:result=follow(previous,current,observation,stamp)
         finally:
@@ -177,10 +184,13 @@ class MotionRecognizer:
         # A rotating camera cone changes brightness without moving the terrain.
         # Retry only this photometric failure, with the same geometric gates.
         # The shared follow() used by AutoMark remains unchanged.
-        if (result is None and diagnostic.get('reason')=='forward_backward_consistency'
+        photometric_failure=diagnostic.get('reason')=='forward_backward_consistency'
+        if registered_reference:photometric_failure=diagnostic.get('reason') in ('forward_backward_consistency','ransac_inliers','features')
+        if (result is None and photometric_failure
                 and observation.surface=='minimap' and observation.circle is not None
-                and 0<=stamp-observation.captured_at<=.5):
-            normalized={'source_age_s':diagnostic['source_age_s'],'image':'terrain_contrast'}
+                and (registered_reference or 0<=stamp-observation.captured_at<=.5)):
+            normalized={'source_age_s':diagnostic['source_age_s'],'image':'terrain_contrast',
+                        'registered_reference':registered_reference}
             token=_flow_diagnostic.set(normalized)
             try:
                 result=follow(terrain_contrast(previous,observation),
@@ -211,6 +221,11 @@ class MotionRecognizer:
         self.circle=None
         self.verified_frame=None
         self.verified_observation=None
+        self.registered_frames.clear()
+        self.last_reference_check=-math.inf
+        self.next_reference_check=-math.inf
+        self.last_reference_verified=-math.inf
+        self.reference_status='unavailable'
 
     def close(self,wait=False):
         self.pool.shutdown(wait=wait,cancel_futures=True)
@@ -259,7 +274,9 @@ class MotionRecognizer:
             if self.circle is None or self.previous_surface!='minimap':
                 self.circle=self.circle or detect_circle(frame)
             if self.circle is not None:self.circle_hint=self.circle
-        else:self.circle=None
+        else:
+            self.circle=None
+            self.registered_frames.clear();self.last_reference_verified=-math.inf
         updated=tentative
         discontinuity=False
         # Continue solving the current image while its uncertainty remains
@@ -268,16 +285,17 @@ class MotionRecognizer:
         previous_obs=self.current if self.current.surface==surface else self.previous_observation
         age_limit=5. if (surface=='minimap' and internal is not None and internal.confidence>=.9
                          and internal.position_uncertainty_px<=2.) else 1.5
+        verified_at=max(self.last_absolute,self.last_reference_verified)
         if (updated is None and self.previous is not None and previous_obs is not None
-                and previous_obs.surface==surface and stamp-self.last_absolute<=age_limit):
+                and previous_obs.surface==surface and stamp-verified_at<=age_limit):
             updated=self._follow(self.previous,image,previous_obs,stamp)
         if (updated is None and surface=='minimap' and self.verified_frame is not None
-                and self.verified_observation is not None and stamp-self.last_absolute<=age_limit
+                and self.verified_observation is not None and stamp-verified_at<=age_limit
                 and 0<stamp-self.verified_observation.captured_at<=.25):
             # A brief occlusion can defeat one LK step. Re-register against the
             # last verified image; never reuse its old screen coordinates.
             updated=self._follow(self.verified_frame,image,self.verified_observation,stamp)
-        if updated is None and surface=='minimap' and stamp-self.last_absolute<=age_limit:
+        if updated is None and surface=='minimap' and stamp-verified_at<=age_limit:
             for recent_frame,recent_obs in reversed(self.recent):
                 if 0<stamp-recent_obs.captured_at<=.5:
                     recovered=self._follow(recent_frame,image,recent_obs,stamp)
@@ -286,6 +304,23 @@ class MotionRecognizer:
                         relative=recovered.world_to_screen@np.vstack([cv2.invertAffineTransform(recent_obs.world_to_screen),[0,0,1]])
                         if np.max(np.linalg.norm(probes@relative.T-probes[:,:2],axis=1))<=max(12,recovered.circle[2]*.25):
                             updated=recovered;break
+        self.reference_status='not_checked' if self.registered_frames.frames else 'unavailable'
+        if (surface=='minimap' and self.registered_frames.frames
+                and stamp-self.last_absolute>=1. and stamp>=self.next_reference_check):
+            self.last_reference_check=stamp
+            reference=self.registered_frames.locate(image,stamp,
+                lambda a,b,o,t:self._follow(a,b,o,t,registered_reference=True))
+            self.reference_status='rejected'
+            if reference is not None:
+                agrees=True
+                if updated is not None:
+                    relative=reference.world_to_screen@np.vstack([cv2.invertAffineTransform(updated.world_to_screen),[0,0,1]])
+                    probes=comparison_points(reference,image.shape[1],image.shape[0])
+                    agrees=float(np.max(np.linalg.norm(probes@relative.T-probes[:,:2],axis=1)))<=3
+                if agrees:
+                    updated=reference;self.last_reference_verified=stamp;self.reference_status='verified'
+                else:self.reference_status='disagreement'
+            self.next_reference_check=stamp+(.5 if self.reference_status=='verified' else .1)
         if self.future is not None and self.anchor_motion is not None:
             step=None
             if updated is not None and previous_obs is not None and previous_obs.world_to_screen is not None:
@@ -322,6 +357,7 @@ class MotionRecognizer:
                         rebased=self._follow(self.anchor_frame,image,absolute,stamp)
                     self.absolute_status='reprojected' if rebased is not None else 'reprojection_failed'
                     if rebased is not None:
+                        preserve_references=updated is not None
                         if (updated is not None and updated.map_id==rebased.map_id
                                 and updated.layer_id==rebased.layer_id):
                             # Compare both estimates on this capture, not the old anchor.
@@ -332,6 +368,7 @@ class MotionRecognizer:
                             discrepancy=float(np.max(np.linalg.norm(
                                 probes@relative.T-probes[:,:2],axis=1)))
                             discontinuity=discrepancy>24
+                            preserve_references=discrepancy<=3
                             if discrepancy<=3:
                                 uncertainty=max(discrepancy,rebased.error_px)
                                 if surface=='minimap':
@@ -345,6 +382,10 @@ class MotionRecognizer:
                                     player=tuple(cv2.invertAffineTransform(blended)@np.array([*rebased.circle[:2],1])) if rebased.circle else rebased.player
                                     rebased=replace(rebased,world_to_screen=blended,player=player,
                                                     position_uncertainty_px=uncertainty)
+                        if not preserve_references:
+                            self.registered_frames.clear();self.last_reference_verified=-math.inf
+                        if surface=='minimap' and absolute.captured_at==self.anchor_stamp:
+                            self.registered_frames.remember(self.anchor_frame,absolute)
                         updated=rebased
                         self.last_absolute=self.anchor_stamp
                         if surface=='minimap':self.circle=rebased.circle
@@ -371,18 +412,20 @@ class MotionRecognizer:
             if not self.recent or stamp-self.recent[-1][1].captured_at>=.12:
                 self.recent.append((image.copy(),updated))
         status=(_tr('correction') if discontinuity else _tr('tracking') if updated else
-                _tr('anchor_expired') if stamp-self.last_absolute>age_limit else _tr('flow_lost'))
+                _tr('anchor_expired') if stamp-max(self.last_absolute,self.last_reference_verified)>age_limit else _tr('flow_lost'))
         self.last_diagnostic={'surface':surface,'state':status,'absolute':self.absolute_status,
             'anchor_age_s':round(stamp-self.last_absolute,4) if math.isfinite(self.last_absolute) else None,
             'pending_age_s':round(stamp-self.anchor_stamp,4) if self.future else None,
             'hud_visible':bool(is_gameplay),'flow':list(self.flow_attempts),
+            'native_reference':self.reference_status,'native_reference_count':len(self.registered_frames.frames),
+            'native_reference_verified_age_s':round(stamp-self.last_reference_verified,4) if math.isfinite(self.last_reference_verified) else None,
             'published':updated is not None and not discontinuity,'continuity_id':self.continuity_id}
         if status!=self.tracking_status:
             self.tracking_status=status
-            logger.info('Tracking surface=%s state=%s anchor_age=%.3f pending_age=%.3f absolute=%s flow=%s absolute_state=%s',
+            logger.info('Tracking surface=%s state=%s anchor_age=%.3f pending_age=%.3f absolute=%s flow=%s absolute_state=%s native_reference=%s',
                         surface,status,stamp-self.last_absolute,
                         stamp-self.anchor_stamp if self.future else 0,self.absolute_reason,
-                        self.flow_attempts[-1].get('reason','external_follow') if self.flow_attempts else 'not_attempted',self.absolute_status)
+                        self.flow_attempts[-1].get('reason','external_follow') if self.flow_attempts else 'not_attempted',self.absolute_status,self.reference_status)
         if discontinuity:
             self.continuity_id+=1
             self.recent.clear()

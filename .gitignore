@@ -82,3 +82,10 @@ backups/
 
 # Generated visual previews and packaged art; approved masters live in data/source/brand.
 /artifacts/
+
+# Local development helper scripts and scratch files
+tasks/
+*.local.*
+scratch/
+
+

@@ -47,7 +47,7 @@ the 2.0.x series; in-game validation across maps and layers remains ongoing.
 ## Start playing
 
 1. Extract the **complete portable package** into a permanent folder, keeping `userData` intact.
-2. Open **HexenMap.exe** or **Iniciar_HexenMap.bat**. Accept the administrator prompt when needed to interact with an elevated game.
+2. Open **HexenMap.exe**. Accept the administrator prompt when needed to interact with an elevated game.
 3. Run Genshin in **windowed or borderless mode**. Choose your map, layer, and items in the panel.
 4. Return to the game. Press **F8** to collapse or reopen the panel.
 
@@ -133,6 +133,13 @@ The current package is in `dist/atual`, with a versioned ZIP and folder. Extract
 [Portuguese catalog review](docs/LOCALIZATION.md) · [Photo sources and cache](docs/MARKER_HINTS.md)
 
 </details>
+
+## Security, Transparency & Game Integrity
+
+- **Open Source & Fully Auditable:** Code is 100% open. No game memory reading (`ReadProcessMemory`), no DLL injection, no keylogging, and no confidential data collection.
+- **Game Integrity & Anti-Cheat Notice:** As an external third-party utility, HoYoverse does not officially endorse or whitelist this tool. While it operates purely via external computer vision, usage is at each player's own discretion.
+- **Antivirus False Alerts:** Unsigned PyInstaller builds may trigger heuristic flags. The application can always be executed directly from source using Python in terminal.
+- Full details, technical explanations, and disclosures are available in our [**Security Policy (SECURITY.md)**](SECURITY.md).
 
 ## Credits and license
 

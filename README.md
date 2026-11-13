@@ -27,7 +27,7 @@ O aplicativo usa reconhecimento de imagem externo. Não lê memória do jogo, n�
 **Instalador (teste local):** execute `HexenMap-VERSAO-Setup-x64.exe`. Depois procure **Hexen Map** no menu Iniciar. O pedido de administrador vem antes da animação; depois o launcher verifica atualizações e abre o aplicativo automaticamente, herdando a permissão. Coletas e configurações ficam salvas no seu PC e são preservadas nas atualizações, reinstalações e desinstalação. [Instalação, atualização e recuperação](docs/UPDATES.md).
 
 1. Extraia o **pacote portátil completo** em uma pasta fixa, preservando `userData`.
-2. Abra **HexenMap.exe** ou **Iniciar_HexenMap.bat**. Aceite a solicitação de administrador quando necessária para interagir com o jogo elevado.
+2. Abra **HexenMap.exe**. Aceite a solicitação de administrador quando necessária para interagir com o jogo elevado.
 3. Use o Genshin em **janela ou sem bordas**. Escolha o mapa, a camada e os itens desejados no painel.
 4. Volte ao jogo. Use **F8** para recolher ou reabrir o painel.
 
@@ -136,6 +136,13 @@ O pacote atual fica em `dist/atual`, com versão no nome do ZIP e da pasta. Extr
 [Catálogo em português](docs/LOCALIZATION.md) · [Origem e cache das fotos](docs/MARKER_HINTS.md)
 
 </details>
+
+## Segurança, Transparência e Termos de Uso
+
+- **Código Aberto e Auditável:** O código-fonte é 100% aberto. Não há leitura de memória do jogo (`ReadProcessMemory`), injeção de DLLs ou envio de dados confidenciais.
+- **Risco de Jogo / Anti-Cheat:** Por operar como ferramenta externa de terceiros, a desenvolvedora (HoYoverse) não homologa oficialmente o aplicativo. O funcionamento é por visão computacional, mas o uso é de responsabilidade de cada jogador.
+- **Alertas de Antivírus:** Executáveis empacotados via PyInstaller sem assinatura comercial podem gerar falsos positivos heurísticos. O aplicativo pode ser executado diretamente em Python via terminal.
+- Consulte todos os detalhes e esclarecimentos em nossa [**Política de Segurança (SECURITY.md)**](SECURITY.md).
 
 ## Créditos e licença
 
