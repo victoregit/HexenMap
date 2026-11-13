@@ -187,7 +187,7 @@ class DesktopApp(ProfileControls,CompactPanel):
         map_names.update(getattr(self,'map_names',{}))
         from src.live.map_registry import maps
         map_names.update({key:map_name(key) for key in maps()})
-        self.layer_names={}
+        self.layer_names={_tr('Automático · Detectar mapa'): '* / automática'}
         supported=set(installed_scopes(self.reference_root/'appsample'))
         for value in layers:
             mapid,layer=value.split(' / ')
@@ -198,7 +198,6 @@ class DesktopApp(ProfileControls,CompactPanel):
                 name=layer_name(mapid,layer) if (mapid,layer) in supported else _tr('Camada {0} · sem referência',layer.removeprefix('as-layer-').replace('-', '/'))
             if mapid.startswith('as-map-') and mapid not in map_names:map_names[mapid]=_tr('Mapa {0} · sem referência',mapid.removeprefix('as-map-'))
             self.layer_names[f'{_tr(map_names.get(mapid,mapid))} · {_tr(name)}']=value
-        self.layer_names[_tr('Automático · Detectar mapa')]='* / automática'
         pref=self.settings.get("regional",{}).get(self.package_id,{})
         default='as-map-2 / surface'
         choice='* / automática' if self.settings.get('tracking_mode','auto')=='auto' else pref.get("layer",default)

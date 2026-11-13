@@ -21,6 +21,7 @@ class BudgetRecognizer:
         self.store=ReferenceStore(FeatureCache(cache_dir,cancelled),mode)
         self.mode=mode;self.circle_hint=None;self.last={};self.position=None;self.cursor={}
         self.bad=set();self.failed={};self.coarse={};self.coarse_points={};self.coarse_owners={}
+        self.pack_by_raster={id(r):p for p in self.packs for r in p.rasters}
         self.rasters=[r for p in self.packs for r in p.rasters]
         self.tiles={id(r):list(blocks(r)) for r in self.rasters}
         self.by_surface={}
@@ -37,7 +38,7 @@ class BudgetRecognizer:
             for r in sources:
                 check_cancel(cancelled)
                 budget=(min(1200,max(200,100000//len(sources))) if surface=='minimap'
-                        else max(30,min(2000,round(16000*r.width*r.height/total))))
+                        else max(150,min(2000,round(16000*r.width*r.height/total))))
                 xy,desc=self.store.features.coarse(r,budget)
                 if len(desc)<2:continue
                 descriptors.append(desc);points.append(xy);owners.extend([r]*len(xy))
@@ -51,12 +52,19 @@ class BudgetRecognizer:
         selected_maps={pack.map_id for pack in self.packs}
         if mode=='global' and len(selected_maps)==1:self.preload_global(next(iter(selected_maps)))
 
+    def pack_of(self,item):
+        raster=item.raster if hasattr(item,'raster') else item
+        p=self.pack_by_raster.get(id(raster))
+        if p is not None:return p
+        idx=getattr(raster,'pack_index',0)
+        return self.packs[idx] if idx<len(self.packs) else self.packs[0]
+
     def preload_global(self,map_id):
         # Automatic map choice must never mean all installed maps resident at once.
         self.store.close();self.global_map=None
         try:
             for tile in (b for surface in self.by_surface.values() for b in surface):
-                if self.packs[tile.raster.pack_index].map_id!=map_id:continue
+                if self.pack_of(tile).map_id!=map_id:continue
                 check_cancel(self.cancelled)
                 try:self.store.get(tile)
                 except ValueError:self.bad.add(tile.key)
@@ -95,7 +103,7 @@ class BudgetRecognizer:
                 if len(pair)<2:continue
                 a=pair[0];origin=world(a.trainIdx)
                 # Overlap copies of one landmark are not competing locations.
-                b=next((m for m in pair[1:] if owners[m.trainIdx].pack_index!=owners[a.trainIdx].pack_index
+                b=next((m for m in pair[1:] if self.pack_of(owners[m.trainIdx]).layer_id!=self.pack_of(owners[a.trainIdx]).layer_id
                         or np.linalg.norm(world(m.trainIdx)-origin)>12),None)
                 if b is None:continue
                 if a.distance>=.83*b.distance:continue
@@ -103,8 +111,20 @@ class BudgetRecognizer:
                 tile=min(tile_groups[id(r)],key=lambda t:(max(0,t.box[0]-x,x-t.box[2])**2+max(0,t.box[1]-y,y-t.box[3])**2,
                                                           (x-(t.box[0]+t.box[2])/2)**2+(y-(t.box[1]+t.box[3])/2)**2))
                 votes[tile.key]+=1;lookup[tile.key]=tile
-            return [lookup[key] for key,count in votes.most_common(5) if count>=2]
+            selected=[]
+            seen_layers=set()
+            for key,count in votes.most_common(12):
+                if count<2:break
+                tile=lookup[key]
+                p_layer=self.pack_of(tile).layer_id
+                if len(selected)<5 or p_layer not in seen_layers:
+                    selected.append(tile);seen_layers.add(p_layer)
+                if len(selected)>=8:break
+            return selected
         for tile in ranked(surface,self.tiles):add(tile)
+        if surface=='map' and 'minimap' in self.coarse:
+            for tile in ranked('minimap',self.tiles):
+                if getattr(tile.raster,'map_compatible',False) or tile.raster.surface=='map':add(tile)
         if surface=='minimap':
             for tile in ranked('map',self.fallback_tiles):add(tile)
             if self.position is not None:
@@ -142,33 +162,67 @@ class BudgetRecognizer:
             for fraction in (.85,.7):
                 inner=np.zeros_like(mask);cv2.circle(inner,(round(x),round(y)),max(1,round((r-8)*fraction)),255,-1)
                 inner=cv2.bitwise_and(inner,mask);queries.append((inner,None))
-        start=time.monotonic();loads=0;fits=[]
+        start=time.monotonic();loads=0;fits=[];seen_layers=set()
         for tile in self.candidates(surface,query):
             check_cancel(self.cancelled)
-            if fits and tile.raster.pack_index==fits[0][0].raster.pack_index:continue
+            p_layer=self.pack_of(tile).layer_id
+            if p_layer in seen_layers:continue
             missing=tile.key not in self.store.cache
             if self.mode=='light' and missing and (loads>=4 or time.monotonic()-start>.75):break
             try:matcher=self.store.get(tile)
             except ValueError:self.bad.add(tile.key);continue
             loads+=missing
+            fit=None
             for n,(candidate_mask,q) in enumerate(queries):
                 if q is None:
                     q=self.query_engine.query(frame,candidate_mask);queries[n]=(candidate_mask,q)
                 if q is None:continue
                 fit=matcher.match(frame,candidate_mask,query=q)
                 if fit is not None:
-                    fits.append((tile,fit));break
+                    fits.append((tile,fit));seen_layers.add(p_layer);break
             if fits and len(self.packs)==1:break
             if fit is None and tile is not self.last.get(surface):self.failed[tile.key]=time.monotonic()+2
             del matcher
         if not fits:return Observation('hidden',stamp,reason=_tr('Localizando trecho do mapa…'))
-        if len({tile.raster.pack_index for tile,fit in fits})>1:return Observation('hidden',stamp,reason=_tr('Camada ambígua'))
-        tile,(matrix,confidence,error)=fits[0]
+        chosen_fit=None
+        if len(fits)==1:
+            chosen_fit=fits[0]
+        else:
+            surface_fits=[f for f in fits if self.pack_of(f[0]).layer_id in (None,'surface')]
+            layer_fits=[f for f in fits if self.pack_of(f[0]).layer_id not in (None,'surface')]
+            distinct_layer_ids={self.pack_of(f[0]).layer_id for f in layer_fits}
+            if len(distinct_layer_ids)>1:
+                sorted_l=sorted(layer_fits,key=lambda f:f[1][1],reverse=True)
+                if sorted_l[0][1][1]>=1.25*sorted_l[1][1][1]:
+                    chosen_fit=sorted_l[0]
+                else:
+                    return Observation('hidden',stamp,reason=_tr('Camada ambígua'))
+            elif len(layer_fits)>=1 and surface_fits:
+                ltile,(lmatrix,lconf,lerr)=layer_fits[0]
+                stile,(smatrix,sconf,serr)=surface_fits[0]
+                if (abs(lconf-sconf)<0.02 and ltile.raster.width==stile.raster.width
+                        and ltile.raster.height==stile.raster.height):
+                    return Observation('hidden',stamp,reason=_tr('Camada ambígua'))
+                inv_m=cv2.invertAffineTransform(lmatrix)
+                c_px=circle[:2] if circle else (w*.5,h*.5)
+                c_w=inv_m@np.array([*c_px,1.])
+                c_raster=ltile.raster.matrix@np.array([*c_w,1.])
+                if (-60<=c_raster[0]<=ltile.raster.width+60 and -60<=c_raster[1]<=ltile.raster.height+60):
+                    chosen_fit=layer_fits[0]
+                else:
+                    chosen_fit=surface_fits[0]
+            elif layer_fits:
+                chosen_fit=layer_fits[0]
+            elif surface_fits:
+                chosen_fit=surface_fits[0]
+            else:
+                return Observation('hidden',stamp,reason=_tr('Camada ambígua'))
+        tile,(matrix,confidence,error)=chosen_fit
         self.last[surface]=tile
         self.store.protected_key=tile.key
         center=circle[:2] if circle else (w*.5,h*.5)
         self.position=tuple(cv2.invertAffineTransform(matrix)@np.array([*center,1.]))
-        p=self.packs[tile.raster.pack_index]
+        p=self.pack_of(tile)
         if self.mode=='global' and self.global_map!=p.map_id:self.preload_global(p.map_id)
         self.pack=p
         return Observation(surface,stamp,matrix,confidence,error,circle,self.position if circle else None,
