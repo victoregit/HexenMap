@@ -123,3 +123,139 @@ class MinimapRecording:
             temporary.replace(destination)
         finally:
             temporary.unlink(missing_ok=True)
+
+
+# Mandatory Failure Classification Codes (Stage 4 Diagnostic Specification)
+REFERENCE_MISSING = 'REFERENCE_MISSING'
+REFERENCE_LOAD_FAILED = 'REFERENCE_LOAD_FAILED'
+MAP_CLASSIFICATION_FAILED = 'MAP_CLASSIFICATION_FAILED'
+LAYER_CLASSIFICATION_FAILED = 'LAYER_CLASSIFICATION_FAILED'
+LOW_MATCH_CONFIDENCE = 'LOW_MATCH_CONFIDENCE'
+TRANSFORM_FAILED = 'TRANSFORM_FAILED'
+COORDINATE_SPACE_MISMATCH = 'COORDINATE_SPACE_MISMATCH'
+MARKER_DATA_MISSING = 'MARKER_DATA_MISSING'
+RENDER_FILTERED = 'RENDER_FILTERED'
+STALE_TRACKING_STATE = 'STALE_TRACKING_STATE'
+
+FAILURE_CODES = frozenset({
+    REFERENCE_MISSING,
+    REFERENCE_LOAD_FAILED,
+    MAP_CLASSIFICATION_FAILED,
+    LAYER_CLASSIFICATION_FAILED,
+    LOW_MATCH_CONFIDENCE,
+    TRANSFORM_FAILED,
+    COORDINATE_SPACE_MISMATCH,
+    MARKER_DATA_MISSING,
+    RENDER_FILTERED,
+    STALE_TRACKING_STATE,
+})
+
+
+class RecognitionStageDiagnostic:
+    """Per-stage recognition attempt diagnostic record."""
+
+    def __init__(self, *,
+                 timestamp: float = 0.0,
+                 previous_scope: tuple[str, str] | None = None,
+                 candidate_map: str | None = None,
+                 candidate_layer: str | None = None,
+                 selected_reference: str | None = None,
+                 visual_matches: int = 0,
+                 confidence: float = 0.0,
+                 geometric_validation: bool = False,
+                 transform_state: str = 'UNAVAILABLE',
+                 eligible_markers: int = 0,
+                 drawn_markers: int = 0,
+                 failure_reason: str | None = None,
+                 elapsed_ms: float = 0.0):
+        self.timestamp = timestamp
+        self.previous_scope = tuple(previous_scope) if previous_scope is not None else None
+        self.candidate_map = candidate_map
+        self.candidate_layer = candidate_layer
+        self.selected_reference = selected_reference
+        self.visual_matches = visual_matches
+        self.confidence = confidence
+        self.geometric_validation = geometric_validation
+        self.transform_state = transform_state
+        self.eligible_markers = eligible_markers
+        self.drawn_markers = drawn_markers
+        self.failure_reason = failure_reason
+        self.elapsed_ms = elapsed_ms
+
+    def to_dict(self) -> dict:
+        return {
+            'timestamp': round(self.timestamp, 3),
+            'previous_scope': list(self.previous_scope) if self.previous_scope else None,
+            'candidate_map': self.candidate_map,
+            'candidate_layer': self.candidate_layer,
+            'selected_reference': self.selected_reference,
+            'visual_matches': self.visual_matches,
+            'confidence': round(self.confidence, 3),
+            'geometric_validation': self.geometric_validation,
+            'transform_state': self.transform_state,
+            'eligible_markers': self.eligible_markers,
+            'drawn_markers': self.drawn_markers,
+            'failure_reason': self.failure_reason,
+            'elapsed_ms': round(self.elapsed_ms, 2),
+        }
+
+    def format_log(self) -> str:
+        lines = [
+            'Map Recognition',
+            f'Timestamp: {self.timestamp:.3f}',
+            f'Previous: {self.previous_scope[0] if self.previous_scope else "NONE"}/{self.previous_scope[1] if self.previous_scope else "NONE"}',
+            f'Candidate Map: {self.candidate_map or "NONE"}',
+            f'Candidate Layer: {self.candidate_layer or "NONE"}',
+            f'Reference: {self.selected_reference or "NONE"}',
+            f'Visual Matches: {self.visual_matches}',
+            f'Confidence: {self.confidence:.2f}',
+            f'Geometric Validation: {"OK" if self.geometric_validation else "FAILED"}',
+            f'Transform: {self.transform_state}',
+            f'Markers: {self.drawn_markers}/{self.eligible_markers}',
+            f'Reason: {self.failure_reason or "SUCCESS"}',
+            f'Elapsed: {self.elapsed_ms:.1f}ms',
+        ]
+        return '\n'.join(lines)
+
+
+def classify_scope_support(map_id: str, layer_id: str | None, reference_store=None) -> tuple[bool, str | None, str]:
+    """Audit whether a scope is supported or has missing reference packages.
+
+    Explicitly identifies Teyvat (as-map-2) underground layers as REFERENCE_MISSING.
+    """
+    if map_id == 'as-map-2' and layer_id not in (None, 'surface'):
+        return False, REFERENCE_MISSING, 'Camadas subterrâneas de Teyvat não possuem pacotes de referência instalados'
+
+    if reference_store is not None:
+        try:
+            scope = (map_id, layer_id or 'surface')
+            if scope not in reference_store.scopes:
+                return False, REFERENCE_MISSING, f'Escopo {scope} não encontrado no repositório de referências'
+        except Exception as exc:
+            return False, REFERENCE_LOAD_FAILED, str(exc)
+
+    return True, None, 'OK'
+
+
+class RecognitionDiagnosticsLog:
+    """Bounded thread-safe ring buffer of recent recognition attempts."""
+
+    def __init__(self, maxlen: int = 50):
+        self.maxlen = maxlen
+        self._entries: list[RecognitionStageDiagnostic] = []
+        self._lock = threading.Lock()
+
+    def record(self, diag: RecognitionStageDiagnostic):
+        with self._lock:
+            self._entries.append(diag)
+            if len(self._entries) > self.maxlen:
+                self._entries.pop(0)
+
+    def latest(self) -> RecognitionStageDiagnostic | None:
+        with self._lock:
+            return self._entries[-1] if self._entries else None
+
+    def snapshot(self) -> list[dict]:
+        with self._lock:
+            return [e.to_dict() for e in self._entries]
+
