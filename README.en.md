@@ -5,6 +5,7 @@
 [![How to Use (EN)](https://img.shields.io/badge/📘_Guide-How_to_Use_(EN)-2ea44f?style=flat-square)](HOW_TO_USE.en.md)
 [![Como Usar (PT)](https://img.shields.io/badge/📖_Guia-Como_Usar_(PT)-007acc?style=flat-square)](HOW_TO_USE.md)
 [![Security Policy](https://img.shields.io/badge/🛡️_Security-Policy-orange?style=flat-square)](SECURITY.md)
+[![Roadmap](https://img.shields.io/badge/🗺️_Roadmap-In_Development-8a2be2?style=flat-square)](#-roadmap--upcoming-features-in-development)
 
 ### Your AppSample progress, on the in-game maps.
 
@@ -47,6 +48,13 @@ cave coverage and temporary event maps is outside this stage.
 
 Installed images work offline and load on demand. The expansion is available in
 the 2.0.x series; in-game validation across maps and layers remains ongoing.
+
+## 🗺️ Roadmap — Upcoming Features in Development
+
+- 🌿 **Guided Farming Routes:** Sequential overlay trails for character ascension materials, chest/puzzle exploration by region, and daily artifact routes (1★ & 2★) with smart waypoint progression.
+- ⏳ **Real-Time Respawn Timers:** Accurate countdown timers for local specialties and flowers (48h), ores (24h/48h/72h), world bosses (3 min), and official daily server reset (04:00 AM).
+- 🌐 **Official HoYoLAB Map Sync:** Passive and safe import/synchronization of collected chests, oculi, and challenges directly from your official HoYoverse Interactive Map account.
+- 🕳️ **Underground Map Fixes:** Z-coordinate calibration and layer alignment fixes for multi-elevation cave systems (Sumeru, The Chasm, Enkanomiya, Sea of Bygone Eras), reducing layer switching glitches.
 
 ## Start playing
 
