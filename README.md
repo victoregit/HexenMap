@@ -5,7 +5,7 @@
 [![Como Usar (PT)](https://img.shields.io/badge/📖_Guia-Como_Usar_(PT)-007acc?style=flat-square)](HOW_TO_USE.md)
 [![How to Use (EN)](https://img.shields.io/badge/📘_Guide-How_to_Use_(EN)-2ea44f?style=flat-square)](HOW_TO_USE.en.md)
 [![Segurança / Security](https://img.shields.io/badge/🛡️_Segurança-Security_Policy-orange?style=flat-square)](SECURITY.md)
-[![Roadmap](https://img.shields.io/badge/🗺️_Roadmap-Em_Desenvolvimento-8a2be2?style=flat-square)](#-roadmap--próximos-recursos-em-desenvolvimento)
+[![Roadmap](https://img.shields.io/badge/🗺️_Roadmap-ROADMAP.md-8a2be2?style=flat-square)](ROADMAP.md)
 
 ### Seu progresso do AppSample, nos mapas do jogo.
 
@@ -33,6 +33,8 @@ O aplicativo usa reconhecimento de imagem externo. Não lê memória do jogo, n�
 - ⏳ **Timers de Reset em Tempo Real:** Temporizadores de respawn para especialidades e flores locais (48h), minérios (24h/48h/72h), chefes de mundo (3 min) e reset diário oficial do servidor (04:00).
 - 🌐 **Sincronização com o Mapa Oficial HoYoLAB:** Importação passiva e segura de baús, óculos e desafios diretamente da sua conta oficial da HoYoverse.
 - 🕳️ **Correção dos Mapas Subterrâneos:** Calibração de coordenadas Z e alinhamento em áreas com múltiplos andares (Sumeru, Despenhadeiro/Chasm, Enkanomiya e Mar do Passado), reduzindo bugs na troca de camadas.
+
+> Consulte o detalhamento completo dos planos futuros em [**ROADMAP.md**](ROADMAP.md).
 
 ## Começar a jogar
 
