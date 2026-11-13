@@ -244,3 +244,199 @@ app.compact.stop();app.root.destroy()
 '''
     subprocess.run([sys.executable,'-c',code],cwd=Path(__file__).resolve().parents[1],
                    text=True,capture_output=True,check=True,timeout=25)
+
+
+def test_router_ranks_all_seven_maps_without_false_ambiguity():
+    import cv2
+    from src.live.automatic_maps import MapRouter
+    from src.live.map_registry import installed_scopes
+    from src.live.reference_store import read_spec
+
+    root = Path('userData/references/appsample').resolve()
+    scopes = installed_scopes(root)
+    active = read_spec(root / 'as-map-2/surface', 'appsample', 'as-map-2', 'surface', 'appsample-webmercator-z14', 0)
+    router = MapRouter(scopes, root)
+
+    all_maps = [
+        ('as-map-2', 1800, 2200),
+        ('as-map-7', None, None),
+        ('as-map-9', None, None),
+        ('as-map-34', None, None),
+        ('as-map-36', None, None),
+        ('as-map-37', None, None),
+        ('as-map-40', None, None),
+    ]
+    for target, fixed_y, fixed_x in all_maps:
+        p = root / target / 'surface/manifest.json'
+        m = json.loads(p.read_text(encoding='utf-8'))
+        terrain = cv2.imread(str(p.parent / m['terrain']['file']))
+        if fixed_y is not None:
+            cy, cx = fixed_y, fixed_x
+        else:
+            gray = cv2.cvtColor(terrain, cv2.COLOR_BGR2GRAY)
+            nz = np.where(gray > 8)
+            cy, cx = int(np.median(nz[0])), int(np.median(nz[1]))
+        x = max(0, min(terrain.shape[1] - 768, cx - 384))
+        y = max(0, min(terrain.shape[0] - 512, cy - 256))
+        scene = np.zeros((1080, 1920, 3), np.uint8)
+        scene[250:762, 576:1344] = terrain[y:y+512, x:x+768]
+        hud = active.map_ui
+        scene[10:10+hud.shape[0], 1650:1650+hud.shape[1]] = hud
+
+        ranked, ambiguous = router.rank(scene, active)
+        assert ranked, f"No scopes ranked for {target}"
+        assert not ambiguous, f"False ambiguity detected for {target}"
+        assert ranked[0][0] == target, f"Expected top rank {target}, got {ranked[0][0]}"
+
+
+def test_teyvat_underground_layers_explicitly_classified_reference_missing():
+    from src.live.tracking_diagnostics import classify_scope_support, REFERENCE_MISSING
+    supported, code, reason = classify_scope_support('as-map-2', 'as-layer-101-200')
+    assert not supported
+    assert code == REFERENCE_MISSING
+    assert 'não possuem pacotes de referência' in reason
+
+    supported_surf, code_surf, _ = classify_scope_support('as-map-2', 'surface')
+    assert supported_surf and code_surf is None
+
+
+def test_underground_layer_detected_over_dimmed_surface_and_strictly_single_layer(tmp_path):
+    import cv2
+    from src.live.reference_store import read_spec
+    from src.live.budget_vision import BudgetRecognizer
+
+    root = Path('userData/references/appsample').resolve()
+    surf_spec = read_spec(root / 'as-map-34/surface', 'appsample', 'as-map-34', 'surface', 'appsample-webmercator-z14', 0)
+    layer_spec = read_spec(root / 'as-map-34/as-layer-125-157', 'appsample', 'as-map-34', 'as-layer-125-157', 'appsample-webmercator-z14', 1)
+
+    H, W = 1080, 1920
+    surf_img = cv2.imread(str(surf_spec.rasters[0].path))
+    layer_img = cv2.imread(str(layer_spec.rasters[0].path))
+
+    M_world_to_screen = np.array([[0.25, 0.0, W/2 - 0.25 * (-2069.306)],
+                                  [0.0, 0.25, H/2 - 0.25 * (-709.129)]], dtype=np.float32)
+
+    M_surf_to_screen = M_world_to_screen @ np.vstack([cv2.invertAffineTransform(surf_spec.rasters[0].matrix), [0, 0, 1]])
+    dimmed_surf = cv2.warpAffine(surf_img, M_surf_to_screen, (W, H)) // 2
+
+    M_layer_to_screen = M_world_to_screen @ np.vstack([cv2.invertAffineTransform(layer_spec.rasters[0].matrix), [0, 0, 1]])
+    cave_overlay = cv2.warpAffine(layer_img, M_layer_to_screen, (W, H))
+
+    mask = (cave_overlay > 10).any(axis=2, keepdims=True)
+    composed = np.where(mask, cave_overlay, dimmed_surf)
+
+    ui = surf_spec.map_ui
+    uh, uw = ui.shape[:2]
+    composed[round(0.02*H):round(0.02*H)+uh, round(0.88*W):round(0.88*W)+uw] = ui
+
+    recognizer = BudgetRecognizer([surf_spec, layer_spec], tmp_path / 'cache')
+    obs = recognizer.observe(composed, 10.0)
+    if obs.layer_id != 'as-layer-125-157':
+        obs = recognizer.observe(composed, 10.1)
+
+    assert obs.surface == 'map'
+    assert obs.map_id == 'as-map-34'
+    assert obs.layer_id == 'as-layer-125-157'
+    assert obs.confidence >= 0.80
+    assert obs.layer_id is not None
+    assert obs.layer_id != 'surface'
+
+
+def test_multimap_consecutive_transitions_invalidation():
+    import cv2, time
+    from src.live.map_registry import installed_scopes
+    from src.live.reference_store import read_spec
+    from src.live.automatic_maps import AutomaticMapSearch
+    from src.live.vision import Observation
+
+    root = Path('userData/references/appsample').resolve()
+    scopes = installed_scopes(root)
+    active = read_spec(root / 'as-map-2/surface', 'appsample', 'as-map-2', 'surface', 'appsample-webmercator-z14', 0)
+
+    def make_scene(target, cy_cx=None):
+        p = root / target / 'surface/manifest.json'
+        m = json.loads(p.read_text(encoding='utf-8'))
+        terrain = cv2.imread(str(p.parent / m['terrain']['file']))
+        if cy_cx is not None:
+            cy, cx = cy_cx
+        else:
+            gray = cv2.cvtColor(terrain, cv2.COLOR_BGR2GRAY)
+            nz = np.where(gray > 8)
+            cy, cx = int(np.median(nz[0])), int(np.median(nz[1]))
+        x = max(0, min(terrain.shape[1] - 768, cx - 384))
+        y = max(0, min(terrain.shape[0] - 512, cy - 256))
+        scene = np.zeros((1080, 1920, 3), np.uint8)
+        scene[250:762, 576:1344] = terrain[y:y+512, x:x+768]
+        hud = active.map_ui
+        scene[10:10+hud.shape[0], 1650:1650+hud.shape[1]] = hud
+        return scene
+
+    current_scope = ('as-map-2', 'surface')
+    chain = [('as-map-7', None), ('as-map-34', None), ('as-map-2', (1800, 2200))]
+
+    for target_map, coords in chain:
+        expected = (target_map, 'surface')
+        scene = make_scene(target_map, coords)
+        search = AutomaticMapSearch(scopes, current_scope, root, Path('userData/cache/references'), active)
+        search.loss_grace = 0.5
+        found = None
+        for _ in range(40):
+            now = time.monotonic()
+            found = search.tick(scene, now, Observation('hidden', now), surface='map')
+            if found:
+                break
+            time.sleep(0.2)
+        search.close()
+        assert found == expected, f"Failed transition from {current_scope} to {expected}, got {found}"
+        current_scope = found
+
+
+def test_same_map_underground_layer_monitoring_tick():
+    import cv2, time
+    from src.live.map_registry import installed_scopes
+    from src.live.reference_store import read_spec
+    from src.live.automatic_maps import AutomaticMapSearch
+    from src.live.vision import Observation
+
+    root = Path('userData/references/appsample').resolve()
+    scopes = installed_scopes(root)
+    active = read_spec(root / 'as-map-34/surface', 'appsample', 'as-map-34', 'surface', 'appsample-webmercator-z14', 0)
+    layer_spec = read_spec(root / 'as-map-34/as-layer-125-157', 'appsample', 'as-map-34', 'as-layer-125-157', 'appsample-webmercator-z14', 1)
+
+    H, W = 1080, 1920
+    surf_img = cv2.imread(str(active.rasters[0].path))
+    layer_img = cv2.imread(str(layer_spec.rasters[0].path))
+
+    M_world_to_screen = np.array([[0.25, 0.0, W/2 - 0.25 * (-2069.306)],
+                                  [0.0, 0.25, H/2 - 0.25 * (-709.129)]], dtype=np.float32)
+
+    M_surf_to_screen = M_world_to_screen @ np.vstack([cv2.invertAffineTransform(active.rasters[0].matrix), [0, 0, 1]])
+    dimmed_surf = cv2.warpAffine(surf_img, M_surf_to_screen, (W, H)) // 2
+
+    M_layer_to_screen = M_world_to_screen @ np.vstack([cv2.invertAffineTransform(layer_spec.rasters[0].matrix), [0, 0, 1]])
+    cave_overlay = cv2.warpAffine(layer_img, M_layer_to_screen, (W, H))
+
+    mask = (cave_overlay > 10).any(axis=2, keepdims=True)
+    composed = np.where(mask, cave_overlay, dimmed_surf)
+
+    ui = active.map_ui
+    uh, uw = ui.shape[:2]
+    composed[round(0.02*H):round(0.02*H)+uh, round(0.88*W):round(0.88*W)+uw] = ui
+
+    search = AutomaticMapSearch(scopes, ('as-map-34', 'surface'), root, Path('userData/cache/references'), active)
+    try:
+        new_layer = None
+        for step in range(30):
+            now = time.monotonic()
+            fresh_obs = Observation('map', now, M_world_to_screen, 0.99, 0.5, None, (-2069.3, -709.1),
+                                    'Explorando', 'as-map-34', 'surface')
+            res = search.tick(composed, now, fresh_obs, surface='map')
+            if res:
+                new_layer = res
+                break
+            time.sleep(0.15)
+        assert new_layer == ('as-map-34', 'as-layer-125-157')
+    finally:
+        search.close()
+
+
