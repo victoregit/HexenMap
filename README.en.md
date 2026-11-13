@@ -136,7 +136,7 @@ The current package is in `dist/atual`, with a versioned ZIP and folder. Extract
 - **Open Source & Fully Auditable:** Code is 100% open. No game memory reading (`ReadProcessMemory`), no DLL injection, no keylogging, and no confidential data collection.
 - **Game Integrity & Anti-Cheat Notice:** As an external third-party utility, HoYoverse does not officially endorse or whitelist this tool. While it operates purely via external computer vision, usage is at each player's own discretion.
 - **Antivirus False Alerts:** Unsigned PyInstaller builds may trigger heuristic flags. The application can always be executed directly from source using Python in terminal.
-- Full details, technical explanations, and disclosures are available in our [**Security Policy (SECURITY.md)**](SECURITY.md).
+- Full details, technical explanations, and disclosures are available in our [**Security Policy (SECURITY.md)**](SECURITY.md) and [**How to Use & Build Guide (HOW_TO_USE.en.md)**](HOW_TO_USE.en.md).
 
 ## Credits and license
 

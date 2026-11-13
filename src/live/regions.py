@@ -8,7 +8,7 @@ from src.live.respawn import PERMANENT,UNKNOWN
 from src.live.appsample_catalog import SPACE
 from src.live.localization import localized_metadata
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class CatalogPackage:
     id: str
     items: list

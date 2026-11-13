@@ -17,7 +17,7 @@ from src.live.respawn import PERMANENT,UNKNOWN,parse_utc
 from src.live.territory import TerritoryIndex
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Pin:
     item: Item
     x: float
@@ -25,7 +25,7 @@ class Pin:
     geometry: MarkerGeometry = LEGACY
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class CollectionCount:
     collected: int
     total: int

@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 
-@dataclass
+@dataclass(slots=True)
 class MarkerCoordinate:
     """3D Coordinate in Teyvat world space."""
     x: float
@@ -32,7 +32,7 @@ class MarkerCoordinate:
         return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2 + (self.z - other.z) ** 2) ** 0.5
 
 
-@dataclass
+@dataclass(slots=True)
 class MarkerCategory:
     """Category classification for a marker."""
     id: str
@@ -61,7 +61,7 @@ class MarkerCategory:
         )
 
 
-@dataclass
+@dataclass(slots=True)
 class RegionBounds:
     """Bounding box for a region in world coordinates."""
     min_x: float
@@ -90,7 +90,7 @@ class RegionBounds:
         )
 
 
-@dataclass
+@dataclass(slots=True)
 class RegionInfo:
     """Region metadata."""
     id: str
@@ -115,7 +115,7 @@ class RegionInfo:
         )
 
 
-@dataclass
+@dataclass(slots=True)
 class LayerInfo:
     """Layer definition (e.g., surface, underground)."""
     id: str
@@ -134,7 +134,7 @@ class LayerInfo:
         )
 
 
-@dataclass
+@dataclass(slots=True)
 class Marker:
     """Exploration item or point of interest in the game world."""
     id: str
@@ -180,7 +180,7 @@ class Marker:
         )
 
 
-@dataclass
+@dataclass(slots=True)
 class MarkerFilter:
     """Filter criteria for marker queries."""
     categories: Optional[Set[str]] = None
