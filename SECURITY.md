@@ -1,6 +1,6 @@
 # Política de Segurança e Boas Práticas / Security & Transparency Policy
 
-**[Português](#versão-em-português)** · **[English](#english-version)**
+**[Português](#versão-em-português)** · **[English](#english-version)** · **[📖 Guia de Uso (PT)](HOW_TO_USE.md)** · **[📘 How to Use (EN)](HOW_TO_USE.en.md)**
 
 ---
 

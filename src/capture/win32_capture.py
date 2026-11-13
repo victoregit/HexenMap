@@ -143,7 +143,10 @@ class Win32ScreenCapture(ScreenCaptureInterface):
             bmi.bmiHeader.biCompression = BI_RGB
 
             buffer_size = width * height * 4
-            buffer = (ctypes.c_ubyte * buffer_size)()
+            if not hasattr(self, "_buffer") or getattr(self, "_buffer_size", 0) != buffer_size:
+                self._buffer_size = buffer_size
+                self._buffer = (ctypes.c_ubyte * buffer_size)()
+            buffer = self._buffer
 
             gdi32.GetDIBits(
                 hmem_dc,

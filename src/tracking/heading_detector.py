@@ -15,6 +15,14 @@ except ImportError:
 class PlayerHeadingDetector:
     """Detects player orientation in degrees [0, 360) from minimap center crop."""
 
+    _CYAN_LOWER = np.array([75, 80, 140], dtype=np.uint8)
+    _CYAN_UPPER = np.array([115, 255, 255], dtype=np.uint8)
+    _YELLOW_LOWER = np.array([18, 90, 150], dtype=np.uint8)
+    _YELLOW_UPPER = np.array([42, 255, 255], dtype=np.uint8)
+    _WHITE_LOWER = np.array([0, 0, 215], dtype=np.uint8)
+    _WHITE_UPPER = np.array([180, 60, 255], dtype=np.uint8)
+    _MORPH_KERNEL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)) if cv2 is not None else None
+
     def __init__(
         self,
         center_roi_fraction: float = 0.35,
@@ -61,11 +69,11 @@ class PlayerHeadingDetector:
             hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
             # Mask 1: Cyan / Light Blue pointer (Genshin player indicator)
-            mask_cyan = cv2.inRange(hsv, np.array([75, 80, 140]), np.array([115, 255, 255]))
+            mask_cyan = cv2.inRange(hsv, self._CYAN_LOWER, self._CYAN_UPPER)
             # Mask 2: Yellow / Gold pointer (Genshin co-op / alternate indicator)
-            mask_yellow = cv2.inRange(hsv, np.array([18, 90, 150]), np.array([42, 255, 255]))
+            mask_yellow = cv2.inRange(hsv, self._YELLOW_LOWER, self._YELLOW_UPPER)
             # Mask 3: High-brightness highlight mask
-            mask_white = cv2.inRange(hsv, np.array([0, 0, 215]), np.array([180, 60, 255]))
+            mask_white = cv2.inRange(hsv, self._WHITE_LOWER, self._WHITE_UPPER)
 
             mask = cv2.bitwise_or(mask_cyan, mask_yellow)
             mask = cv2.bitwise_or(mask, mask_white)
@@ -75,7 +83,7 @@ class PlayerHeadingDetector:
             _, mask = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
 
         # Morphological clean up
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        kernel = self._MORPH_KERNEL if self._MORPH_KERNEL is not None else cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
         # Find contours
