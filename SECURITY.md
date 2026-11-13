@@ -39,6 +39,7 @@ O **Hexen Map** foi desenvolvido com foco em código aberto, privacidade do joga
   python -m pip install -r requirements.txt
   python src/app.py
   ```
+  Consulte o [**HOW_TO_USE.md**](HOW_TO_USE.md) para o passo a passo completo de execução, testes e compilação independente.
 
 ---
 
@@ -77,3 +78,4 @@ O **Hexen Map** foi desenvolvido com foco em código aberto, privacidade do joga
   python -m pip install -r requirements.txt
   python src/app.py
   ```
+  See [**HOW_TO_USE.en.md**](HOW_TO_USE.en.md) for full reproduction, testing, and independent build instructions.

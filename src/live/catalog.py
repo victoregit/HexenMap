@@ -6,10 +6,26 @@ import hashlib
 import json
 import math
 import re
+import sys
 from pathlib import Path
 
+_intern = sys.intern
+_empty_tuple: tuple[str, ...] = ()
+_tuple_cache: dict[tuple[str, ...], tuple[str, ...]] = {}
 
-@dataclass(frozen=True)
+
+def _intern_tuple(seq) -> tuple[str, ...]:
+    if not seq:
+        return _empty_tuple
+    key = tuple(_intern(s) for s in seq)
+    cached = _tuple_cache.get(key)
+    if cached is None:
+        _tuple_cache[key] = key
+        return key
+    return cached
+
+
+@dataclass(frozen=True, slots=True)
 class Item:
     id: str
     name: str
@@ -73,7 +89,10 @@ def load_catalog(directory: Path, *, register: bool = True) -> list[Item]:
                     values=row.get(field,[])
                     if not isinstance(values,list) or not all(isinstance(v,str) for v in values):
                         raise ValueError('Classificação territorial ou categoria inválida')
-                    row[field]=tuple(values)
+                    row[field]=_intern_tuple(values)
+                for str_field in ('id','category','region_id','map_id','layer_id','area_id','rule_id','source_stamp'):
+                    if str_field in row and isinstance(row[str_field],str):
+                        row[str_field]=_intern(row[str_field])
                 item=Item(**row)
                 if item.region_id!=region or item.id in seen or not math.isfinite(item.x+item.y):
                     raise ValueError("Marcador normalizado inválido ou duplicado")

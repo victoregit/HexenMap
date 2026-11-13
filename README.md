@@ -142,7 +142,7 @@ O pacote atual fica em `dist/atual`, com versão no nome do ZIP e da pasta. Extr
 - **Código Aberto e Auditável:** O código-fonte é 100% aberto. Não há leitura de memória do jogo (`ReadProcessMemory`), injeção de DLLs ou envio de dados confidenciais.
 - **Risco de Jogo / Anti-Cheat:** Por operar como ferramenta externa de terceiros, a desenvolvedora (HoYoverse) não homologa oficialmente o aplicativo. O funcionamento é por visão computacional, mas o uso é de responsabilidade de cada jogador.
 - **Alertas de Antivírus:** Executáveis empacotados via PyInstaller sem assinatura comercial podem gerar falsos positivos heurísticos. O aplicativo pode ser executado diretamente em Python via terminal.
-- Consulte todos os detalhes e esclarecimentos em nossa [**Política de Segurança (SECURITY.md)**](SECURITY.md).
+- Consulte todos os detalhes e esclarecimentos em nossa [**Política de Segurança (SECURITY.md)**](SECURITY.md) e no [**Guia de Uso e Compilação (HOW_TO_USE.md)**](HOW_TO_USE.md).
 
 ## Créditos e licença
 

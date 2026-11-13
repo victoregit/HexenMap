@@ -77,6 +77,8 @@ def run_all_benchmarks(
     print(f"[*] Benchmarking Progress Manager Atomic Persistence ({save_iterations} saves)...")
     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tf:
         temp_prog_path = tf.name
+    if os.path.exists(temp_prog_path):
+        os.remove(temp_prog_path)
 
     try:
         prog = ProgressManager(filepath=temp_prog_path)
