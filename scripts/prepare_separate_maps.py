@@ -79,10 +79,13 @@ def prepare(row, workers=4):
         output = ROOT / 'userData/references/appsample/as-map-2/surface'
         manifest = json.loads((output / 'manifest.json').read_text(encoding='utf-8'))
         descriptors = []
-        for e in [manifest['terrain'], *[e for e in manifest.get('extra_terrain',[]) if e.get('surface')=='minimap'][:4]]:
+        minimap_extras = [e for e in manifest.get('extra_terrain',[]) if e.get('surface')=='minimap']
+        step = max(1, len(minimap_extras) // 8)
+        for e in [manifest['terrain'], *minimap_extras[::step][:8]]:
             image = cv2.imread(str(output / e['file']), cv2.IMREAD_GRAYSCALE)
-            _, desc = cv2.SIFT_create(nfeatures=240,contrastThreshold=.025).detectAndCompute(image,None)
-            if desc is not None:descriptors.append(desc)
+            if image is not None and image.std() >= 8:
+                _, desc = cv2.SIFT_create(nfeatures=150,contrastThreshold=.025).detectAndCompute(image,None)
+                if desc is not None:descriptors.append(desc)
         route = output / 'routing.npz'
         np.savez_compressed(route,descriptors=np.concatenate(descriptors)[:1200])
         manifest['routing'] = {'file':route.name,'sha256':hashlib.sha256(route.read_bytes()).hexdigest()}
@@ -105,7 +108,7 @@ def prepare(row, workers=4):
     primary = entry(terrain, 'terrain-z12.png')
     sift = cv2.SIFT_create(nfeatures=600, contrastThreshold=.025)
     _, descriptors = sift.detectAndCompute(cv2.cvtColor(np.asarray(terrain), cv2.COLOR_RGB2GRAY), None)
-    routing = [descriptors] if descriptors is not None else []
+    routing = [descriptors[:600]] if descriptors is not None and len(descriptors) > 0 else []
     terrain.close()
     extras = []
     b = row['tile_bounds'][str(detail_zoom)]
@@ -117,14 +120,15 @@ def prepare(row, workers=4):
             crop = crop.resize((round(crop.width*1.25), round(crop.height*1.25)), Image.Resampling.BICUBIC)
             e = entry(crop, f'minimap-{detail_zoom}-{x}-{y}.png')
             factor = 2**(detail_zoom-14)*1.25
-            e.update(world_to_image=[[factor,0,-x*256*1.25],[0,factor,-y*256*1.25]], surface='minimap')
+            e.update(world_to_image=[[factor,0,-x*256*1.25],[0,factor,-y*256*1.25]], surface='minimap', map_compatible=True)
             extras.append(e)
             # A bounded sample of native-resolution terrain supplements the overview.
-            if len(routing) < 13:
-                _, desc = cv2.SIFT_create(nfeatures=50, contrastThreshold=.025).detectAndCompute(
-                    cv2.cvtColor(np.asarray(crop), cv2.COLOR_RGB2GRAY), None)
-                if desc is not None:
-                    routing.append(desc)
+            if sum(len(d) for d in routing) < 1200:
+                crop_arr = cv2.cvtColor(np.asarray(crop), cv2.COLOR_RGB2GRAY)
+                if crop_arr.std() >= 8:
+                    _, desc = cv2.SIFT_create(nfeatures=60, contrastThreshold=.025).detectAndCompute(crop_arr, None)
+                    if desc is not None and len(desc) >= 5:
+                        routing.append(desc[:60])
             crop.close()
     manifest = dict(region='appsample', map_id=row['map_id'], layer='surface',
                     coordinate_system=row['coordinate_system'], source=row['source'],
