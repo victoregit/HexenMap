@@ -60,8 +60,12 @@ class Block:
 
     @property
     def key(self):
-        payload=(INDEX_VERSION,cv2.__version__,SIFT_FEATURES,self.raster.digest,str(self.raster.path),self.raster.matrix.tolist(),self.raster.pack_index,self.box,self.scale)
-        return hashlib.sha256(repr(payload).encode()).hexdigest()
+        k=getattr(self,'_cached_key',None)
+        if k is None:
+            payload=(INDEX_VERSION,cv2.__version__,SIFT_FEATURES,self.raster.digest,str(self.raster.path),self.raster.matrix.tolist(),self.raster.pack_index,self.box,self.scale)
+            k=hashlib.sha256(repr(payload).encode()).hexdigest()
+            object.__setattr__(self,'_cached_key',k)
+        return k
 
     def distance(self,point):
         if point is None:return math.inf
@@ -202,11 +206,20 @@ class IndexedMatcher(TerrainMatcher):
         if len(points)<20:raise ValueError('Bloco sem detalhes suficientes')
         self.block=block;self.points=points;self.descriptors=descriptors
         self.terrain=Terrain(np.empty((0,0),np.uint8),block.matrix,str(block.raster.path))
-        self.sift=cv2.SIFT_create(nfeatures=2000,contrastThreshold=.025)
+        self.sift=None
         self.matcher=cv2.FlannBasedMatcher(dict(algorithm=1,trees=4),dict(checks=96))
         self.matcher.add([descriptors]);self.matcher.train()
         # Include conservative native copies/tree overhead, not just the ndarray.
         self.bytes=descriptors.nbytes*4+points.nbytes+2*1024**2
+
+    def close(self):
+        if hasattr(self,'matcher') and self.matcher is not None:
+            try:self.matcher.clear()
+            except Exception:pass
+            self.matcher=None
+        self.points=None
+        self.descriptors=None
+        self.sift=None
 
 
 class ReferenceStore:
@@ -237,8 +250,11 @@ class ReferenceStore:
         # Still evict it when it alone exceeds the available byte budget.
         key=next((key for key in self.cache if key!=self.protected_key),next(iter(self.cache)))
         value=self.cache.pop(key);self.bytes-=value.bytes;self.evictions+=1
+        if hasattr(value,'close'):value.close()
 
     def close(self):
+        for val in self.cache.values():
+            if hasattr(val,'close'):val.close()
         self.cache.clear();self.bytes=0;self.protected_key=None
 
     def diagnostics(self):

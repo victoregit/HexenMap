@@ -34,6 +34,7 @@ class MinimapTemplateTracker(PositionTrackerInterface):
         self._sample_interval = sample_interval_sec
         self._last_sample_time: float = 0.0
         self._last_estimate: PositionEstimate = PositionEstimate.invalid()
+        self._ref_gray: Optional[np.ndarray] = None
 
     @property
     def sample_interval(self) -> float:
@@ -46,6 +47,7 @@ class MinimapTemplateTracker(PositionTrackerInterface):
     def set_reference_map(self, map_image: np.ndarray) -> None:
         """Assign reference terrain map array for matching."""
         self._reference_map = map_image
+        self._ref_gray = None
 
     def estimate_position(self, frame: Optional[Any] = None) -> PositionEstimate:
         """Estimate position from minimap frame crop.
@@ -72,10 +74,13 @@ class MinimapTemplateTracker(PositionTrackerInterface):
             return PositionEstimate.invalid()
 
         try:
-            # Convert images to grayscale if 3 channels
-            ref_gray = self._reference_map
-            if len(ref_gray.shape) == 3:
-                ref_gray = cv2.cvtColor(ref_gray, cv2.COLOR_BGR2GRAY)
+            # Convert images to grayscale if 3 channels (cached for reference)
+            ref_gray = self._ref_gray
+            if ref_gray is None:
+                ref_gray = self._reference_map
+                if len(ref_gray.shape) == 3:
+                    ref_gray = cv2.cvtColor(ref_gray, cv2.COLOR_BGR2GRAY)
+                self._ref_gray = ref_gray
 
             templ_gray = frame
             if len(templ_gray.shape) == 3:

@@ -2,6 +2,10 @@
 
 [Português (Brasil)](README.md) · **English**
 
+[![How to Use (EN)](https://img.shields.io/badge/📘_Guide-How_to_Use_(EN)-2ea44f?style=flat-square)](HOW_TO_USE.en.md)
+[![Como Usar (PT)](https://img.shields.io/badge/📖_Guia-Como_Usar_(PT)-007acc?style=flat-square)](HOW_TO_USE.md)
+[![Security Policy](https://img.shields.io/badge/🛡️_Security-Policy-orange?style=flat-square)](SECURITY.md)
+
 ### Your AppSample progress, on the in-game maps.
 
 Explore **Genshin Impact** with pins on the minimap and the full-screen map, track your collected items, and bring along the progress you already marked on AppSample. Choose your items, collapse the panel, and keep playing.

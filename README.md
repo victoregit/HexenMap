@@ -2,6 +2,10 @@
 
 **Português (Brasil)** · [English](README.en.md)
 
+[![Como Usar (PT)](https://img.shields.io/badge/📖_Guia-Como_Usar_(PT)-007acc?style=flat-square)](HOW_TO_USE.md)
+[![How to Use (EN)](https://img.shields.io/badge/📘_Guide-How_to_Use_(EN)-2ea44f?style=flat-square)](HOW_TO_USE.en.md)
+[![Segurança / Security](https://img.shields.io/badge/🛡️_Segurança-Security_Policy-orange?style=flat-square)](SECURITY.md)
+
 ### Seu progresso do AppSample, nos mapas do jogo.
 
 Explore o **Genshin Impact** com pins sobre o minimapa e o mapa M, acompanhe suas coletas e aproveite o progresso que você já marcou no AppSample. Escolha os itens no painel, recolha a janela e continue jogando.

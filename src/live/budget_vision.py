@@ -65,7 +65,13 @@ class BudgetRecognizer:
             self.store.close();raise
 
     def close(self):
-        self.store.close();self.coarse.clear();self.coarse_points.clear();self.coarse_owners.clear()
+        self.store.close()
+        for matcher in self.coarse.values():
+            try:
+                matcher.clear()
+            except Exception:
+                pass
+        self.coarse.clear();self.coarse_points.clear();self.coarse_owners.clear()
 
     def diagnostics(self):
         return dict(self.store.diagnostics(),coarse_surfaces=len(self.coarse),selected_layers=len(self.packs),global_map=self.global_map)
