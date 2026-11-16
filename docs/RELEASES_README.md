@@ -26,16 +26,27 @@ Chega de interromper cada rota para conferir onde está o próximo item. O Hexen
 | --- | --- |
 | **📍 Pins no minimapa e no mapa M** | Veja os itens selecionados sobre os mapas do jogo e reduza as idas ao navegador. |
 | **🎥 Modo streamer** | Escolha se o overlay aparece nas capturas e no compartilhamento de tela, mantendo a ajuda visível para você. A compatibilidade depende do método de captura; teste antes da live. |
-| **⚡ AutoMark de baús · Beta** | Menos marcações manuais: registra uma coleta quando os sinais de abertura, recompensa e posição permitem uma associação confiável. Vem desligado e precisa ser habilitado. |
+| **⚡ AutoMark de baús · Beta** | Ative acima do rodapé, acompanhe a sincronização e use ↻ para sincronizar novamente. Registra um baú próximo quando abertura, recompensas e posição permitem uma associação confiável. Beta, desligado por padrão. |
 | **🖼️ Fotos do local** | Está difícil encontrar o ponto? Abra o cartão, consulte as fotos e amplie com zoom para enxergar os detalhes. |
 | **🔄 Importação + extensão AppSample** | O Hexen Map Exporter ajuda a exportar seus coletados do navegador, sem F12. Importe com prévia e continue de onde parou. Exige suporte a extensões do Chrome. |
-| **🌍 Mapa geral de Teyvat** | Planeje o próximo trecho com zoom, filtros e coletas compartilhadas com o overlay, na superfície instalada. |
-| **🧭 Catálogo organizado** | Busque itens, filtre categorias e mantenha na tela o que importa para a sua rota. Catálogo em português com aliases de busca. |
-| **🎛️ Painel do seu jeito** | Mova, redimensione, recolha e ajuste a escala dos controles. Menos painel no caminho, mais espaço para jogar. |
+| **🌍 Mapa global e áreas separadas** | Consulte Teyvat e seis mapas permanentes separados, com 44 camadas próprias, zoom, filtros, fotos e coletas. A navegação não altera o rastreamento do jogo. |
+| **📚 Catálogo organizado** | Busque itens, filtre categorias e mantenha na tela o que importa para a sua rota. Interface e catálogo em português e inglês, com aliases de busca. |
+| **🎛️ Painel do seu jeito** | Fixe o painel ao Genshin ou use uma janela independente. Mova, redimensione, recolha e ajuste a escala dos controles. |
 | **🚀 Abra e jogue** | O launcher verifica atualizações e segue para o app sozinho. Sem instalar Python ou baixar a pasta inteira a cada versão. |
-| **💾 Seu progresso continua seu** | Marcações locais preservadas nas atualizações e reinstalações na mesma pasta. Faça backups para ter uma cópia adicional. |
+| **💾 Seu progresso continua seu** | Coletas e preferências ficam fora da pasta do programa e são preservadas nas atualizações e reinstalações. Perfis locais separam contas; mantenha backups independentes. |
 
 > **Joga e transmite?** Use as referências na sua tela e escolha o que vai para a captura. **Já explora pelo AppSample?** Importe seus coletados para continuar de onde parou.
+
+### Funções e limites atuais · 2.0.1
+
+- **Mapas:** Teyvat, Enkanomiya, Despenhadeiro subterrâneo, Mar das Eras Passadas, Montanha Sagrada Antiga, Templo do Espaço e Lua Gélida. Use **Automático · Detectar mapa** ou fixe mapa/camada nos Ajustes. A cobertura depende dos recursos instalados; mapas temporários e a expansão geral das cavernas de Teyvat ficam fora desta versão.
+- **Sem bússola ou busca guiada:** os pins mostram os itens selecionados nos mapas do jogo. Não há navegação por alvo nem atalhos de farm.
+- **Controles padrão:** F8 abre/recolhe o painel; Ctrl+Alt+F12 mostra/oculta os pins; Ctrl + clique abre o cartão; segurar Ctrl revela coletados em cinza; F9 confirma uma coleta próxima ou apresenta candidatos; F10 desfaz a última coleta da sessão. Os quatro atalhos de teclado são configuráveis nos Ajustes.
+- **AutoMark:** beta e desligado por padrão. Requer o jogo em foco, referências qualificadas, posição confiável e associação sem ambiguidade. Também confirma recompensas por pares de ícones, sem depender do texto em português ou inglês. A sincronização inicial não garante uma coleta; o assistente de calibração pessoal ainda não está incluído.
+- **Recursos e reposição:** referências e memória são gerenciadas automaticamente, sem seletor Leve/Global. Itens permanentes não expiram; recursos sem regra qualificada mostram **Reposição não confirmada**.
+- **Idioma:** português e inglês no aplicativo e instalador. Altere em **Ajustes → Idioma / Language** e reabra o app.
+- **Tela e diagnóstico:** prefira janela ou sem bordas se o overlay não aparecer em tela cheia. Diagnóstico permite recarregar o reconhecimento e gravar o canto do minimapa por até 20 segundos/50 MiB, com exportação manual; nenhuma captura é enviada automaticamente. A bandeja do Windows permite reabrir o painel ou encerrar.
+- **Correção 2.0.1:** revalidação do minimapa por referências nativas para reduzir desaparecimentos intermitentes. A validação real da estabilidade continua pendente; não há garantia de eliminar todas as piscadas.
 
 ### Comece em poucos passos
 
@@ -82,16 +93,27 @@ Stop interrupting every route to look up the next item. Hexen Map brings visual 
 | --- | --- |
 | **📍 Minimap and in-game map markers** | See selected items over the game's maps and cut down on browser switching. |
 | **🎥 Streamer mode** | Choose whether the overlay appears in screen captures and screen sharing while keeping it visible to you. Support depends on the capture method; test your setup before going live. |
-| **⚡ Chest AutoMark · Beta** | Less manual tracking: records a collection when opening, reward, and position signals support a reliable match. Disabled by default; enable it when you want to try it. |
+| **⚡ Chest AutoMark · Beta** | Enable it above the footer, follow synchronization status and use ↻ to resync. Records a nearby chest when opening, rewards and position support a reliable match. Opt-in beta. |
 | **🖼️ Location photos** | Having trouble finding a spot? Open its card, check the photos, and zoom in for the details. |
 | **🔄 AppSample import + browser extension** | Hexen Map Exporter helps export collected markers from your browser without developer tools. Review the import and pick up where you left off. Requires Chrome extension support. |
-| **🌍 Teyvat world map** | Plan your next stretch with zoom, filters, and collection status shared with the overlay, on the installed surface map. |
-| **🧭 Organized item catalog** | Search and filter categories to show what matters for your route. The Portuguese catalog includes search aliases. |
-| **🎛️ A panel that fits your setup** | Move, resize, collapse, and scale the controls. Keep more of your screen available for the game. |
+| **🌍 World map and separate areas** | Browse Teyvat and six permanent separate maps with 44 dedicated layers, zoom, filters, photos and progress. Browsing does not change game tracking. |
+| **📚 Organized item catalog** | Search and filter categories to show what matters for your route. The interface and catalog support Portuguese and English, including search aliases. |
+| **🎛️ A panel that fits your setup** | Attach the panel to Genshin or use an independent window. Move, resize, collapse and scale the controls. |
 | **🚀 Launch and play** | The launcher checks for updates and opens the app automatically. No Python installation or repeated full-folder downloads. |
-| **💾 Your progress stays yours** | Local collected markers survive updates and reinstalls in the same folder. Keep backups for an extra copy. |
+| **💾 Your progress stays yours** | Collected items and preferences live outside the program folder and survive updates and reinstalls. Local profiles separate accounts; keep independent backups. |
 
 > **Playing and streaming?** Keep your references on your screen and choose what goes into the capture. **Already using AppSample?** Import your collected markers and pick up where you left off.
+
+### Current features and limits · 2.0.1
+
+- **Maps:** Teyvat, Enkanomiya, The Chasm: Underground Mines, Sea of Bygone Eras, Ancient Sacred Mountain, Temple of Space and Frost Moon. Use **Automatic · Detect map** or select a fixed map/layer in Settings. Coverage depends on installed resources; temporary maps and a general expansion of Teyvat caves are outside this version.
+- **No compass or guided search:** pins display selected items on the in-game maps. Target navigation and farming hotkeys are not available.
+- **Default controls:** F8 opens/collapses the panel; Ctrl+Alt+F12 shows/hides pins; Ctrl + click opens a card; holding Ctrl reveals collected items in gray; F9 confirms a nearby collection or presents candidates; F10 undoes the session's last collection. The four keyboard shortcuts are configurable in Settings.
+- **AutoMark:** opt-in beta. Requires game focus, qualified references, a reliable position and an unambiguous match. Reward icon pairs also work without relying on Portuguese or English text. Initial synchronization does not guarantee a collection; the personal calibration wizard is not included yet.
+- **Resources and respawns:** references and memory are managed automatically, without a Light/Global selector. Permanent items never expire; resources without a qualified rule show **Respawn unconfirmed**.
+- **Language:** Portuguese and English in the app and installer. Change **Settings → Idioma / Language** and reopen the app.
+- **Display and diagnostics:** try windowed or borderless mode if fullscreen hides the overlay. Diagnostics can reload recognition and record the minimap corner for up to 20 seconds/50 MiB, with manual export; captures are never uploaded automatically. The Windows tray can reopen the panel or exit.
+- **2.0.1 fix:** native minimap reference revalidation aims to reduce intermittent marker disappearances. Real gameplay stability validation remains pending; eliminating all flickering is not guaranteed.
 
 ### Get started in a few steps
 
@@ -104,7 +126,7 @@ Alignment relies on screen capture and visual recognition. The app does not read
 
 ### 🧩 Hexen Map Exporter: bring your browser progress with you
 
-The **Hexen Map Exporter** extension helps export markers you have already collected on AppSample, without using the browser console. In the app, open **Settings → AppSample collected items → Open extension folder** (currently labeled **Ajustes → Coletados do AppSample → Abrir pasta da extensão**) and load that folder through your browser's developer mode. Open AppSample signed in to your account and use **Refresh reading / Atualizar leitura** in the extension.
+The **Hexen Map Exporter** extension helps export markers you have already collected on AppSample, without using the browser console. In the app, open **Settings → AppSample collected items → Open extension folder** and load that folder through your browser's developer mode. Open AppSample signed in to your account and use **Refresh reading / Atualizar leitura** in the extension.
 
 - **Download JSON:** export the file and import it through Hexen Map settings.
 - **Send to Hexen Map:** first enable **Ativar conexão com a extensão** in settings. Review the preview and confirm the merge in the app.
