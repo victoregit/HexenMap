@@ -6,8 +6,12 @@ from pathlib import Path
 
 from src.live.storage import bundle_dir,install_dir
 
-FILES=('manifest.json','capture.js','bridge.js','popup.html','popup.css','popup.js',
-       'appsample-core.js','LEIA-ME.html')
+FILES = (
+    'manifest.json', 'capture.js', 'bridge.js', 'hoyolab-capture.js', 'hoyolab-bridge.js',
+    'popup.html', 'popup.css', 'popup.js', 'appsample-core.js', 'hoyolab-core.js',
+    'hoyolab-index.json', 'LEIA-ME.html',
+    'icon-16.png', 'icon-32.png', 'icon-48.png', 'icon-128.png'
+)
 
 
 def prepare_extension(source=None,destination=None):

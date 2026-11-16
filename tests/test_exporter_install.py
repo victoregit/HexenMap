@@ -13,7 +13,11 @@ def test_bundled_extension_is_complete_stable_and_ready_to_load(tmp_path):
     manifest=json.loads((folder/'manifest.json').read_text(encoding='utf-8-sig'))
     for entry in manifest['content_scripts']:
         for name in entry['js']:
-            assert 'const HexenAppSample = globalThis.HexenAppSample' in (folder/name).read_text(encoding='utf-8')
+            text = (folder/name).read_text(encoding='utf-8')
+            if 'hoyolab' in name:
+                assert 'const HexenHoYoLAB = globalThis.HexenHoYoLAB' in text
+            else:
+                assert 'const HexenAppSample = globalThis.HexenAppSample' in text
     assert not any('progress' in path.name for path in folder.rglob('*'))
 
 
