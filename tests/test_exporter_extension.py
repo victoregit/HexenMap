@@ -26,22 +26,30 @@ def test_extension_package_is_self_contained_and_restricted(tmp_path):
         manifest = json.loads(archive.read('HexenMapExporter/manifest.json').decode('utf-8-sig'))
         assert manifest['manifest_version'] == 3 and 'background' not in manifest
         assert manifest['permissions'] == ['nativeMessaging']
-        assert manifest['host_permissions'] == ['https://genshin-impact-map.appsample.com/*']
+        assert manifest['host_permissions'] == [
+            'https://genshin-impact-map.appsample.com/*',
+            'https://act.hoyolab.com/*'
+        ]
         for script in manifest['content_scripts']:
-            assert script['matches'] == manifest['host_permissions']
+            assert any(h in manifest['host_permissions'] for h in script['matches'])
             assert script['run_at'] == 'document_start'
             for name in script['js']:
                 assert 'HexenMapExporter/' + name in names
         assert archive.read('HexenMapExporter/appsample-core.js') == (ROOT / 'data/import/appsample-core.js').read_bytes()
+        assert archive.read('HexenMapExporter/hoyolab-core.js') == (ROOT / 'extensions/hexen-map-exporter/hoyolab-core.js').read_bytes()
+        assert archive.read('HexenMapExporter/hoyolab-index.json') == (ROOT / 'extensions/hexen-map-exporter/hoyolab-index.json').read_bytes()
         for world in manifest['content_scripts']:
             assert len(world['js']) == 1
             entry = archive.read('HexenMapExporter/' + world['js'][0]).decode('utf-8').replace('\r\n', '\n')
-            assert (ROOT / 'data/import/appsample-core.js').read_text(encoding='utf-8') in entry
-        assert len(names) == 8
+            if 'hoyolab' in world['js'][0]:
+                assert (ROOT / 'extensions/hexen-map-exporter/hoyolab-core.js').read_text(encoding='utf-8') in entry
+            else:
+                assert (ROOT / 'data/import/appsample-core.js').read_text(encoding='utf-8') in entry
+        assert len(names) == 16
         assert not any('progress' in n or 'userData' in n for n in names)
 
 
-@pytest.mark.parametrize('entry', ['capture.js', 'bridge.js'])
+@pytest.mark.parametrize('entry', ['capture.js', 'bridge.js', 'hoyolab-capture.js', 'hoyolab-bridge.js'])
 def test_packaged_entry_boots_without_preloaded_core(tmp_path, entry):
     from scripts.package_exporter import package
     node = shutil.which('node')
@@ -51,20 +59,29 @@ def test_packaged_entry_boots_without_preloaded_core(tmp_path, entry):
     harness = r'''
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
 const listeners=[],messages=[];class XHR{open(){}}
+const file=process.argv[1];
+const isHoyo=file.includes('hoyolab');
+const origin=isHoyo?'https://act.hoyolab.com':'https://genshin-impact-map.appsample.com';
 const c={URL,TextEncoder,TextDecoder,Uint8Array,crypto:require('node:crypto').webcrypto,
- location:{href:'https://genshin-impact-map.appsample.com/'},fetch:()=>Promise.resolve(new Response('[]')),XMLHttpRequest:XHR,
+ location:{href:origin+'/'},fetch:()=>Promise.resolve(new Response('[]')),XMLHttpRequest:XHR,
  addEventListener:(_,f)=>listeners.push(f),postMessage:m=>messages.push(m),
  chrome:{runtime:{id:'local',getURL:s=>'chrome-extension://local/'+s,onMessage:{addListener:()=>{}}}}};
 c.window=c;vm.createContext(c);
-assert.equal(c.HexenAppSample,undefined);
-vm.runInContext(fs.readFileSync(process.argv[1],'utf8'),c);
-delete c.HexenAppSample; // entry keeps its lexical dependency after startup
-if(process.argv[1].endsWith('capture.js')){
- assert.equal(c.__hexenMapCaptureV1,true);
+if(isHoyo) assert.equal(c.HexenHoYoLAB,undefined);
+else assert.equal(c.HexenAppSample,undefined);
+vm.runInContext(fs.readFileSync(file,'utf8'),c);
+if(isHoyo) delete c.HexenHoYoLAB;
+else delete c.HexenAppSample;
+if(file.endsWith('capture.js')){
+ if(isHoyo) assert.equal(c.__hexenHoYoLabCaptureV1,true);
+ else assert.equal(c.__hexenMapCaptureV1,true);
  const win=vm.runInContext('window',c);
- for(const f of listeners)f({source:win,origin:'https://genshin-impact-map.appsample.com',data:{hexen:1,type:'hello',context:'a'.repeat(32)}});
+ for(const f of listeners)f({source:win,origin,data:{hexen:1,type:'hello',context:'a'.repeat(32)}});
  assert(messages.some(m=>m.type==='attached'));
-}else assert.equal(c.__hexenBridgeV1,true);
+}else{
+ if(isHoyo) assert.equal(c.__hexenHoYoLabBridgeV1,true);
+ else assert.equal(c.__hexenBridgeV1,true);
+}
 '''
     subprocess.run([node, '-e', harness, str(tmp_path / 'HexenMapExporter' / entry)], check=True, capture_output=True, text=True)
 
