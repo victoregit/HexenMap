@@ -83,8 +83,8 @@ def build_settings(app, parent, *, bg, muted):
     note(appearance,_tr('Controla se os ícones aparecem no compartilhamento de tela. Não desliga o reconhecimento. Para incluir os pins, compartilhe a tela inteira; só a janela do jogo pode não incluí-los.'))
 
     if app.catalogs.appsample_available:
-        imports=section('Coletados do AppSample')
-        note(imports,_tr('Traga os itens que você já marcou no site. A prévia pede confirmação e a mesclagem preserva seu progresso com backup.'))
+        imports=section('Coletados do AppSample / HoYoLAB')
+        note(imports,_tr('Traga os itens que você já marcou nos mapas interativos. A prévia pede confirmação e a mesclagem preserva seu progresso com backup.'))
         ttk.Button(imports,text=_tr('Abrir pasta da extensão…'),command=app.open_exporter_folder).pack(fill='x',pady=3)
         note(imports,_tr('Instalação manual: no Chrome ou Edge, abra Extensões, ative Modo do desenvolvedor e use Carregar sem compactação. Selecione a pasta aberta pelo botão acima. Não mova nem apague essa pasta após instalar.'))
         ttk.Button(imports,text=_tr('Importar arquivo de coletados…'),command=app.import_appsample_progress).pack(fill='x',pady=3)

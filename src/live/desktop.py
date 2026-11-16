@@ -364,7 +364,7 @@ class DesktopApp(ProfileControls,CompactPanel):
             register_connector(install_dir())
             messagebox.showinfo(_tr('Conector do navegador'),
                 _tr('Conexão local ativada para Chrome e Edge neste usuário.\n'
-                'Instale a extensão 0.2.0 e use Enviar ao Hexen Map.\n'
+                'Instale a extensão atualizada e use Enviar ao Hexen Map.\n'
                 'Cada envio abrirá a prévia; nada será mesclado sem confirmação.'),parent=self.root)
         except Exception as exc:
             messagebox.showerror(_tr('Conector do navegador'),_tr(str(exc)),parent=self.root)

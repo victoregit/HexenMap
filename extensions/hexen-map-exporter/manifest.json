@@ -1,11 +1,23 @@
 {
   "manifest_version": 3,
-  "name": "Hexen Map Exporter — teste",
-  "version": "0.2.0",
-  "description": "Exporta localmente os IDs coletados carregados pelo AppSample. Sem credenciais ou sincronização.",
+  "name": "Hexen Map Exporter",
+  "version": "2.0.4",
+  "description": "Exporta localmente os IDs coletados do AppSample e HoYoLAB. Sem credenciais ou sincronização.",
+  "icons": {
+    "16": "icon-16.png",
+    "32": "icon-32.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Hexen Map Exporter"
+    "default_title": "Hexen Map Exporter",
+    "default_icon": {
+      "16": "icon-16.png",
+      "32": "icon-32.png",
+      "48": "icon-48.png",
+      "128": "icon-128.png"
+    }
   },
   "content_scripts": [
     {
@@ -27,13 +39,44 @@
       ],
       "run_at": "document_start",
       "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://act.hoyolab.com/*"
+      ],
+      "js": [
+        "hoyolab-bridge.js"
+      ],
+      "run_at": "document_start",
+      "world": "ISOLATED"
+    },
+    {
+      "matches": [
+        "https://act.hoyolab.com/*"
+      ],
+      "js": [
+        "hoyolab-capture.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
     }
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'"
   },
   "host_permissions": [
-    "https://genshin-impact-map.appsample.com/*"
+    "https://genshin-impact-map.appsample.com/*",
+    "https://act.hoyolab.com/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "hoyolab-index.json"
+      ],
+      "matches": [
+        "https://act.hoyolab.com/*"
+      ]
+    }
   ],
   "minimum_chrome_version": "120",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAhGkduqnjKpJMYowHaZjPmlzDMq+8bbrD6GQ9sPr/RFS382oMVhxvUiLZAFfy+ltno/a8h8ZPH9ueuUMEo2HYJ3Lq+0IkXsTugiDXBE3s85c7WFCcf9w/7sHG1oBLdO/Aw7Ef7t4HshX9CHw/Ka4KwzYvY6FdA3IJUJTBXOEgaYQntDGT1gImsBtVg4ksCgqEGjxv9pnBszzF8cAW4zX6mRrmLOxv/eNspWeU21tOVrsjmhyaVh5dUxXWRguSbUhqfFBleH6qB6tuwbXvwe+jBwlBNcDIZyJmfmvty+CqqWCwScbYj24tOAM3WGGVDxMc5kMQ7f74C2OnQSoveQp6FwIDAQAB",

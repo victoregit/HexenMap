@@ -8,7 +8,7 @@ Gere a pasta completa e o ZIP a partir da raiz do repositório:
 python scripts/package_exporter.py
 ```
 
-Carregue **dist/HexenMapExporter**, não esta pasta-fonte incompleta. Usuários recebem `dist/HexenMapExporter-0.2.0-teste.zip` pronto; não precisam de Python.
+Carregue **dist/extensoes/2.0.4/HexenMapExporter**, não esta pasta-fonte incompleta. O pacote atual é `dist/extensoes/2.0.4/HexenMapExporter-2.0.4.zip`; usuários não precisam de Python. A versão exibida no popup é lida do manifesto da extensão carregada pelo navegador.
 
 Consulte `docs/EXPORTER_INSTALL.html` e `docs/EXPORTER_TEST_REPORT.md`. Compatibilidade real ainda pendente de teste completo com conta conectada e desconectada no Chrome e Edge.
 
